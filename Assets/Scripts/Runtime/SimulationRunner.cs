@@ -7,7 +7,9 @@ public class SimulationRunner : MonoBehaviour
     private const string SpawnCountPropertyName = "SpawnCount";
 
     [SerializeField] private CubeSource cubeSource = new CubeSource();
-    [SerializeField] private float twistStrength = 1f;
+	[SerializeField] private MeshSource meshSource = new MeshSource();
+	[SerializeField] private BitmapSource bitmapSource = new BitmapSource();
+	[SerializeField] private float twistStrength = 1f;
     [SerializeField] private float simulationSpeed = 1f;
     [SerializeField] private ComputeShader computeShader;
     [SerializeField] private VisualEffect visualEffect;
@@ -30,7 +32,7 @@ public class SimulationRunner : MonoBehaviour
             return;
         }
 
-        activeSource = cubeSource;
+        activeSource = bitmapSource;
         dataset = new PointDataset();
         activeSource.Setup(dataset);
 
