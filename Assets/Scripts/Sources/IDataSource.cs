@@ -1,6 +1,6 @@
 public interface IDataSource
 {
     string Name { get; }
-    void Setup(PointDataset dataset);
-    void Tick(PointDataset dataset);
+    void Setup(ParticleSet particles);
+    void Tick(ParticleSet particles);
 }

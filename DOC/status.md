@@ -1,19 +1,21 @@
-# Status — M3D Playground PoC
+# Status — M3D Framework (Milestone 1)
 
-**Дата:** 2026-07-19  
-**Итерация:** 3 — PointDataset + IDataSource  
+**Дата:** 2026-07-23  
+**Итерация:** 4.0 — SimulationWorld + EffectAsset + pass library  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
-**Сцена:** `Assets/Scenes/Test1.unity`
+**Сцена:** `Assets/Scenes/Test1.unity`  
+**Архитектура:** [`architecture.md`](architecture.md)
 
 ---
 
 ## Цель
 
 ```
-IDataSource → PointDataset (Schema + SoA buffers) → GPU Operators → VFX Graph
+IDataSource → ParticleSet (Schema + SoA) → SimPass pipeline → VFX Graph
 ```
 
-`Particle` больше не публичный контракт. Операторы и VFX работают с атрибутами (`position`), не с форматом источника.
+Один эффект = один `EffectAsset` (источник + упорядоченный список пассов).  
+Runtime — `SimulationWorld`: ресурсы, CommandBuffer-цикл, TouchBuffer, биндинг VFX.
 
 ---
 
@@ -21,64 +23,79 @@ IDataSource → PointDataset (Schema + SoA buffers) → GPU Operators → VFX Gr
 
 ```mermaid
 flowchart TB
-  Cube[CubeSource] -->|Setup| DS[PointDataset]
-  DS --> Op[TwistGPUOperator]
-  Op --> DS
-  DS --> VFX[VFX PositionBuffer]
-  Runner[SimulationRunner] --> Cube
-  Runner --> Op
-  Runner --> VFX
+  Asset[EffectAsset]
+  Asset --> Source[IDataSource]
+  Asset --> Passes[SimPass list]
+  Source -->|Setup restPosition| PS[ParticleSet]
+  World[SimulationWorld] --> Asset
+  World --> Input[InputRouter]
+  Input -->|TouchBuffer| Ctx[SimContext]
+  World --> Ctx
+  Passes -->|Execute via Cmd| PS
+  PS -->|position| VFX[VFX Graph]
 ```
-
-
 
 ### Core
 
+| Тип | Роль |
+| --- | --- |
+| `AttributeId` / `AttributeType` | ключ атрибута; stride через `GetStride()` |
+| `BuiltinAttributes` | `RestPosition`, `Position`, `Velocity`, `Value` |
+| `ParticleSet` | владелец schema+buffers; рост capacity после создания буферов запрещён |
+| `AttributeSchema` | read-only снаружи |
 
-| Тип                 | Роль                                                                 |
-| ------------------- | -------------------------------------------------------------------- |
-| `AttributeId`       | ключ атрибута; словари dataset/schema: `Dictionary<AttributeId, …>`  |
-| `BuiltinAttributes` | каталог стандарта (`Position`, `Value`) — static readonly согласован |
-| `AttributeDescriptor` | Id, Type, Stride, Target (Count только у Dataset)                  |
-| `AttributeSchema`   | read-only снаружи; Add только из PointDataset                        |
-| `PointDataset`      | владелец schema+buffers; `RegisterAttribute` атомарно                |
-
-
-Schema обновляется только через `RegisterAttribute` (descriptor + buffer атомарно).
+Авторегистрация: мир собирает `Reads`/`Writes` всех пассов и регистрирует недостающие атрибуты (zero-fill).
 
 ### Sources
 
-```csharp
-public interface IDataSource
-{
-    string Name { get; }
-    void Setup(PointDataset dataset);
-    void Tick(PointDataset dataset);
-}
-```
+`IDataSource.Setup(ParticleSet)` пишет `restPosition`. Kind: `Cube` / `Mesh` / `Bitmap` (конфиг в EffectAsset).
 
-Буферы владеет только `PointDataset`. У `IDataSource` нет `Dispose`.
+Валидации: null/empty, texture/mesh `isReadable`, mesh degenerate bounds, bitmap `span > 0`.
 
-**Сейчас:** `CubeSource` — сетка `resolution³` в `[-cubeSize/2, cubeSize/2]` → `BuiltinAttributes.Position`.
+### Passes (по роли в кадре)
 
-**Позже:** OBJ / PCache / Mandelbulb — тот же контракт.
+| Категория | Пассы |
+| --------- | ----- |
+| **Shape** | `CopyRestPass`, `TwistPass`, `SpringToRestPass` |
+| **Force** | `GravityPass`, `DragPass`, `VortexPass`, `AttractorPass`, `RepulsorPass`, `NoiseForcePass`, `CurlNoisePass`, `TurbulencePass`, `TouchForcePass` |
+| **Dynamics** | `IntegratePass`, `SpeedLimitPass`, `PlaneColliderPass`, `SphereColliderPass`, `BoxBoundsPass` |
 
-### Operators
+Каждый пасс = kernel в `.compute` + C#-класс (`ParticleKernelPass`).  
+Буферы биндятся по имени атрибута (`position`, `velocity`, `restPosition`).  
+Диспатчи идут в один `CommandBuffer` за кадр; каждый пасс в `ProfilingSampler`.
 
-`IGPUOperator` + `TwistGPUOperator`: required `Position`, compute на `RWStructuredBuffer<float3> Positions`.
+HLSL: `Assets/Shaders/GPU/Passes/{Shape,Force,Dynamics}Passes.compute` + `Includes/Noise.hlsl`, `Touch.hlsl`.
 
 ### Runtime
 
-`SimulationRunner` (вместо `SimulationController`): source.Setup → twist → VFX bind `PositionBuffer` / `SpawnCount`.
+`SimulationWorld`:
+
+1. `effect.ResolveSource()` → `Setup(particles)`
+2. Авторегистрация атрибутов + one-time `restPosition → position` copy
+3. `Initialize` каждого пасса (поиск kernel-а в pass library)
+4. Bind VFX `PositionBuffer` / `SpawnCount`
+5. Каждый кадр: Sample touches → Tick source → Execute passes → `Graphics.ExecuteCommandBuffer`
+
+`InputRouter`: мышь (editor) / touch → `TouchForce[]` на GPU (≤8).
+
+### Editor
+
+| Меню / инспектор | Назначение |
+| ---------------- | ---------- |
+| EffectAsset inspector | Add Pass (меню по Category), reorder |
+| SimulationWorld inspector | кнопка Rebuild (Play Mode) |
+| `Tools/M3D/Create Demo Effects` | TwistedCube / GalaxySwirl / ReactiveDust |
+| `Tools/M3D/Setup Open Scene` | вешает World + InputRouter на VFX |
 
 ---
 
-## Как добавить новый IDataSource
+## Демо-пресеты
 
-1. Класс `XSource : IDataSource`
-2. В `Setup`: `EnsureCapacity` + `RegisterAttribute` нужных builtins/custom + fill
-3. `Tick` — empty или GPU update
-4. Подставить в Runner вместо Cube — Twist/VFX не меняются, если есть `position`
+| Asset | Пайплайн |
+| ----- | -------- |
+| `Assets/Effects/TwistedCube.asset` | CopyRest → Twist |
+| `Assets/Effects/GalaxySwirl.asset` | Vortex → CurlNoise → Drag → TouchForce → Integrate → BoxBounds(Wrap) |
+| `Assets/Effects/ReactiveDust.asset` | SpringToRest → Turbulence → TouchForce(push) → Drag → Integrate |
 
 ---
 
@@ -86,29 +103,38 @@ public interface IDataSource
 
 ```
 Assets/Scripts/
-  Core/          AttributeId, BuiltinAttributes, Descriptor, Schema, PointDataset
-  Sources/       IDataSource, CubeSource
-  Operators/     IGPUOperator, TwistGPUOperator
-  Runtime/       SimulationRunner
-  Editor/        CreateParticleBufferVFX.cs
-Assets/Shaders/
-  ParticleSimulate.compute
-  GPU/Operators/ TwistOperator.hlsl, Operator.hlsl
-  GPU/Vfx/       ReadPositionBuffer.hlsl
+  Core/       AttributeId, BuiltinAttributes, Descriptor, Schema, ParticleSet
+  Sources/    IDataSource, DataSourceKind, Cube/Mesh/BitmapSource
+  Runtime/    EffectAsset, SimulationWorld, SimPass, SimContext, InputRouter
+  Passes/     ShapePasses, ForcePasses, DynamicsPasses
+  Editor/     EffectAssetEditor, SimulationWorldEditor, M3DDemoTools, CreateParticleBufferVFX
+Assets/Shaders/GPU/
+  Passes/     ShapePasses.compute, ForcePasses.compute, DynamicsPasses.compute
+  Includes/   Noise.hlsl, Touch.hlsl
+  Vfx/        ReadPositionBuffer.hlsl
+Assets/Effects/   TwistedCube, GalaxySwirl, ReactiveDust
+DOC/          architecture.md, status.md, capabilities.md
 ```
 
-Удалено из публичного пути: `Particle.cs`, `ParticleStruct.hlsl`, AoS buffer.
+Удалено: `PointDataset`, `SimulationRunner`, `IGPUOperator` / Twist/Bulb/Copy operators, `ParticleSimulate.compute`, `GPU/Operators/*` (включая Bulb).
 
 ---
 
 ## Проверка
 
-- Play Mode, resolution=100 → ~1M points
-- Twist крутит куб; strength/speed в Inspector
-- Нет зависимости операторов/VFX от `Particle`
+- Play Mode, TwistedCube → 1M points, 2 passes
+- GalaxySwirl / ReactiveDust — переключение Effect на SimulationWorld + Rebuild
+- Мышью в Game View крутить GalaxySwirl / ReactiveDust
+- Mesh: Read/Write Enabled; Bitmap: Read/Write Enabled
 
 ---
 
-## Вне скоупа (ещё не сделано)
+## Вне скоупа (Milestone 2+)
 
-OBJ/PCache/Mandelbulb loaders, multi-source merge, PointDatasetBuilder, plugins, codegen.
+- Fields / FieldSet / 2D Stable Fluids
+- Spatial hash + boids
+- Emitters + lifetime / compaction
+- Appearance / Lifecycle pass categories (color, age)
+- Android Vulkan билд
+- Codegen C# ↔ HLSL
+- Динамический VFX capacity под `particles.Count`

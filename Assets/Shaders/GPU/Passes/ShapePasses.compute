@@ -1,0 +1,63 @@
+// Shape passes: rebuild/deform position from rest data.
+// Buffer names match attribute names — bound automatically by ParticleKernelPass.
+
+#pragma kernel CopyRest
+#pragma kernel Twist
+#pragma kernel SpringToRest
+
+#define THREADS 64
+
+RWStructuredBuffer<float3> position;
+StructuredBuffer<float3> restPosition;
+RWStructuredBuffer<float3> velocity;
+uint ParticleCount;
+float DeltaTime;
+
+float TwistPhase;
+float SpringStiffness;
+float SpringDamping;
+
+[numthreads(THREADS, 1, 1)]
+void CopyRest(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    position[id.x] = restPosition[id.x];
+}
+
+[numthreads(THREADS, 1, 1)]
+void Twist(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 p = position[id.x];
+    float angle = p.y * TwistPhase;
+    float s;
+    float c;
+    sincos(angle, s, c);
+
+    float3 result = p;
+    result.x = p.x * c - p.z * s;
+    result.z = p.x * s + p.z * c;
+    position[id.x] = result;
+}
+
+[numthreads(THREADS, 1, 1)]
+void SpringToRest(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 v = velocity[id.x];
+    v += (restPosition[id.x] - position[id.x]) * (SpringStiffness * DeltaTime);
+    v *= saturate(1.0 - SpringDamping * DeltaTime);
+    velocity[id.x] = v;
+}

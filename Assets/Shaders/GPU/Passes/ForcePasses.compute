@@ -1,0 +1,193 @@
+// Force passes: read position, accumulate into velocity.
+// Buffer names match attribute names — bound automatically by ParticleKernelPass.
+
+#pragma kernel Gravity
+#pragma kernel Drag
+#pragma kernel Vortex
+#pragma kernel PointForce
+#pragma kernel NoiseForce
+#pragma kernel CurlNoiseForce
+#pragma kernel TurbulenceForce
+#pragma kernel TouchImpulse
+
+#include "Assets/Shaders/GPU/Includes/Noise.hlsl"
+#include "Assets/Shaders/GPU/Includes/Touch.hlsl"
+
+#define THREADS 64
+
+StructuredBuffer<float3> position;
+RWStructuredBuffer<float3> velocity;
+StructuredBuffer<TouchForce> Touches;
+uint ParticleCount;
+uint TouchCount;
+float DeltaTime;
+float SimTime;
+
+float3 GravityVector;
+
+float DragFactor; // precomputed on CPU: exp(-drag * dt)
+
+float3 VortexCenter;
+float3 VortexAxis;
+float VortexStrength;
+float VortexRadius;
+
+float3 PointForceCenter;
+float PointForceStrength; // signed: attractor > 0, repulsor < 0
+float PointForceRadius;
+
+float NoiseFrequency;
+float NoiseAmplitude;
+float NoiseSpeed;
+
+float CurlFrequency;
+float CurlAmplitude;
+float CurlSpeed;
+
+float TurbFrequency;
+float TurbAmplitude;
+int TurbOctaves;
+float TurbSpeed;
+
+float TouchDragStrength;
+float TouchPushStrength;
+
+float RadialFalloff(float dist, float radius)
+{
+    float x = saturate(1.0 - dist / max(radius, 1e-4));
+    return x * x;
+}
+
+float3 TimeOffset(float speed)
+{
+    float t = SimTime * speed;
+    return float3(t * 0.7, t, t * 1.3);
+}
+
+[numthreads(THREADS, 1, 1)]
+void Gravity(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    velocity[id.x] += GravityVector * DeltaTime;
+}
+
+[numthreads(THREADS, 1, 1)]
+void Drag(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    velocity[id.x] *= DragFactor;
+}
+
+[numthreads(THREADS, 1, 1)]
+void Vortex(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 axis = normalize(VortexAxis);
+    float3 r = position[id.x] - VortexCenter;
+    float3 radial = r - axis * dot(r, axis);
+    float dist = length(radial);
+
+    if (dist > 1e-5)
+    {
+        float3 tangent = cross(axis, radial) / dist;
+        float falloff = RadialFalloff(dist, VortexRadius);
+        velocity[id.x] += tangent * (VortexStrength * falloff * DeltaTime);
+    }
+}
+
+[numthreads(THREADS, 1, 1)]
+void PointForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 dir = PointForceCenter - position[id.x];
+    float dist = length(dir);
+
+    if (dist > 1e-5)
+    {
+        float falloff = RadialFalloff(dist, PointForceRadius);
+        velocity[id.x] += (dir / dist) * (PointForceStrength * falloff * DeltaTime);
+    }
+}
+
+[numthreads(THREADS, 1, 1)]
+void NoiseForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 samplePoint = position[id.x] * NoiseFrequency + TimeOffset(NoiseSpeed);
+    velocity[id.x] += SignedNoise3(samplePoint) * (NoiseAmplitude * DeltaTime);
+}
+
+[numthreads(THREADS, 1, 1)]
+void CurlNoiseForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 samplePoint = position[id.x] * CurlFrequency + TimeOffset(CurlSpeed);
+    velocity[id.x] += CurlNoise(samplePoint) * (CurlAmplitude * DeltaTime);
+}
+
+[numthreads(THREADS, 1, 1)]
+void TurbulenceForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 samplePoint = position[id.x] * TurbFrequency + TimeOffset(TurbSpeed);
+    velocity[id.x] += Fbm3(samplePoint, TurbOctaves) * (TurbAmplitude * DeltaTime);
+}
+
+[numthreads(THREADS, 1, 1)]
+void TouchImpulse(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 p = position[id.x];
+    float3 v = velocity[id.x];
+
+    for (uint t = 0; t < TouchCount; t++)
+    {
+        TouchForce touch = Touches[t];
+        float3 offset = p - touch.pos;
+        float dist = length(offset);
+        float f = TouchFalloff(dist, touch.radius) * touch.strength;
+
+        // Drag term: finger movement smears particles (delta is already per-frame).
+        v += touch.delta * (TouchDragStrength * f);
+
+        // Push term: continuous radial force away from the finger.
+        if (dist > 1e-5)
+        {
+            v += (offset / dist) * (TouchPushStrength * f * DeltaTime);
+        }
+    }
+
+    velocity[id.x] = v;
+}

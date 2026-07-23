@@ -1,0 +1,159 @@
+// Dynamics passes: integration, limits and collisions.
+// Buffer names match attribute names — bound automatically by ParticleKernelPass.
+
+#pragma kernel Integrate
+#pragma kernel SpeedLimit
+#pragma kernel PlaneCollider
+#pragma kernel SphereCollider
+#pragma kernel BoxBounds
+
+#define THREADS 64
+
+RWStructuredBuffer<float3> position;
+RWStructuredBuffer<float3> velocity;
+uint ParticleCount;
+float DeltaTime;
+
+float MaxSpeed;
+
+float3 PlanePoint;
+float3 PlaneNormal;
+float PlaneBounce;
+float PlaneFriction;
+
+float3 SphereCenter;
+float SphereRadius;
+float SphereBounce;
+float SphereFriction;
+
+float3 BoundsCenter;
+float3 BoundsExtents;
+float BoundsBounce;
+int BoundsMode; // 0 = bounce, 1 = wrap
+
+float3 ReflectVelocity(float3 v, float3 n, float bounce, float friction)
+{
+    float vn = dot(v, n);
+    float3 tangential = v - n * vn;
+    return tangential * (1.0 - friction) - n * (vn * bounce);
+}
+
+[numthreads(THREADS, 1, 1)]
+void Integrate(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    position[id.x] += velocity[id.x] * DeltaTime;
+}
+
+[numthreads(THREADS, 1, 1)]
+void SpeedLimit(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 v = velocity[id.x];
+    float speed = length(v);
+
+    if (speed > MaxSpeed && speed > 1e-6)
+    {
+        velocity[id.x] = v * (MaxSpeed / speed);
+    }
+}
+
+[numthreads(THREADS, 1, 1)]
+void PlaneCollider(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 n = normalize(PlaneNormal);
+    float3 p = position[id.x];
+    float depth = dot(p - PlanePoint, n);
+
+    if (depth < 0.0)
+    {
+        position[id.x] = p - n * depth;
+
+        float3 v = velocity[id.x];
+        if (dot(v, n) < 0.0)
+        {
+            velocity[id.x] = ReflectVelocity(v, n, PlaneBounce, PlaneFriction);
+        }
+    }
+}
+
+[numthreads(THREADS, 1, 1)]
+void SphereCollider(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 offset = position[id.x] - SphereCenter;
+    float dist = length(offset);
+
+    if (dist < SphereRadius && dist > 1e-6)
+    {
+        float3 n = offset / dist;
+        position[id.x] = SphereCenter + n * SphereRadius;
+
+        float3 v = velocity[id.x];
+        if (dot(v, n) < 0.0)
+        {
+            velocity[id.x] = ReflectVelocity(v, n, SphereBounce, SphereFriction);
+        }
+    }
+}
+
+[numthreads(THREADS, 1, 1)]
+void BoxBounds(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 p = position[id.x];
+    float3 minCorner = BoundsCenter - BoundsExtents;
+    float3 maxCorner = BoundsCenter + BoundsExtents;
+
+    if (BoundsMode == 1)
+    {
+        // Wrap: torus topology.
+        float3 size = BoundsExtents * 2.0;
+        float3 local = p - minCorner;
+        local -= size * floor(local / size);
+        position[id.x] = local + minCorner;
+        return;
+    }
+
+    // Bounce.
+    float3 v = velocity[id.x];
+
+    [unroll]
+    for (int axis = 0; axis < 3; axis++)
+    {
+        if (p[axis] < minCorner[axis])
+        {
+            p[axis] = minCorner[axis];
+            v[axis] = abs(v[axis]) * BoundsBounce;
+        }
+        else if (p[axis] > maxCorner[axis])
+        {
+            p[axis] = maxCorner[axis];
+            v[axis] = -abs(v[axis]) * BoundsBounce;
+        }
+    }
+
+    position[id.x] = p;
+    velocity[id.x] = v;
+}

@@ -326,8 +326,8 @@ Camera:
   m_GameObject: {fileID: 961739749}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -394,6 +394,7 @@ GameObject:
   - component: {fileID: 1583680168}
   - component: {fileID: 1583680167}
   - component: {fileID: 1583680166}
+  - component: {fileID: 1583680170}
   - component: {fileID: 1583680169}
   m_Layer: 0
   m_Name: ParticleSimulation
@@ -511,25 +512,33 @@ MonoBehaviour:
   m_GameObject: {fileID: 1583680164}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2e1cb357b239a254a87cd35fc014865d, type: 3}
+  m_Script: {fileID: 11500000, guid: ee9da2b5d79cb7249b8364669a24e36b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimulationRunner
-  cubeSource:
-    resolution: 75
-    cubeSize: 3
-  meshSource:
-    mesh: {fileID: -3292925553009838691, guid: 296b4e13c4d76ac4eb9e6dd4d4ffeefb, type: 3}
-    centerPivot: 1
-    normalizeScale: 1
-    targetSize: 2
-  bitmapSource:
-    texture: {fileID: 2800000, guid: 7fa30cea7f23c9c4aad6d028cdc72ae9, type: 3}
-    targetWidth: 2
-    heightScale: 0.2
-  twistStrength: 0.1
-  simulationSpeed: 0.1
-  computeShader: {fileID: 7200000, guid: 23f4576781fce7548a739efd23c5f448, type: 3}
+  m_EditorClassIdentifier: Assembly-CSharp::InputRouter
+  targetCamera: {fileID: 961739752}
+  planeMode: 0
+  planeDistance: 6
+  touchRadius: 1
+  touchStrength: 10
+--- !u!114 &1583680170
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1583680164}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40024deb4f1f31e45bc61e845729cb9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimulationWorld
+  effect: {fileID: 11400000, guid: 6c4ca3f0bcd61fe4e883f869fa06e1a1, type: 2}
+  passLibrary:
+  - {fileID: 7200000, guid: a60dea895cfede043bc140022ff70824, type: 3}
+  - {fileID: 7200000, guid: d11bdaf5caad3f14aba4b9f99bf511b7, type: 3}
+  - {fileID: 7200000, guid: 3bb1de14e09fe5447a59b9799c8be52c, type: 3}
   visualEffect: {fileID: 1583680167}
+  inputRouter: {fileID: 1583680169}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

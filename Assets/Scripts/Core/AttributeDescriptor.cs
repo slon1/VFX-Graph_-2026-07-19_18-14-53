@@ -13,7 +13,7 @@ public sealed class AttributeDescriptor
     {
         Id = id;
         Type = id.Type;
-        Stride = (int)id.Type;
+        Stride = id.Type.GetStride();
         Target = target;
     }
 

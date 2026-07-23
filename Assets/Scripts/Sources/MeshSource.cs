@@ -1,50 +1,66 @@
 using System;
 using UnityEngine;
+
 [System.Serializable]
-public class MeshSource : IDataSource
+public sealed class MeshSource : IDataSource
 {
     [SerializeField] private Mesh mesh;
-	[SerializeField] private bool centerPivot = true;
-	[SerializeField] private bool normalizeScale = true;
-	[SerializeField] private float targetSize = 2f;
+    [SerializeField] private bool centerPivot = true;
+    [SerializeField] private bool normalizeScale = true;
+    [SerializeField] private float targetSize = 2f;
 
-	public string Name => "Mesh";
+    public string Name => "Mesh";
 
-	public void Setup(PointDataset dataset) {
-		if (mesh == null) {
-			throw new InvalidOperationException("Mesh is not assigned.");
-		}
+    public void Setup(ParticleSet particles)
+    {
+        if (mesh == null)
+        {
+            throw new InvalidOperationException("MeshSource: mesh is not assigned.");
+        }
 
-		Vector3[] vertices = mesh.vertices;
+        if (!mesh.isReadable)
+        {
+            throw new InvalidOperationException(
+                $"MeshSource: mesh '{mesh.name}' must have Read/Write Enabled in import settings.");
+        }
 
-		if (centerPivot) {
-			Vector3 center = mesh.bounds.center;
+        Vector3[] vertices = mesh.vertices;
+        if (vertices == null || vertices.Length == 0)
+        {
+            throw new InvalidOperationException($"MeshSource: mesh '{mesh.name}' has no vertices.");
+        }
 
-			for (int i = 0; i < vertices.Length; i++) {
-				vertices[i] -= center;
-			}
-		}
-		if (normalizeScale) {
-			float maxSize = Mathf.Max(
-				mesh.bounds.size.x,
-				mesh.bounds.size.y,
-				mesh.bounds.size.z);
+        if (centerPivot)
+        {
+            Vector3 center = mesh.bounds.center;
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                vertices[i] -= center;
+            }
+        }
 
-			float scale = targetSize / maxSize;
+        if (normalizeScale)
+        {
+            float maxSize = Mathf.Max(mesh.bounds.size.x, mesh.bounds.size.y, mesh.bounds.size.z);
+            if (maxSize <= 0f)
+            {
+                throw new InvalidOperationException(
+                    $"MeshSource: mesh '{mesh.name}' has degenerate bounds (size is zero).");
+            }
 
-			for (int i = 0; i < vertices.Length; i++) {
-				vertices[i] *= scale;
-			}
-		}
+            float scale = targetSize / maxSize;
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                vertices[i] *= scale;
+            }
+        }
 
+        particles.EnsureCapacity(vertices.Length);
+        GraphicsBuffer restPositions = particles.RegisterAttribute(BuiltinAttributes.RestPosition);
+        restPositions.SetData(vertices);
+    }
 
-
-		dataset.EnsureCapacity(vertices.Length);
-		GraphicsBuffer positions = dataset.RegisterAttribute(BuiltinAttributes.Position);
-		positions.SetData(vertices);
-	}
-
-	public void Tick(PointDataset dataset) {
-		
-	}
+    public void Tick(ParticleSet particles)
+    {
+    }
 }

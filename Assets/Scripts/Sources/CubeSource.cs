@@ -20,7 +20,7 @@ public sealed class CubeSource : IDataSource
         set => cubeSize = value;
     }
 
-    public void Setup(PointDataset dataset)
+    public void Setup(ParticleSet particles)
     {
         if (resolution < 1)
         {
@@ -28,13 +28,13 @@ public sealed class CubeSource : IDataSource
         }
 
         int count = resolution * resolution * resolution;
-        dataset.EnsureCapacity(count);
+        particles.EnsureCapacity(count);
 
-        GraphicsBuffer positions = dataset.RegisterAttribute(BuiltinAttributes.Position);
-        positions.SetData(CreateGridPositions(resolution, cubeSize, count));
+        GraphicsBuffer restPositions = particles.RegisterAttribute(BuiltinAttributes.RestPosition);
+        restPositions.SetData(CreateGridPositions(resolution, cubeSize, count));
     }
 
-    public void Tick(PointDataset dataset)
+    public void Tick(ParticleSet particles)
     {
     }
 

@@ -1,4 +1,9 @@
-#if UNITY_EDITOR
+// One-shot generator for Assets/Vfx/ParticleBufferVFX.vfx. The asset is committed,
+// so this tool is normally compiled out: it relies on internal VFX Graph editor API
+// (VFXGraph, CustomHLSL) whose visibility to Assembly-CSharp-Editor is not guaranteed
+// across package versions. To regenerate the asset, add M3D_VFX_CODEGEN to
+// Project Settings -> Player -> Scripting Define Symbols.
+#if UNITY_EDITOR && M3D_VFX_CODEGEN
 using UnityEditor;
 using UnityEditor.VFX;
 using UnityEditor.VFX.Block;
