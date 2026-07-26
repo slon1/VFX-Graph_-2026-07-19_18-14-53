@@ -1,7 +1,8 @@
 # Архитектура фреймворка GPU-симуляций (M3D Framework)
 
-**Дата:** 2026-07-23
-**Статус:** утверждённый дизайн; Milestone 1 реализован (см. `DOC/status.md`)
+**Дата:** 2026-07-26
+**Статус:** Milestone 1 + Milestone 2a (Field foundation) реализованы (см. `DOC/status.md`)
+**Онбординг:** [`getting-started.md`](getting-started.md)
 **Стек:** Unity 6 · URP · Compute Shaders · VFX Graph (renderer) · UniTask
 **Платформа:** Android (Vulkan) / iOS (Metal), тач-управление, GPU-first
 
@@ -200,18 +201,30 @@ struct TouchForce { float2 pos; float2 delta; float radius; float strength; };
 
 ---
 
+## Resource-oriented principles (M2a)
+
+1. **Доменные симуляции = композиции Pass**, не отдельные подсистемы (Fluid/Boids).
+2. **Унификация на Resource Registry / FieldRequest**, не на общем compute-kernel.
+3. **Simulation Resources** (`ParticleSet`, `FieldSet`) ≠ **services** (TouchBuffer, CommandBuffer, Render binders).
+4. **Field ownership (C):** EffectAsset декларирует поля; пассы только ссылаются; runtime не автосоздаёт. Editor: Materialize missing fields.
+5. **FieldAccess:** `Read` / `WriteInPlace` (splat, без swap) / `WritePingPong` (World вызывает `Swap` после пасса — но только если пасс реально записал dispatch, см. `SimPass.LastExecuteDispatched`; пассы про ping-pong не знают).
+6. **Ноль аллокаций в кадре:** декларации `FieldReads`/`FieldWrites` читаются World-ом каждый кадр, поэтому массивы `FieldRequest` кэшируются (`FieldRequestSets.Single`), как `AttrSets` у частиц.
+7. **Plane basis** принадлежит `FieldDescriptor`, не `InputRouter`.
+8. **DoD M2a:** hybrid `Touch → velocity field → particles → render` без special-case веток в `SimulationWorld`.
+
+Particle attributes по-прежнему авторегистрируются; fields — только из деклараций (намеренная асимметрия).
+
+---
+
 ## Эволюция из текущего кода
 
-Ничего не выбрасывается:
+| Было | Стало |
+| --- | --- |
+| Только `ParticleSet` | + `FieldSet` (dual RT, World-owned Swap) |
+| `Reads`/`Writes` (attrs) | + `FieldReads`/`FieldWrites` (`FieldRequest`) |
+| VFX bind в World | `IRenderBinder` (VFX + optional FieldQuad) |
+| — | `HybridTouchField` demo |
 
-| Было (до M1)                          | Стало (M1) / дальше                                       |
-| ------------------------------------- | --------------------------------------------------------- |
-| `PointDataset` + `AttributeId`        | `ParticleSet`; рядом позже `FieldSet` + `FieldId`         |
-| `IGPUOperator`                        | `SimPass` + `ParticleKernelPass`                          |
-| `SimulationRunner` + зашитый пайплайн | `EffectAsset` + `SimulationWorld`                         |
-| VFX-биндинг в Runner                  | в World; позже `RenderBinder` (VFX / quad / RP)           |
-| Bulb / фрактальные shape-операторы    | удалены (не прошли тесты); фракталы — вне текущего скоупа |
-
-**Milestone 1 (готово):** каркас + ~17 пассов + Touch + 3 демо.  
-**Дальше:** **(2)** FieldSet + 2D Stable Fluids → **(3)** spatial hash + boids →
-**(4)** emitters / lifetime → **(5)** гибриды (частицы в fluid-поле).
+**Milestone 1:** каркас частиц + ~17 пассов.  
+**Milestone 2a (готово):** Field foundation + hybrid.  
+**Дальше:** Stable Fluids → spatial hash/boids → emitters → richer hybrids.

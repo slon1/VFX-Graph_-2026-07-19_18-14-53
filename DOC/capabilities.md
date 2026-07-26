@@ -1,96 +1,65 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-07-23  
-**Стек:** Unity 6 (`6000.4.3f1`) · URP · VFX Graph · UniTask (в проекте, в pipeline пока не используется)  
-**Архитектура:** [`architecture.md`](architecture.md) · детали реализации: [`status.md`](status.md)
+**Снимок:** 2026-07-26  
+**Стек:** Unity 6 · URP · VFX Graph · UniTask  
+**Онбординг:** [`getting-started.md`](getting-started.md) · архитектура: [`architecture.md`](architecture.md) · статус: [`status.md`](status.md)
 
 ---
 
 ## Что это
 
-GPU playground / фреймворк для интерактивных облаков точек на мобилке: источник заполняет SoA-буферы, пассы крутят их на compute через один CommandBuffer, VFX Graph рисует `position` без CPU readback.
+GPU playground / фреймворк: источники → SoA particles + grid fields → compute passes → VFX / debug quad.
 
 ```
-Source → ParticleSet → SimPass pipeline → VFX Graph
+Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 ```
-
-Один эффект = один `EffectAsset` (пресет): источник + список пассов + параметры.
 
 ---
 
 ## Что умеет сейчас
 
-### Источники (`IDataSource`)
+### Particles
 
-| Источник   | Вход                 | Выход                    | Inspector                       |
-| ---------- | -------------------- | ------------------------ | ------------------------------- |
-| **Cube**   | resolution, cubeSize | `restPosition` сетка     | в EffectAsset                   |
-| **Mesh**   | Mesh (Readable)      | вершины → `restPosition` | center / normalize / targetSize |
-| **Bitmap** | Texture2D (Readable) | пиксель → XZ, Y=luma     | targetWidth, heightScale        |
+Источники Cube / Mesh / Bitmap → `restPosition`.  
+Builtins: `restPosition`, `position`, `velocity`, `value`.  
+Авторегистрация атрибутов по Reads/Writes пассов.
 
-### Dataset
+### Fields (M2a)
 
-- SoA: отдельный `GraphicsBuffer` на атрибут
-- Builtins: `restPosition`, `position`, `velocity`, `value`
-- Авторегистрация атрибутов по `Reads`/`Writes` пассов
-- Custom: `AttributeId.Custom(name, type)` — API есть
+- Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
+- `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
+- Пассы: TouchInjectVelocity, DecayField, SampleVelocityField.
+- Debug: `FieldQuadBinder` + shader `M3D/FieldDebug`.
 
-### Pass library (~17)
+### Pass library
 
-| Категория    | Пассы                                                                                |
-| ------------ | ------------------------------------------------------------------------------------ |
-| **Shape**    | CopyRest, Twist, SpringToRest                                                        |
-| **Force**    | Gravity, Drag, Vortex, Attractor, Repulsor, Noise, CurlNoise, Turbulence, TouchForce |
-| **Dynamics** | Integrate, SpeedLimit, PlaneCollider, SphereCollider, BoxBounds                      |
-
-Классификация — по роли в кадре (не по данным). Данные — в `Reads`/`Writes`.
-
-Два режима композиции:
-
-- shape-цепочка: `CopyRest → Twist`
-- динамика: forces → Integrate → colliders (без CopyRest; стартовая поза копируется один раз при Build)
-
-### Ввод
-
-- `InputRouter`: мышь в Editor / touch на девайсе → `TouchBuffer`
-- Плоскость взаимодействия: CameraFacing или GroundXZ
-- `TouchForcePass`: drag (смазывание) + push (радиальное отталкивание)
-
-### Визуализация
-
-- VFX Graph читает `StructuredBuffer<float3>` (`ReadPositionBuffer.hlsl`)
-- Exposed: `PositionBuffer`, `SpawnCount`
-- Capacity ~1M
+| Категория | Примеры |
+| --- | --- |
+| Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, Integrate, Bounds, … |
+| Emit / Transport | TouchInjectVelocityField, DecayField, SampleVelocityField |
 
 ### Демо-пресеты
 
-| Пресет           | Идея                                       |
-| ---------------- | ------------------------------------------ |
-| **TwistedCube**  | shape-паритет со старой сценой             |
-| **GalaxySwirl**  | vortex + curl + touch smear + wrap bounds  |
-| **ReactiveDust** | spring-to-rest + turbulence + finger repel |
+| Пресет | Идея |
+| --- | --- |
+| TwistedCube | shape |
+| GalaxySwirl / ReactiveDust | dynamics + touch на частицах |
+| **HybridTouchField** | touch → velocity field → particles |
 
 ---
 
-## Ограничения (осознанные)
+## Ограничения
 
-| Тема            | Сейчас                              |
-| --------------- | ----------------------------------- |
-| VFX capacity    | ~1M; большие mesh/bitmap обрезаются |
-| Один source     | нет merge                           |
-| Нет Fields      | fluid grid — Milestone 2            |
-| Нет SpatialHash | boids/sand — Milestone 2            |
-| Нет emitters    | lifetime/compaction — Milestone 2   |
-| Async           | UniTask в проекте есть, Setup sync  |
+| Тема | Сейчас |
+| --- | --- |
+| Нет Stable Fluids | advect/pressure — M2b |
+| Нет emitters | lifetime/compaction позже |
+| Нет SpatialHash | boids/sand позже |
+| Fields только 2D | R16 / RG16 |
+| Policy C для fields | нет runtime autogen |
 
 ---
 
 ## Быстрый старт
 
-1. Открыть `Assets/Scenes/Test1.unity`
-2. На `ParticleSimulation` → `SimulationWorld` → Effect (`TwistedCube` / `GalaxySwirl` / `ReactiveDust`)
-3. Play Mode; для динамики — крутить мышью в Game View
-4. Новые эффекты: Create → M3D → Effect Asset, Add Pass в инспекторе
-5. Rebuild в Play Mode после смены списка пассов
-
-Меню: `Tools/M3D/Create Demo Effects`, `Tools/M3D/Setup Open Scene`.
+См. [`getting-started.md`](getting-started.md). Hybrid: Effect = HybridTouchField, InputRouter = GroundXZ, Play, водить мышью.

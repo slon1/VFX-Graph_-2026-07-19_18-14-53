@@ -1,140 +1,83 @@
-# Status — M3D Framework (Milestone 1)
+# Status — M3D Framework (Milestone 2a)
 
-**Дата:** 2026-07-23  
-**Итерация:** 4.0 — SimulationWorld + EffectAsset + pass library  
+**Дата:** 2026-07-26  
+**Итерация:** 5.0 — FieldSet + resource-oriented hybrid pipeline  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
-**Архитектура:** [`architecture.md`](architecture.md)
+**Онбординг:** [`getting-started.md`](getting-started.md) · архитектура: [`architecture.md`](architecture.md)
 
 ---
 
 ## Цель
 
 ```
-IDataSource → ParticleSet (Schema + SoA) → SimPass pipeline → VFX Graph
+EffectAsset (Fields + Passes)
+    → ParticleSet + FieldSet
+    → SimPass pipeline (World-owned ping-pong swap)
+    → Render binders (VFX / FieldQuad)
 ```
 
-Один эффект = один `EffectAsset` (источник + упорядоченный список пассов).  
-Runtime — `SimulationWorld`: ресурсы, CommandBuffer-цикл, TouchBuffer, биндинг VFX.
+Доменные симуляции = композиции Pass, не подсистемы.  
+Simulation Resources (`ParticleSet`, `FieldSet`) ≠ services (Input, GPU, binders).
 
 ---
 
-## Архитектура
+## Milestone 2a — что сделано
 
-```mermaid
-flowchart TB
-  Asset[EffectAsset]
-  Asset --> Source[IDataSource]
-  Asset --> Passes[SimPass list]
-  Source -->|Setup restPosition| PS[ParticleSet]
-  World[SimulationWorld] --> Asset
-  World --> Input[InputRouter]
-  Input -->|TouchBuffer| Ctx[SimContext]
-  World --> Ctx
-  Passes -->|Execute via Cmd| PS
-  PS -->|position| VFX[VFX Graph]
-```
+### Resources
 
-### Core
+| Тип                            | Роль                                                              |
+| ------------------------------ | ----------------------------------------------------------------- |
+| `FieldDescriptor` / `FieldId`  | декларация на EffectAsset: format, resolution, plane basis, clear |
+| `FieldRequest` + `FieldAccess` | `Read` / `WriteInPlace` / `WritePingPong`                         |
+| `FieldSet` / `SimField`        | dual RenderTexture, `Current`/`Next`, `Swap`                      |
+| Policy C                       | runtime **не** автосоздаёт поля; missing → Build error            |
 
-| Тип | Роль |
-| --- | --- |
-| `AttributeId` / `AttributeType` | ключ атрибута; stride через `GetStride()` |
-| `BuiltinAttributes` | `RestPosition`, `Position`, `Velocity`, `Value` |
-| `ParticleSet` | владелец schema+buffers; рост capacity после создания буферов запрещён |
-| `AttributeSchema` | read-only снаружи |
+Plane basis на дескрипторе (`origin`, `axisU`/`axisV`, `size`) — не на InputRouter.
 
-Авторегистрация: мир собирает `Reads`/`Writes` всех пассов и регистрирует недостающие атрибуты (zero-fill).
+### Passes (новые)
 
-### Sources
+| Pass                           | Access                   | Роль                                     |
+| ------------------------------ | ------------------------ | ---------------------------------------- |
+| `TouchInjectVelocityFieldPass` | WriteInPlace             | тач → splat в velocity field             |
+| `DecayFieldPass`               | WritePingPong            | `* exp(-rate·dt)`; доказывает World Swap |
+| `SampleVelocityFieldPass`      | Read + particle Velocity | G2P hybrid                               |
 
-`IDataSource.Setup(ParticleSet)` пишет `restPosition`. Kind: `Cube` / `Mesh` / `Bitmap` (конфиг в EffectAsset).
+`PassCategory`: +`Emit`, +`Transport`.  
+`FieldKernelPass` — зеркало `ParticleKernelPass` для полей.
 
-Валидации: null/empty, texture/mesh `isReadable`, mesh degenerate bounds, bitmap `span > 0`.
+### World / binders
 
-### Passes (по роли в кадре)
+- После каждого пасса с `WritePingPong` → `FieldSet.Swap` (data-driven). Swap пропускается, если пасс не записал dispatch (`SimPass.LastExecuteDispatched`) — иначе `Current` перещёлкнулся бы на устаревшую текстуру.
+- `IRenderBinder`: `VfxParticleBinder` (bind once), `FieldQuadBinder` (rebind Current каждый кадр).
+- Валидация: имя поля, semantic, min channels; конфликт InPlace vs PingPong на одном пассе.
+- Ноль аллокаций в кадре: декларации `FieldReads`/`FieldWrites` кэшируются через `FieldRequestSets.Single` (кэш пересобирается при смене имени поля в инспекторе).
 
-| Категория | Пассы |
-| --------- | ----- |
-| **Shape** | `CopyRestPass`, `TwistPass`, `SpringToRestPass` |
-| **Force** | `GravityPass`, `DragPass`, `VortexPass`, `AttractorPass`, `RepulsorPass`, `NoiseForcePass`, `CurlNoisePass`, `TurbulencePass`, `TouchForcePass` |
-| **Dynamics** | `IntegratePass`, `SpeedLimitPass`, `PlaneColliderPass`, `SphereColliderPass`, `BoxBoundsPass` |
+### Демо
 
-Каждый пасс = kernel в `.compute` + C#-класс (`ParticleKernelPass`).  
-Буферы биндятся по имени атрибута (`position`, `velocity`, `restPosition`).  
-Диспатчи идут в один `CommandBuffer` за кадр; каждый пасс в `ProfilingSampler`.
+| Asset                                    | Идея                                                                       |
+| ---------------------------------------- | -------------------------------------------------------------------------- |
+| `HybridTouchField`                       | Touch → Inject → Decay → Sample → Integrate (+ Drag/Bounds), velocity quad |
+| TwistedCube / GalaxySwirl / ReactiveDust | без изменений (пустой Fields)                                              |
 
-HLSL: `Assets/Shaders/GPU/Passes/{Shape,Force,Dynamics}Passes.compute` + `Includes/Noise.hlsl`, `Touch.hlsl`.
-
-### Runtime
-
-`SimulationWorld`:
-
-1. `effect.ResolveSource()` → `Setup(particles)`
-2. Авторегистрация атрибутов + one-time `restPosition → position` copy
-3. `Initialize` каждого пасса (поиск kernel-а в pass library)
-4. Bind VFX `PositionBuffer` / `SpawnCount`
-5. Каждый кадр: Sample touches → Tick source → Execute passes → `Graphics.ExecuteCommandBuffer`
-
-`InputRouter`: мышь (editor) / touch → `TouchForce[]` на GPU (≤8).
-
-### Editor
-
-| Меню / инспектор | Назначение |
-| ---------------- | ---------- |
-| EffectAsset inspector | Add Pass (меню по Category), reorder |
-| SimulationWorld inspector | кнопка Rebuild (Play Mode) |
-| `Tools/M3D/Create Demo Effects` | TwistedCube / GalaxySwirl / ReactiveDust |
-| `Tools/M3D/Setup Open Scene` | вешает World + InputRouter на VFX |
+Меню: `Tools/M3D/Create Demo Effects`, `Assign HybridTouchField To Scene`.
 
 ---
 
-## Демо-пресеты
-
-| Asset | Пайплайн |
-| ----- | -------- |
-| `Assets/Effects/TwistedCube.asset` | CopyRest → Twist |
-| `Assets/Effects/GalaxySwirl.asset` | Vortex → CurlNoise → Drag → TouchForce → Integrate → BoxBounds(Wrap) |
-| `Assets/Effects/ReactiveDust.asset` | SpringToRest → Turbulence → TouchForce(push) → Drag → Integrate |
-
----
-
-## Файлы
+## Файлы (новые / ключевые)
 
 ```
-Assets/Scripts/
-  Core/       AttributeId, BuiltinAttributes, Descriptor, Schema, ParticleSet
-  Sources/    IDataSource, DataSourceKind, Cube/Mesh/BitmapSource
-  Runtime/    EffectAsset, SimulationWorld, SimPass, SimContext, InputRouter
-  Passes/     ShapePasses, ForcePasses, DynamicsPasses
-  Editor/     EffectAssetEditor, SimulationWorldEditor, M3DDemoTools, CreateParticleBufferVFX
-Assets/Shaders/GPU/
-  Passes/     ShapePasses.compute, ForcePasses.compute, DynamicsPasses.compute
-  Includes/   Noise.hlsl, Touch.hlsl
-  Vfx/        ReadPositionBuffer.hlsl
-Assets/Effects/   TwistedCube, GalaxySwirl, ReactiveDust
-DOC/          architecture.md, status.md, capabilities.md
+Assets/Scripts/Core/       FieldDescriptor.cs, FieldSet.cs
+Assets/Scripts/Runtime/    SimPass (+Field*), SimContext, SimulationWorld,
+                           IRenderBinder, VfxParticleBinder, FieldQuadBinder
+Assets/Scripts/Passes/     FieldPasses.cs
+Assets/Shaders/GPU/Passes/ FieldPasses.compute
+Assets/Shaders/GPU/        FieldDebug.shader
+Assets/Effects/            HybridTouchField.asset
 ```
 
-Удалено: `PointDataset`, `SimulationRunner`, `IGPUOperator` / Twist/Bulb/Copy operators, `ParticleSimulate.compute`, `GPU/Operators/*` (включая Bulb).
-
 ---
 
-## Проверка
+## Вне скоупа (M2b+)
 
-- Play Mode, TwistedCube → 1M points, 2 passes
-- GalaxySwirl / ReactiveDust — переключение Effect на SimulationWorld + Rebuild
-- Мышью в Game View крутить GalaxySwirl / ReactiveDust
-- Mesh: Read/Write Enabled; Bitmap: Read/Write Enabled
-
----
-
-## Вне скоупа (Milestone 2+)
-
-- Fields / FieldSet / 2D Stable Fluids
-- Spatial hash + boids
-- Emitters + lifetime / compaction
-- Appearance / Lifecycle pass categories (color, age)
-- Android Vulkan билд
-- Codegen C# ↔ HLSL
-- Динамический VFX capacity под `particles.Count`
+Stable Fluids (advect/project/Jacobi), particle emitters/lifetime, spatial hash/boids, unified Resources abstraction, 3D/voxels.

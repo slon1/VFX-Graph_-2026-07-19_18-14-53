@@ -5,23 +5,19 @@ using UnityEngine.Rendering;
 using UnityEngine.VFX;
 
 /// <summary>
-/// Runtime owner of the simulation: resources (ParticleSet, TouchBuffer),
-/// frame loop (one CommandBuffer per frame), pass initialization/validation
-/// and render binding (VFX Graph). Knows nothing about concrete effects —
-/// everything comes from the EffectAsset.
+/// Runtime owner: simulation resources (ParticleSet, FieldSet), services (input, GPU),
+/// frame loop, and render binders. Knows nothing about concrete effects —
+/// everything comes from the EffectAsset. No domain branches (fluid/boids).
 /// </summary>
 public sealed class SimulationWorld : MonoBehaviour
 {
-    private const string PositionBufferPropertyName = "PositionBuffer";
-    private const string SpawnCountPropertyName = "SpawnCount";
-    private const int VfxCapacity = 1_000_000; // must match CreateParticleBufferVFX.Capacity
-
     [SerializeField] private EffectAsset effect;
     [SerializeField] private ComputeShader[] passLibrary;
     [SerializeField] private VisualEffect visualEffect;
     [SerializeField] private InputRouter inputRouter;
 
     private ParticleSet particles;
+    private FieldSet fields;
     private SimContext context;
     private CommandBuffer commandBuffer;
     private GraphicsBuffer touchBuffer;
@@ -29,6 +25,8 @@ public sealed class SimulationWorld : MonoBehaviour
     private readonly TouchForce[] touchScratch = new TouchForce[InputRouter.MaxTouches];
     private readonly Dictionary<SimPass, ProfilingSampler> samplers =
         new Dictionary<SimPass, ProfilingSampler>();
+    private readonly List<IRenderBinder> binders = new List<IRenderBinder>();
+    private FieldQuadBinder fieldQuadBinder;
     private float simulationTime;
     private bool built;
 
@@ -47,7 +45,7 @@ public sealed class SimulationWorld : MonoBehaviour
         Teardown();
     }
 
-    /// <summary>Rebuilds the whole world (new source data, re-init passes) without restarting Play Mode.</summary>
+    /// <summary>Rebuilds the whole world without restarting Play Mode.</summary>
     public void Rebuild()
     {
         Teardown();
@@ -76,7 +74,6 @@ public sealed class SimulationWorld : MonoBehaviour
         }
 
         context.TouchCount = touchCount;
-
         source.Tick(particles);
 
         commandBuffer.Clear();
@@ -99,9 +96,35 @@ public sealed class SimulationWorld : MonoBehaviour
             {
                 pass.Execute(context, deltaTime);
             }
+
+            // Data-driven swap from FieldWrites declarations — not a domain branch.
+            // Skipped when the pass early-outed without recording a dispatch,
+            // otherwise Current would flip to a stale texture.
+            if (pass.LastExecuteDispatched)
+            {
+                SwapPingPongFields(pass);
+            }
         }
 
         Graphics.ExecuteCommandBuffer(commandBuffer);
+
+        for (int i = 0; i < binders.Count; i++)
+        {
+            binders[i].Execute(context);
+        }
+    }
+
+    private void SwapPingPongFields(SimPass pass)
+    {
+        IReadOnlyList<FieldRequest> writes = pass.FieldWrites;
+        for (int i = 0; i < writes.Count; i++)
+        {
+            FieldRequest request = writes[i];
+            if (request.Access == FieldAccess.WritePingPong)
+            {
+                fields.Swap(request.FieldName);
+            }
+        }
     }
 
     private void Build()
@@ -129,6 +152,30 @@ public sealed class SimulationWorld : MonoBehaviour
         particles = new ParticleSet();
         source.Setup(particles);
 
+        commandBuffer = new CommandBuffer { name = "M3D Simulation" };
+        fields = new FieldSet();
+
+        try
+        {
+            fields.Allocate(effect.Fields, commandBuffer);
+            Graphics.ExecuteCommandBuffer(commandBuffer);
+            commandBuffer.Clear();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"SimulationWorld: field allocation failed: {exception.Message}", this);
+            Teardown();
+            enabled = false;
+            return;
+        }
+
+        if (!ValidateFieldRequests())
+        {
+            Teardown();
+            enabled = false;
+            return;
+        }
+
         AutoRegisterAttributes();
         InitializePositionFromRest();
 
@@ -136,8 +183,7 @@ public sealed class SimulationWorld : MonoBehaviour
             GraphicsBuffer.Target.Structured, InputRouter.MaxTouches, TouchForce.Stride);
         touchBuffer.SetData(new TouchForce[InputRouter.MaxTouches]);
 
-        context = new SimContext(particles, passLibrary, touchBuffer);
-        commandBuffer = new CommandBuffer { name = "M3D Simulation" };
+        context = new SimContext(particles, fields, passLibrary, touchBuffer);
         context.Cmd = commandBuffer;
 
         IReadOnlyList<SimPass> passes = effect.Passes;
@@ -164,19 +210,117 @@ public sealed class SimulationWorld : MonoBehaviour
             }
         }
 
-        BindVisualEffect();
+        SetupBinders();
 
         simulationTime = 0f;
         built = true;
         Debug.Log(
-            $"SimulationWorld: effect '{effect.name}' ready ({particles.Count} points, source '{source.Name}', {passes.Count} passes).",
+            $"SimulationWorld: effect '{effect.name}' ready ({particles.Count} points, " +
+            $"{effect.Fields.Count} fields, source '{source.Name}', {passes.Count} passes).",
             this);
     }
 
-    /// <summary>
-    /// Registers (zero-filled) every attribute any pass reads or writes and is not
-    /// already provided by the source. Position is always present — VFX reads it.
-    /// </summary>
+    private bool ValidateFieldRequests()
+    {
+        IReadOnlyList<SimPass> passes = effect.Passes;
+        for (int p = 0; p < passes.Count; p++)
+        {
+            SimPass pass = passes[p];
+            if (pass == null)
+            {
+                continue;
+            }
+
+            if (!ValidateRequestList(pass, pass.FieldReads) ||
+                !ValidateRequestList(pass, pass.FieldWrites))
+            {
+                return false;
+            }
+
+            // Same field must not mix WriteInPlace and WritePingPong on one pass.
+            Dictionary<string, FieldAccess> writeAccess =
+                new Dictionary<string, FieldAccess>(StringComparer.Ordinal);
+            for (int i = 0; i < pass.FieldWrites.Count; i++)
+            {
+                FieldRequest request = pass.FieldWrites[i];
+                if (writeAccess.TryGetValue(request.FieldName, out FieldAccess existing) &&
+                    existing != request.Access)
+                {
+                    Debug.LogError(
+                        $"SimulationWorld: pass '{pass.DisplayName}' has conflicting FieldAccess " +
+                        $"on '{request.FieldName}' ({existing} vs {request.Access}).",
+                        this);
+                    return false;
+                }
+
+                writeAccess[request.FieldName] = request.Access;
+            }
+        }
+
+        return true;
+    }
+
+    private bool ValidateRequestList(SimPass pass, IReadOnlyList<FieldRequest> requests)
+    {
+        for (int i = 0; i < requests.Count; i++)
+        {
+            FieldRequest request = requests[i];
+            if (string.IsNullOrEmpty(request.FieldName))
+            {
+                Debug.LogError(
+                    $"SimulationWorld: pass '{pass.DisplayName}' has an empty field name.",
+                    this);
+                return false;
+            }
+
+            if (!fields.TryGet(request.FieldName, out SimField field))
+            {
+                Debug.LogError(
+                    $"SimulationWorld: pass '{pass.DisplayName}' references undeclared field " +
+                    $"'{request.FieldName}'. Add it to EffectAsset.Fields or use Materialize missing fields.",
+                    this);
+                return false;
+            }
+
+            FieldDescriptor descriptor = field.Descriptor;
+            if (descriptor.Semantic != request.RequiredSemantic &&
+                request.RequiredSemantic != FieldSemantic.Custom)
+            {
+                Debug.LogError(
+                    $"SimulationWorld: pass '{pass.DisplayName}' requires field '{request.FieldName}' " +
+                    $"with semantic {request.RequiredSemantic}, but declaration is {descriptor.Semantic}.",
+                    this);
+                return false;
+            }
+
+            if (descriptor.ChannelCount < request.MinChannels)
+            {
+                Debug.LogError(
+                    $"SimulationWorld: pass '{pass.DisplayName}' requires field '{request.FieldName}' " +
+                    $"with >= {request.MinChannels} channels, but format has {descriptor.ChannelCount}.",
+                    this);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void SetupBinders()
+    {
+        binders.Clear();
+        VfxParticleBinder vfxBinder = new VfxParticleBinder(visualEffect);
+        vfxBinder.Initialize(context);
+        binders.Add(vfxBinder);
+
+        if (effect.ShowVelocityFieldQuad && fields.TryGet("velocity", out _))
+        {
+            fieldQuadBinder = new FieldQuadBinder("velocity", transform);
+            fieldQuadBinder.Initialize(context);
+            binders.Add(fieldQuadBinder);
+        }
+    }
+
     private void AutoRegisterAttributes()
     {
         IReadOnlyList<SimPass> passes = effect.Passes;
@@ -211,15 +355,10 @@ public sealed class SimulationWorld : MonoBehaviour
 
     private void RegisterZeroed(AttributeId id)
     {
-        // GraphicsBuffer contents are undefined after creation — zero-fill once at build.
         GraphicsBuffer buffer = particles.RegisterAttribute(id);
         buffer.SetData(new byte[buffer.count * buffer.stride]);
     }
 
-    /// <summary>
-    /// One-time position = restPosition so dynamics-only chains (no CopyRestPass)
-    /// start from the source shape instead of the origin.
-    /// </summary>
     private void InitializePositionFromRest()
     {
         if (particles.TryGet(BuiltinAttributes.RestPosition, out GraphicsBuffer rest) &&
@@ -229,29 +368,16 @@ public sealed class SimulationWorld : MonoBehaviour
         }
     }
 
-    private void BindVisualEffect()
-    {
-        GraphicsBuffer positions = particles.Get(BuiltinAttributes.Position);
-        visualEffect.SetGraphicsBuffer(PositionBufferPropertyName, positions);
-
-        if (visualEffect.HasFloat(SpawnCountPropertyName))
-        {
-            visualEffect.SetFloat(SpawnCountPropertyName, particles.Count);
-        }
-
-        if (particles.Count > VfxCapacity)
-        {
-            Debug.LogWarning(
-                $"SimulationWorld: {particles.Count} points exceed VFX capacity {VfxCapacity}; extra points will not be rendered.",
-                this);
-        }
-
-        visualEffect.Reinit();
-    }
-
     private void Teardown()
     {
         built = false;
+
+        fieldQuadBinder?.Dispose();
+        fieldQuadBinder = null;
+        binders.Clear();
+
+        fields?.Dispose();
+        fields = null;
         particles?.Dispose();
         particles = null;
         touchBuffer?.Dispose();

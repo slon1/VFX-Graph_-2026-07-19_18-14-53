@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6c53c179a8210264ea3a817857fc19ed, type: 3}
-  m_Name: TwistedCube
+  m_Name: NewEffect
   m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
-  sourceKind: 0
+  sourceKind: 2
   cubeSource:
     resolution: 100
     cubeSize: 2
@@ -22,24 +22,34 @@ MonoBehaviour:
     normalizeScale: 1
     targetSize: 2
   bitmapSource:
-    texture: {fileID: 0}
+    texture: {fileID: 2800000, guid: 7fa30cea7f23c9c4aad6d028cdc72ae9, type: 3}
     targetWidth: 2
     heightScale: 1
   simulationSpeed: 1
-  fields: []
   passes:
-  - rid: 1403064288842612797
-  - rid: 1403064288842612798
-  showVelocityFieldQuad: 0
+  - rid: 1403064263376634139
+  - rid: 1403064263376634140
+  - rid: 1403064263376634141
+  - rid: 1403064263376634142
   references:
     version: 2
     RefIds:
-    - rid: 1403064288842612797
+    - rid: 1403064263376634139
+      type: {class: SpringToRestPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        stiffness: 10
+        damping: 2
+    - rid: 1403064263376634140
       type: {class: CopyRestPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-    - rid: 1403064288842612798
-      type: {class: TwistPass, ns: , asm: Assembly-CSharp}
+    - rid: 1403064263376634141
+      type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-        strength: 1
+    - rid: 1403064263376634142
+      type: {class: SpeedLimitPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        maxSpeed: 10

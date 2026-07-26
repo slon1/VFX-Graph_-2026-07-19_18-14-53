@@ -32,14 +32,15 @@ public readonly struct KernelHandle
 }
 
 /// <summary>
-/// Everything a SimPass needs at runtime: particle data, kernel lookup,
-/// touch input and the frame CommandBuffer. Owned by SimulationWorld.
+/// Everything a SimPass needs at runtime: simulation resources (Particles, Fields)
+/// plus infrastructure services (TouchBuffer, Cmd, Time, kernel lookup).
 /// </summary>
 public sealed class SimContext
 {
     private readonly ComputeShader[] shaders;
 
     public ParticleSet Particles { get; }
+    public FieldSet Fields { get; }
     public GraphicsBuffer TouchBuffer { get; }
     public int TouchCount { get; internal set; }
     public CommandBuffer Cmd { get; internal set; }
@@ -47,9 +48,14 @@ public sealed class SimContext
     /// <summary>Accumulated simulation time (scaled by EffectAsset.SimulationSpeed).</summary>
     public float Time { get; internal set; }
 
-    public SimContext(ParticleSet particles, ComputeShader[] shaders, GraphicsBuffer touchBuffer)
+    public SimContext(
+        ParticleSet particles,
+        FieldSet fields,
+        ComputeShader[] shaders,
+        GraphicsBuffer touchBuffer)
     {
         Particles = particles;
+        Fields = fields ?? new FieldSet();
         this.shaders = shaders;
         TouchBuffer = touchBuffer;
     }

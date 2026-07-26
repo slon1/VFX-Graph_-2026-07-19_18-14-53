@@ -1,0 +1,161 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Experimental.Rendering;
+using UnityEngine.Rendering;
+
+/// <summary>One allocated field: dual RenderTextures with Current/Next ping-pong.</summary>
+public sealed class SimField : IDisposable
+{
+    private RenderTexture textureA;
+    private RenderTexture textureB;
+    private bool currentIsA = true;
+
+    public FieldDescriptor Descriptor { get; }
+    public string Name => Descriptor.Name;
+
+    public RenderTexture Current => currentIsA ? textureA : textureB;
+    public RenderTexture Next => currentIsA ? textureB : textureA;
+
+    public SimField(FieldDescriptor descriptor)
+    {
+        Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
+
+        GraphicsFormat format = descriptor.Format;
+        if (!SystemInfo.IsFormatSupported(format, GraphicsFormatUsage.LoadStore))
+        {
+            throw new InvalidOperationException(
+                $"Field '{descriptor.Name}': format {format} is not supported for LoadStore on this device.");
+        }
+
+        Vector2Int res = descriptor.Resolution;
+        if (res.x < 1 || res.y < 1)
+        {
+            throw new InvalidOperationException(
+                $"Field '{descriptor.Name}': resolution must be >= 1, got {res}.");
+        }
+
+        textureA = CreateRt(descriptor, "A");
+        textureB = CreateRt(descriptor, "B");
+    }
+
+    public void Swap()
+    {
+        currentIsA = !currentIsA;
+    }
+
+    /// <summary>Clear both ping-pong textures to the descriptor clear value.</summary>
+    public void ClearBoth(CommandBuffer cmd)
+    {
+        Color clear = Descriptor.ClearValue;
+        ClearOne(cmd, textureA, clear);
+        ClearOne(cmd, textureB, clear);
+    }
+
+    public void Dispose()
+    {
+        Release(ref textureA);
+        Release(ref textureB);
+    }
+
+    private static RenderTexture CreateRt(FieldDescriptor descriptor, string suffix)
+    {
+        RenderTexture rt = new RenderTexture(
+            descriptor.Resolution.x,
+            descriptor.Resolution.y,
+            0,
+            descriptor.Format)
+        {
+            name = $"M3D_{descriptor.Name}_{suffix}",
+            enableRandomWrite = true,
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp,
+            useMipMap = false,
+            autoGenerateMips = false,
+        };
+        rt.Create();
+        return rt;
+    }
+
+    private static void ClearOne(CommandBuffer cmd, RenderTexture rt, Color clear)
+    {
+        cmd.SetRenderTarget(rt);
+        cmd.ClearRenderTarget(false, true, clear);
+    }
+
+    private static void Release(ref RenderTexture rt)
+    {
+        if (rt == null)
+        {
+            return;
+        }
+
+        rt.Release();
+        UnityEngine.Object.Destroy(rt);
+        rt = null;
+    }
+}
+
+/// <summary>
+/// Registry of allocated fields for one SimulationWorld lifetime.
+/// Allocated only from EffectAsset field declarations.
+/// </summary>
+public sealed class FieldSet : IDisposable
+{
+    private readonly Dictionary<string, SimField> fields =
+        new Dictionary<string, SimField>(StringComparer.Ordinal);
+
+    public IReadOnlyDictionary<string, SimField> Fields => fields;
+
+    public void Allocate(IReadOnlyList<FieldDescriptor> descriptors, CommandBuffer clearCmd)
+    {
+        if (descriptors == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < descriptors.Count; i++)
+        {
+            FieldDescriptor descriptor = descriptors[i];
+            if (descriptor == null || string.IsNullOrEmpty(descriptor.Name))
+            {
+                throw new InvalidOperationException(
+                    $"FieldSet: descriptor at index {i} has empty name.");
+            }
+
+            if (fields.ContainsKey(descriptor.Name))
+            {
+                throw new InvalidOperationException(
+                    $"FieldSet: duplicate field name '{descriptor.Name}'.");
+            }
+
+            SimField field = new SimField(descriptor);
+            field.ClearBoth(clearCmd);
+            fields.Add(descriptor.Name, field);
+        }
+    }
+
+    public SimField Get(string name)
+    {
+        if (!fields.TryGetValue(name, out SimField field))
+        {
+            throw new KeyNotFoundException($"Field '{name}' is not present in the FieldSet.");
+        }
+
+        return field;
+    }
+
+    public bool TryGet(string name, out SimField field) => fields.TryGetValue(name, out field);
+
+    public void Swap(string name) => Get(name).Swap();
+
+    public void Dispose()
+    {
+        foreach (KeyValuePair<string, SimField> pair in fields)
+        {
+            pair.Value.Dispose();
+        }
+
+        fields.Clear();
+    }
+}

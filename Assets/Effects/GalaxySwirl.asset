@@ -26,17 +26,19 @@ MonoBehaviour:
     targetWidth: 2
     heightScale: 1
   simulationSpeed: 1
+  fields: []
   passes:
-  - rid: 1403064212205338713
-  - rid: 1403064212205338714
-  - rid: 1403064212205338715
-  - rid: 1403064212205338716
-  - rid: 1403064212205338717
-  - rid: 1403064212205338718
+  - rid: 1403064288842612799
+  - rid: 1403064288842612800
+  - rid: 1403064288842612801
+  - rid: 1403064288842612802
+  - rid: 1403064288842612803
+  - rid: 1403064288842612804
+  showVelocityFieldQuad: 0
   references:
     version: 2
     RefIds:
-    - rid: 1403064212205338713
+    - rid: 1403064288842612799
       type: {class: VortexPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
@@ -44,29 +46,29 @@ MonoBehaviour:
         axis: {x: 0, y: 1, z: 0}
         strength: 8
         radius: 4
-    - rid: 1403064212205338714
+    - rid: 1403064288842612800
       type: {class: CurlNoisePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         frequency: 0.6
         amplitude: 1.5
         speed: 0.3
-    - rid: 1403064212205338715
+    - rid: 1403064288842612801
       type: {class: DragPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         drag: 0.8
-    - rid: 1403064212205338716
+    - rid: 1403064288842612802
       type: {class: TouchForcePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         dragStrength: 3
         pushStrength: 0
-    - rid: 1403064212205338717
+    - rid: 1403064288842612803
       type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-    - rid: 1403064212205338718
+    - rid: 1403064288842612804
       type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
