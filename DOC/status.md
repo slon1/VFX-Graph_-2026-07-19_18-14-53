@@ -39,7 +39,7 @@ Plane basis на дескрипторе (`origin`, `axisU`/`axisV`, `size`) — 
 
 | Pass                           | Access                   | Роль                                     |
 | ------------------------------ | ------------------------ | ---------------------------------------- |
-| `TouchInjectVelocityFieldPass` | WriteInPlace             | тач → splat в velocity field             |
+| `TouchInjectVelocityFieldPass` | WriteInPlace             | тач → splat в velocity field; `MaxFieldSpeed` clamp |
 | `DecayFieldPass`               | WritePingPong            | `* exp(-rate·dt)`; доказывает World Swap |
 | `SampleVelocityFieldPass`      | Read + particle Velocity | G2P hybrid                               |
 
@@ -50,8 +50,9 @@ Plane basis на дескрипторе (`origin`, `axisU`/`axisV`, `size`) — 
 
 - После каждого пасса с `WritePingPong` → `FieldSet.Swap` (data-driven). Swap пропускается, если пасс не записал dispatch (`SimPass.LastExecuteDispatched`) — иначе `Current` перещёлкнулся бы на устаревшую текстуру.
 - `IRenderBinder`: `VfxParticleBinder` (bind once), `FieldQuadBinder` (rebind Current каждый кадр).
-- Валидация: имя поля, semantic, min channels; конфликт InPlace vs PingPong на одном пассе.
+- Валидация: имя поля, semantic; каналы — exact для write / `>=` для read; конфликт InPlace vs PingPong на одном пассе; одинаковый plane у всех полей пасса; одинаковый resolution у write-полей.
 - Ноль аллокаций в кадре: декларации `FieldReads`/`FieldWrites` кэшируются через `FieldRequestSets.Single` (кэш пересобирается при смене имени поля в инспекторе).
+- `TouchInjectVelocityFieldPass.MaxFieldSpeed` (дефолт 20, `<= 0` = без лимита) — clamp magnitude после splat.
 
 ### Демо
 

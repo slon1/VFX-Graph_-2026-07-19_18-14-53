@@ -37,6 +37,7 @@ float3 FieldUVToWorldVelocity(float2 fieldVel)
 RWTexture2D<float2> velocityWrite;
 StructuredBuffer<TouchForce> Touches;
 uint TouchCount;
+float MaxFieldSpeed; // <= 0 = unlimited
 
 [numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
 void TouchInjectVelocity(uint3 id : SV_DispatchThreadID)
@@ -62,7 +63,17 @@ void TouchInjectVelocity(uint3 id : SV_DispatchThreadID)
         inject += deltaUV * f;
     }
 
-    velocityWrite[id.xy] = velocityWrite[id.xy] + inject;
+    float2 result = velocityWrite[id.xy] + inject;
+    if (MaxFieldSpeed > 0)
+    {
+        float mag = length(result);
+        if (mag > MaxFieldSpeed)
+        {
+            result *= MaxFieldSpeed / mag;
+        }
+    }
+
+    velocityWrite[id.xy] = result;
 }
 
 // --- DecayField (WritePingPong: deliberate, proves World Swap; could be in-place) ---

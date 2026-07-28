@@ -120,8 +120,11 @@ public sealed class FieldDescriptor
 }
 
 /// <summary>
-/// Pass declaration of a field dependency. Compatibility: semantic + min channel count only
-/// (resolution/format are quality knobs on EffectAsset).
+/// Pass declaration of a field dependency. Compatibility: semantic + channel count
+/// (resolution/precision are quality knobs on EffectAsset).
+/// For writes the field format must have exactly <see cref="Channels"/> channels
+/// (UAV layout must match the kernel declaration); for reads this is a minimum
+/// (extra channels are legal to sample).
 /// </summary>
 [Serializable]
 public struct FieldRequest
@@ -129,22 +132,22 @@ public struct FieldRequest
     [SerializeField] private string fieldName;
     [SerializeField] private FieldAccess access;
     [SerializeField] private FieldSemantic requiredSemantic;
-    [SerializeField] private int minChannels;
+    [SerializeField] private int channels;
 
     public string FieldName => fieldName;
     public FieldAccess Access => access;
     public FieldSemantic RequiredSemantic => requiredSemantic;
-    public int MinChannels => minChannels;
+    public int Channels => channels;
 
     public FieldRequest(
         string fieldName,
         FieldAccess access,
         FieldSemantic requiredSemantic,
-        int minChannels)
+        int channels)
     {
         this.fieldName = fieldName;
         this.access = access;
         this.requiredSemantic = requiredSemantic;
-        this.minChannels = minChannels;
+        this.channels = channels;
     }
 }

@@ -8,9 +8,18 @@ using UnityEngine;
 [Serializable]
 public sealed class TouchInjectVelocityFieldPass : FieldKernelPass
 {
+    private static readonly int MaxFieldSpeedId = Shader.PropertyToID("MaxFieldSpeed");
+
     [SerializeField] private string velocityFieldName = "velocity";
+    [SerializeField, Min(0f)] private float maxFieldSpeed = 20f;
 
     [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public float MaxFieldSpeed
+    {
+        get => maxFieldSpeed;
+        set => maxFieldSpeed = value;
+    }
 
     public override string DisplayName => "Touch Inject Velocity Field";
     public override PassCategory Category => PassCategory.Emit;
@@ -25,6 +34,7 @@ public sealed class TouchInjectVelocityFieldPass : FieldKernelPass
     {
         BindBuffer(context, SimShaderIds.Touches, context.TouchBuffer);
         SetInt(context, SimShaderIds.TouchCount, context.TouchCount);
+        SetFloat(context, MaxFieldSpeedId, maxFieldSpeed);
     }
 }
 
@@ -109,24 +119,7 @@ public sealed class SampleVelocityFieldPass : ParticleKernelPass
     {
         SimField field = context.Fields.Get(velocityFieldName);
         context.Cmd.SetComputeTextureParam(Kernel.Shader, Kernel.Index, velocityReadId, field.Current);
-
-        Vector2Int res = fieldDescriptor.Resolution;
-        context.Cmd.SetComputeIntParams(
-            Kernel.Shader, SimShaderIds.FieldResolution, res.x, res.y, 0, 0);
-        context.Cmd.SetComputeVectorParam(
-            Kernel.Shader,
-            SimShaderIds.FieldTexelSize,
-            new Vector4(1f / res.x, 1f / res.y, 0f, 0f));
-        context.Cmd.SetComputeVectorParam(Kernel.Shader, SimShaderIds.FieldOrigin, fieldDescriptor.Origin);
-        context.Cmd.SetComputeVectorParam(
-            Kernel.Shader, SimShaderIds.FieldAxisU, fieldDescriptor.AxisU.normalized);
-        context.Cmd.SetComputeVectorParam(
-            Kernel.Shader, SimShaderIds.FieldAxisV, fieldDescriptor.AxisV.normalized);
-        context.Cmd.SetComputeVectorParam(
-            Kernel.Shader,
-            SimShaderIds.FieldSize,
-            new Vector4(fieldDescriptor.Size.x, fieldDescriptor.Size.y, 0f, 0f));
-
+        FieldShaderParams.Push(context.Cmd, Kernel.Shader, fieldDescriptor);
         SetFloat(context, SampleStrengthId, strength);
     }
 }

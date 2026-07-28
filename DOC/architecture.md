@@ -209,7 +209,7 @@ struct TouchForce { float2 pos; float2 delta; float radius; float strength; };
 4. **Field ownership (C):** EffectAsset декларирует поля; пассы только ссылаются; runtime не автосоздаёт. Editor: Materialize missing fields.
 5. **FieldAccess:** `Read` / `WriteInPlace` (splat, без swap) / `WritePingPong` (World вызывает `Swap` после пасса — но только если пасс реально записал dispatch, см. `SimPass.LastExecuteDispatched`; пассы про ping-pong не знают).
 6. **Ноль аллокаций в кадре:** декларации `FieldReads`/`FieldWrites` читаются World-ом каждый кадр, поэтому массивы `FieldRequest` кэшируются (`FieldRequestSets.Single`), как `AttrSets` у частиц.
-7. **Plane basis** принадлежит `FieldDescriptor`, не `InputRouter`.
+7. **Plane basis** принадлежит `FieldDescriptor`, не `InputRouter`. Один `FieldKernelPass` = один plane у всех полей пасса; write-поля — одно resolution (см. ADR-001).
 8. **DoD M2a:** hybrid `Touch → velocity field → particles → render` без special-case веток в `SimulationWorld`.
 
 Particle attributes по-прежнему авторегистрируются; fields — только из деклараций (намеренная асимметрия).

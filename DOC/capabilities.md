@@ -28,7 +28,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: TouchInjectVelocity, DecayField, SampleVelocityField.
+- Пассы: TouchInjectVelocity (`MaxFieldSpeed`), DecayField, SampleVelocityField.
 - Debug: `FieldQuadBinder` + shader `M3D/FieldDebug`.
 
 ### Pass library

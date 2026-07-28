@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Pass classification is by role in the frame, not by data touched:
@@ -32,6 +33,30 @@ internal static class SimShaderIds
     public static readonly int FieldSize = Shader.PropertyToID("FieldSize");
 }
 
+/// <summary>
+/// Pushes the shared FieldParams uniform block (plane basis + resolution) used by
+/// FieldKernelPass and hybrid particle passes that sample fields.
+/// </summary>
+internal static class FieldShaderParams
+{
+    public static void Push(CommandBuffer cmd, ComputeShader shader, FieldDescriptor descriptor)
+    {
+        Vector2Int res = descriptor.Resolution;
+        cmd.SetComputeIntParams(shader, SimShaderIds.FieldResolution, res.x, res.y, 0, 0);
+        cmd.SetComputeVectorParam(
+            shader,
+            SimShaderIds.FieldTexelSize,
+            new Vector4(1f / res.x, 1f / res.y, 0f, 0f));
+        cmd.SetComputeVectorParam(shader, SimShaderIds.FieldOrigin, descriptor.Origin);
+        cmd.SetComputeVectorParam(shader, SimShaderIds.FieldAxisU, descriptor.AxisU.normalized);
+        cmd.SetComputeVectorParam(shader, SimShaderIds.FieldAxisV, descriptor.AxisV.normalized);
+        cmd.SetComputeVectorParam(
+            shader,
+            SimShaderIds.FieldSize,
+            new Vector4(descriptor.Size.x, descriptor.Size.y, 0f, 0f));
+    }
+}
+
 /// <summary>Common Reads/Writes sets to avoid per-instance allocations.</summary>
 internal static class AttrSets
 {
@@ -55,12 +80,12 @@ internal static class FieldRequestSets
         string fieldName,
         FieldAccess access,
         FieldSemantic semantic,
-        int minChannels)
+        int channels)
     {
         if (cache == null ||
             !string.Equals(cache[0].FieldName, fieldName, StringComparison.Ordinal))
         {
-            cache = new[] { new FieldRequest(fieldName, access, semantic, minChannels) };
+            cache = new[] { new FieldRequest(fieldName, access, semantic, channels) };
         }
 
         return cache;
@@ -336,22 +361,7 @@ public abstract class FieldKernelPass : SimPass
 
     private void PushFieldParams(SimContext context, FieldDescriptor descriptor)
     {
-        Vector2Int res = descriptor.Resolution;
-        context.Cmd.SetComputeIntParams(
-            kernel.Shader, SimShaderIds.FieldResolution, res.x, res.y, 0, 0);
-        context.Cmd.SetComputeVectorParam(
-            kernel.Shader,
-            SimShaderIds.FieldTexelSize,
-            new Vector4(1f / res.x, 1f / res.y, 0f, 0f));
-        context.Cmd.SetComputeVectorParam(kernel.Shader, SimShaderIds.FieldOrigin, descriptor.Origin);
-        context.Cmd.SetComputeVectorParam(
-            kernel.Shader, SimShaderIds.FieldAxisU, descriptor.AxisU.normalized);
-        context.Cmd.SetComputeVectorParam(
-            kernel.Shader, SimShaderIds.FieldAxisV, descriptor.AxisV.normalized);
-        context.Cmd.SetComputeVectorParam(
-            kernel.Shader,
-            SimShaderIds.FieldSize,
-            new Vector4(descriptor.Size.x, descriptor.Size.y, 0f, 0f));
+        FieldShaderParams.Push(context.Cmd, kernel.Shader, descriptor);
     }
 
     private void CollectFieldBinds(IReadOnlyList<FieldRequest> requests)

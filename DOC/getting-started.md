@@ -67,7 +67,8 @@ Kernel в `Shape/Force/DynamicsPasses.compute` + класс `: ParticleKernelPas
    - **WritePingPong** — Current→Next, World сделает Swap (только если пасс записал dispatch).
    - **Read** — sample Current.
 4. Декларации возвращать через `FieldRequestSets.Single(ref cache, ...)` с `[NonSerialized]`-полем кэша — World читает `FieldWrites` каждый кадр, `new[] {...}` в свойстве даст мусор в каждом кадре (образец — `FieldPasses.cs`).
-5. Совместимость: semantic + min channels (не exact format/resolution).
+5. Совместимость: semantic + каналы (`FieldRequest.Channels`: для write — exact match UAV layout; для read — minimum). Precision/resolution — quality knobs.
+6. Один пасс = один plane (origin/axisU/axisV/size) у всех полей; write-поля обязаны иметь одинаковое resolution (диспатч сайзится по primary). Read-поля могут отличаться по resolution (normalized UV).
 
 Hybrid (field + particles): как `SampleVelocityFieldPass` — `ParticleKernelPass` + `FieldReads`.
 

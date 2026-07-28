@@ -55,7 +55,7 @@ public sealed class SimContext
         GraphicsBuffer touchBuffer)
     {
         Particles = particles;
-        Fields = fields ?? new FieldSet();
+        Fields = fields ?? throw new ArgumentNullException(nameof(fields));
         this.shaders = shaders;
         TouchBuffer = touchBuffer;
     }

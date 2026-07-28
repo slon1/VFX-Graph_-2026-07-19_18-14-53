@@ -231,8 +231,8 @@ public sealed class SimulationWorld : MonoBehaviour
                 continue;
             }
 
-            if (!ValidateRequestList(pass, pass.FieldReads) ||
-                !ValidateRequestList(pass, pass.FieldWrites))
+            if (!ValidateRequestList(pass, pass.FieldReads, isWrite: false) ||
+                !ValidateRequestList(pass, pass.FieldWrites, isWrite: true))
             {
                 return false;
             }
@@ -255,12 +255,17 @@ public sealed class SimulationWorld : MonoBehaviour
 
                 writeAccess[request.FieldName] = request.Access;
             }
+
+            if (!ValidatePassFieldCoordinates(pass))
+            {
+                return false;
+            }
         }
 
         return true;
     }
 
-    private bool ValidateRequestList(SimPass pass, IReadOnlyList<FieldRequest> requests)
+    private bool ValidateRequestList(SimPass pass, IReadOnlyList<FieldRequest> requests, bool isWrite)
     {
         for (int i = 0; i < requests.Count; i++)
         {
@@ -293,11 +298,117 @@ public sealed class SimulationWorld : MonoBehaviour
                 return false;
             }
 
-            if (descriptor.ChannelCount < request.MinChannels)
+            if (isWrite)
+            {
+                if (descriptor.ChannelCount != request.Channels)
+                {
+                    Debug.LogError(
+                        $"SimulationWorld: pass '{pass.DisplayName}' writes field '{request.FieldName}' " +
+                        $"with {request.Channels} channels, but format has {descriptor.ChannelCount}. " +
+                        "UAV write requires exact channel count; change the field format or the pass.",
+                        this);
+                    return false;
+                }
+            }
+            else if (descriptor.ChannelCount < request.Channels)
             {
                 Debug.LogError(
                     $"SimulationWorld: pass '{pass.DisplayName}' requires field '{request.FieldName}' " +
-                    $"with >= {request.MinChannels} channels, but format has {descriptor.ChannelCount}.",
+                    $"with >= {request.Channels} channels, but format has {descriptor.ChannelCount}.",
+                    this);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// FieldKernelPass pushes one FieldParams block from the primary field. All fields on a
+    /// pass must share plane basis; write fields must also share resolution (dispatch size).
+    /// Read fields may differ in resolution (normalized UV sampling — e.g. high-res dye).
+    /// </summary>
+    private bool ValidatePassFieldCoordinates(SimPass pass)
+    {
+        IReadOnlyList<FieldRequest> writes = pass.FieldWrites;
+        IReadOnlyList<FieldRequest> reads = pass.FieldReads;
+        if (writes.Count == 0 && reads.Count == 0)
+        {
+            return true;
+        }
+
+        // Primary = first write, else first read — matches FieldKernelPass.
+        string primaryName = writes.Count > 0 ? writes[0].FieldName : reads[0].FieldName;
+        if (!fields.TryGet(primaryName, out SimField primaryField))
+        {
+            return true; // undeclared already reported
+        }
+
+        FieldDescriptor primary = primaryField.Descriptor;
+
+        if (!ValidatePlaneAgainstPrimary(pass, reads, primary, primaryName) ||
+            !ValidatePlaneAgainstPrimary(pass, writes, primary, primaryName))
+        {
+            return false;
+        }
+
+        for (int i = 0; i < writes.Count; i++)
+        {
+            string name = writes[i].FieldName;
+            if (string.Equals(name, primaryName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!fields.TryGet(name, out SimField otherField))
+            {
+                continue;
+            }
+
+            FieldDescriptor other = otherField.Descriptor;
+            if (other.Resolution != primary.Resolution)
+            {
+                Debug.LogError(
+                    $"SimulationWorld: pass '{pass.DisplayName}' write fields '{primaryName}' and '{name}' " +
+                    $"have different resolutions ({primary.Resolution} vs {other.Resolution}). " +
+                    "All write fields on one pass must share resolution (dispatch is sized to primary).",
+                    this);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool ValidatePlaneAgainstPrimary(
+        SimPass pass,
+        IReadOnlyList<FieldRequest> requests,
+        FieldDescriptor primary,
+        string primaryName)
+    {
+        for (int i = 0; i < requests.Count; i++)
+        {
+            string name = requests[i].FieldName;
+            if (string.Equals(name, primaryName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!fields.TryGet(name, out SimField otherField))
+            {
+                continue;
+            }
+
+            FieldDescriptor other = otherField.Descriptor;
+            if (other.Origin != primary.Origin ||
+                other.AxisU != primary.AxisU ||
+                other.AxisV != primary.AxisV ||
+                other.Size != primary.Size)
+            {
+                Debug.LogError(
+                    $"SimulationWorld: pass '{pass.DisplayName}' fields '{primaryName}' and '{name}' " +
+                    "have different plane bases. All fields on one FieldKernelPass must share " +
+                    "origin/axisU/axisV/size (single FieldParams block).",
                     this);
                 return false;
             }
