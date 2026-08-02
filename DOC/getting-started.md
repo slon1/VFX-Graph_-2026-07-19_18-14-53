@@ -1,6 +1,7 @@
 # Getting Started — для новых программистов
 
-Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).
+Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 

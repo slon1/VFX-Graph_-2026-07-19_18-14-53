@@ -1,10 +1,10 @@
 # ADR-001: Field resources (Milestone 2a) — архитектурные решения и их причины
 
-**Статус:** принято (реализовано + правки по ревью, см. ТЗ `tz-m2a-review-fixes.md`)
-**Дата:** 2026-07-26, дополнено 2026-07-28
+**Статус:** принято (реализовано)
+**Дата:** 2026-07-26, дополнено 2026-07-28 / 2026-08-02
 **Область:** FieldSet / FieldDescriptor / FieldAccess / SimPass / SimulationWorld
 **Связанные документы:** `architecture.md`, `status.md`,
-план `.cursor/plans/milestone_2_field_resources_96b1c1f6.plan.md`
+`last/ADR-002-Generic-P2G-Scatter.md`, `last/ADR-003-Generic-Field-Slot-Naming.md`
 
 ---
 

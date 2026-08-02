@@ -2,7 +2,7 @@
 
 **Снимок:** 2026-08-02  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
-**Онбординг:** [`getting-started.md`](getting-started.md) · архитектура: [`architecture.md`](architecture.md) · статус: [`status.md`](status.md)
+**Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 

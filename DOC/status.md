@@ -4,7 +4,8 @@
 **Итерация:** 5.2 — Generic field slot naming (`FieldRead` / `FieldWrite`)  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
-**Онбординг:** [`getting-started.md`](getting-started.md) · архитектура: [`architecture.md`](architecture.md) · ADR: [`last/ADR-003-Generic-Field-Slot-Naming.md`](last/ADR-003-Generic-Field-Slot-Naming.md)
+**Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
