@@ -1,5 +1,6 @@
 // P2G: ClearUintBuffer, ScatterVelocity, NormalizeVelocityAccum.
 // Accum layout per texel: [vx, vy, count] with BufferCount = ValueChannels + 1 (count last).
+// Field texture slot: FieldWrite (fixed; single-field-per-kernel, see FieldPasses.compute).
 
 #pragma kernel ClearUintBuffer
 #pragma kernel ScatterVelocity
@@ -22,7 +23,7 @@ uint ParticleCount;
 float ValueScale;
 float ValueBias;
 
-RWTexture2D<float2> agentVelocityWrite;
+RWTexture2D<float2> FieldWrite;
 
 float EncodeFixed(float value, float scale, float bias)
 {
@@ -97,5 +98,5 @@ void NormalizeVelocityAccum(uint3 id : SV_DispatchThreadID)
         decoded.y = (rawY * invScale - c * ValueBias) / c;
     }
 
-    agentVelocityWrite[id.xy] = agentVelocityWrite[id.xy] + decoded;
+    FieldWrite[id.xy] = FieldWrite[id.xy] + decoded;
 }

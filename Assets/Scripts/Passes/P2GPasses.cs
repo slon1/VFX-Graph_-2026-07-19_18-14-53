@@ -202,7 +202,7 @@ public abstract class NormalizeFieldAccumPass : SimPass
         kernel = context.FindKernel(KernelName);
         accum = context.Fields.GetAccumBuffer(FieldName);
         fieldDescriptor = context.Fields.Get(FieldName).Descriptor;
-        writeId = Shader.PropertyToID(FieldName + "Write");
+        writeId = SimShaderIds.FieldWrite;
         accumBufferId = Shader.PropertyToID("AccumBuffer");
         valueScaleId = Shader.PropertyToID("ValueScale");
         valueBiasId = Shader.PropertyToID("ValueBias");

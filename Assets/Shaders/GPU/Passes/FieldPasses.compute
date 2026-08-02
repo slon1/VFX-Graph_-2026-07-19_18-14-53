@@ -1,10 +1,11 @@
-// Field passes: inject / decay / sample. Texture names follow FieldKernelPass conventions:
-//   {fieldName}Read  = SRV (Current for Read / WritePingPong source)
-//   {fieldName}Write = UAV (Current for WriteInPlace, Next for WritePingPong)
+// Field passes: inject / decay / sample.
+// Texture slots are fixed (single-field-per-kernel):
+//   FieldRead  = SRV (Current for Read / WritePingPong source)
+//   FieldWrite = UAV (Current for WriteInPlace, Next for WritePingPong)
+// Multi-field-per-kernel binding is M2c (not yet).
 
 #pragma kernel TouchInjectVelocity
 #pragma kernel DecayField
-#pragma kernel DecayAgentVelocity
 #pragma kernel SampleVelocityField
 
 #include "Assets/Shaders/GPU/Includes/Touch.hlsl"
@@ -13,8 +14,11 @@
 #define FIELD_THREADS 8
 #define PARTICLE_THREADS 64
 
-// --- TouchInjectVelocity (WriteInPlace on velocity) ---
-RWTexture2D<float2> velocityWrite;
+Texture2D<float2> FieldRead;
+RWTexture2D<float2> FieldWrite;
+SamplerState sampler_linear_clamp;
+
+// --- TouchInjectVelocity (WriteInPlace) ---
 StructuredBuffer<TouchForce> Touches;
 uint TouchCount;
 float MaxFieldSpeed; // <= 0 = unlimited
@@ -38,12 +42,11 @@ void TouchInjectVelocity(uint3 id : SV_DispatchThreadID)
         TouchForce touch = Touches[t];
         float dist = length(worldPos - touch.pos);
         float f = TouchFalloff(dist, touch.radius) * touch.strength;
-        // Project touch delta onto field plane axes.
         float2 deltaUV = float2(dot(touch.delta, FieldAxisU), dot(touch.delta, FieldAxisV));
         inject += deltaUV * f;
     }
 
-    float2 result = velocityWrite[id.xy] + inject;
+    float2 result = FieldWrite[id.xy] + inject;
     if (MaxFieldSpeed > 0)
     {
         float mag = length(result);
@@ -53,13 +56,11 @@ void TouchInjectVelocity(uint3 id : SV_DispatchThreadID)
         }
     }
 
-    velocityWrite[id.xy] = result;
+    FieldWrite[id.xy] = result;
 }
 
 // --- DecayField (WritePingPong: deliberate, proves World Swap) ---
 // R16F flush-to-zero on repeated multiply is desired — field settles to 0.
-Texture2D<float2> velocityRead;
-SamplerState sampler_linear_clamp;
 float DecayFactor; // precomputed exp(-rate * dt) on CPU
 
 [numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
@@ -71,25 +72,8 @@ void DecayField(uint3 id : SV_DispatchThreadID)
     }
 
     float2 uv = (float2(id.xy) + 0.5) * FieldTexelSize;
-    float2 v = velocityRead.SampleLevel(sampler_linear_clamp, uv, 0);
-    velocityWrite[id.xy] = v * DecayFactor;
-}
-
-// Same decay for agentVelocity field (FieldKernelPass binds {fieldName}Read/Write).
-Texture2D<float2> agentVelocityRead;
-RWTexture2D<float2> agentVelocityWrite;
-
-[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
-void DecayAgentVelocity(uint3 id : SV_DispatchThreadID)
-{
-    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
-    {
-        return;
-    }
-
-    float2 uv = (float2(id.xy) + 0.5) * FieldTexelSize;
-    float2 v = agentVelocityRead.SampleLevel(sampler_linear_clamp, uv, 0);
-    agentVelocityWrite[id.xy] = v * DecayFactor;
+    float2 v = FieldRead.SampleLevel(sampler_linear_clamp, uv, 0);
+    FieldWrite[id.xy] = v * DecayFactor;
 }
 
 // --- SampleVelocityField (hybrid: field Read + particle velocity write) ---
@@ -111,7 +95,7 @@ void SampleVelocityField(uint3 id : SV_DispatchThreadID)
 
     if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0)
     {
-        fieldVel = velocityRead.SampleLevel(sampler_linear_clamp, uv, 0);
+        fieldVel = FieldRead.SampleLevel(sampler_linear_clamp, uv, 0);
     }
 
     velocity[id.x] += FieldUVToWorldVelocity(fieldVel) * SampleStrength;

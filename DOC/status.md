@@ -1,10 +1,10 @@
-# Status — M3D Framework (Milestone 2b.1)
+# Status — M3D Framework (Milestone 2b.1.1)
 
 **Дата:** 2026-08-02  
-**Итерация:** 5.1 — Generic P2G scatter (atomic accum → average)  
+**Итерация:** 5.2 — Generic field slot naming (`FieldRead` / `FieldWrite`)  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
-**Онбординг:** [`getting-started.md`](getting-started.md) · архитектура: [`architecture.md`](architecture.md) · ADR: [`last/ADR-002-Generic-P2G-Scatter.md`](last/ADR-002-Generic-P2G-Scatter.md)
+**Онбординг:** [`getting-started.md`](getting-started.md) · архитектура: [`architecture.md`](architecture.md) · ADR: [`last/ADR-003-Generic-Field-Slot-Naming.md`](last/ADR-003-Generic-Field-Slot-Naming.md)
 
 ---
 
@@ -58,8 +58,18 @@ Encode: NaN-guard, затем `max(0,·)`. Нет runtime overflow-guard на с
 
 Демо **AgentFieldEcho**: CurlNoise→Drag→SpeedLimit→Integrate→ClearAccum→Scatter→Normalize→Decay (accumulate-onto-decaying; без ClearFieldPass). Replace = добавить ClearFieldPass перед ClearAccum.
 
-Меню: `Create Demo Effects`, `Assign AgentFieldEcho To Scene`.  
-Тесты: `FieldAccumPassValidatorTests`, `FieldRequestTests`.
+Меню: `Create Demo Effects`, `Assign AgentFieldEcho To Scene`.
+
+---
+
+## Milestone 2b.1.1 — Generic field slots (готово)
+
+Фиксированные HLSL-слоты `FieldRead` / `FieldWrite` (`SimShaderIds`) вместо `{fieldName}Read/Write`.  
+`DecayAgentVelocity` удалён; `DecayField` обслуживает любое velocity-поле.  
+`FieldKernelPass`: guard `unique(FieldName)==1` до `FindKernel`.  
+ADR-003 реализован.
+
+Тесты: `FieldAccumPassValidatorTests`, `FieldRequestTests`, `FieldSlotNamingTests`.
 
 ---
 
@@ -72,11 +82,11 @@ Assets/Scripts/Passes/     FieldPasses.cs, P2GPasses.cs
 Assets/Shaders/GPU/Passes/ FieldPasses.compute, P2GPasses.compute
 Assets/Shaders/GPU/Includes/ FieldSampling.hlsl
 Assets/Effects/            HybridTouchField.asset, AgentFieldEcho.asset
-Assets/Tests/Editor/       FieldRequestTests.cs, FieldAccumPassValidatorTests.cs
+Assets/Tests/Editor/       FieldRequestTests.cs, FieldAccumPassValidatorTests.cs, FieldSlotNamingTests.cs
 ```
 
 ---
 
 ## Вне скоупа (далее)
 
-M2b.2 Gradient sample · M2b.3 Diffuse · AgentFieldDensity (Replace) · Stable Fluids · spatial hash · AggregationMode enum · runtime overflow guard
+M2b.2 Gradient sample · M2b.3 Diffuse · M2c multi-field-per-kernel · AgentFieldDensity (Replace) · Stable Fluids · spatial hash · AggregationMode enum · runtime overflow guard

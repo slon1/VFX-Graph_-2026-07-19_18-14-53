@@ -29,6 +29,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
 - Пассы: ClearField, TouchInjectVelocity, DecayField, SampleVelocityField.
+- Texture slots: `FieldRead` / `FieldWrite` (не `{fieldName}…`; ADR-003 / M2b.1.1).
 - Debug: `FieldQuadBinder` + shader `M3D/FieldDebug`.
 
 ### P2G (M2b.1)
@@ -36,6 +37,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - `FieldAccumBuffer` + ClearAccum / ScatterVelocity / NormalizeVelocity (average per texel).
 - Композиция: accumulate-onto-decaying vs Replace (ClearField + ClearAccum + Scatter + Normalize).
 - Демо: **AgentFieldEcho**.
+- Normalize пишет в `FieldWrite` (generic slot).
 
 ### Pass library
 

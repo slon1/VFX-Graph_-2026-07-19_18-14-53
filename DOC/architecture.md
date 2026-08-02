@@ -208,9 +208,10 @@ struct TouchForce { float2 pos; float2 delta; float radius; float strength; };
 3. **Simulation Resources** (`ParticleSet`, `FieldSet`) ≠ **services** (TouchBuffer, CommandBuffer, Render binders).
 4. **Field ownership (C):** EffectAsset декларирует поля; пассы только ссылаются; runtime не автосоздаёт. Editor: Materialize missing fields.
 5. **FieldAccess:** `Read` / `WriteInPlace` (splat, без swap) / `WritePingPong` (World вызывает `Swap` после пасса — но только если пасс реально записал dispatch, см. `SimPass.LastExecuteDispatched`; пассы про ping-pong не знают).
-6. **Ноль аллокаций в кадре:** декларации `FieldReads`/`FieldWrites` читаются World-ом каждый кадр, поэтому массивы `FieldRequest` кэшируются (`FieldRequestSets.Single`), как `AttrSets` у частиц.
-7. **Plane basis** принадлежит `FieldDescriptor`, не `InputRouter`. Один `FieldKernelPass` = один plane у всех полей пасса; write-поля — одно resolution (см. ADR-001).
-8. **DoD M2a:** hybrid `Touch → velocity field → particles → render` без special-case веток в `SimulationWorld`.
+6. **Field texture slots (M2b.1.1):** HLSL биндит фиксированные `FieldRead`/`FieldWrite` (`SimShaderIds`), не `{fieldName}Read/Write`. Один distinct `FieldName` на `FieldKernelPass`; multi-field-per-kernel — M2c (ADR-003).
+7. **Ноль аллокаций в кадре:** декларации `FieldReads`/`FieldWrites` читаются World-ом каждый кадр, поэтому массивы `FieldRequest` кэшируются (`FieldRequestSets.Single`), как `AttrSets` у частиц.
+8. **Plane basis** принадлежит `FieldDescriptor`, не `InputRouter`. Один `FieldKernelPass` = один plane у всех полей пасса; write-поля — одно resolution (см. ADR-001).
+9. **DoD M2a:** hybrid `Touch → velocity field → particles → render` без special-case веток в `SimulationWorld`.
 
 Particle attributes по-прежнему авторегистрируются; fields — только из деклараций (намеренная асимметрия).
 
@@ -227,4 +228,5 @@ Particle attributes по-прежнему авторегистрируются; 
 
 **Milestone 1:** каркас частиц + ~17 пассов.  
 **Milestone 2a (готово):** Field foundation + hybrid.  
+**M2b.1 / M2b.1.1 (готово):** P2G scatter + generic `FieldRead`/`FieldWrite` slots.  
 **Дальше:** Stable Fluids → spatial hash/boids → emitters → richer hybrids.

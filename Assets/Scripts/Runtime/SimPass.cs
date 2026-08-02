@@ -31,6 +31,10 @@ internal static class SimShaderIds
     public static readonly int FieldAxisU = Shader.PropertyToID("FieldAxisU");
     public static readonly int FieldAxisV = Shader.PropertyToID("FieldAxisV");
     public static readonly int FieldSize = Shader.PropertyToID("FieldSize");
+
+    /// <summary>Fixed texture slots for single-field kernels (not {fieldName}Read/Write).</summary>
+    public static readonly int FieldRead = Shader.PropertyToID("FieldRead");
+    public static readonly int FieldWrite = Shader.PropertyToID("FieldWrite");
 }
 
 /// <summary>
@@ -342,8 +346,9 @@ public abstract class ParticleKernelPass : SimPass
 }
 
 /// <summary>
-/// Base for field kernels: binds textures by naming convention, pushes FieldParams,
+/// Base for field kernels: binds textures via fixed FieldRead/FieldWrite slots, pushes FieldParams,
 /// dispatches over the field resolution. Subclasses only override SetParams.
+/// Single distinct field name per pass (multi-field-per-kernel is M2c).
 /// </summary>
 [Serializable]
 public abstract class FieldKernelPass : SimPass
@@ -384,11 +389,10 @@ public abstract class FieldKernelPass : SimPass
 
     public override void Initialize(SimContext context)
     {
-        kernel = context.FindKernel(KernelName);
         fieldBinds.Clear();
-
         CollectFieldBinds(FieldReads);
         CollectFieldBinds(FieldWrites);
+        ValidateSingleDistinctFieldName();
         ValidateAccessConflicts();
 
         string primary = PrimaryFieldName;
@@ -398,6 +402,8 @@ public abstract class FieldKernelPass : SimPass
                 $"{DisplayName}: FieldKernelPass requires at least one field request.");
         }
 
+        // After unique-name guard so EditMode multi-field tests need no compute library.
+        kernel = context.FindKernel(KernelName);
         primaryDescriptor = context.Fields.Get(primary).Descriptor;
     }
 
@@ -473,19 +479,45 @@ public abstract class FieldKernelPass : SimPass
         FieldShaderParams.Push(context.Cmd, kernel.Shader, descriptor);
     }
 
+    /// <summary>
+    /// Binds fixed FieldRead/FieldWrite slots (generic across field names).
+    /// Safe because Build exact-channel validation ensures the UAV/SRV HLSL type
+    /// (e.g. float2) matches descriptor.ChannelCount for every write/read request.
+    /// </summary>
     private void CollectFieldBinds(IReadOnlyList<FieldRequest> requests)
     {
         for (int i = 0; i < requests.Count; i++)
         {
             FieldRequest request = requests[i];
-            string name = request.FieldName;
             fieldBinds.Add(new FieldBind
             {
-                FieldName = name,
+                FieldName = request.FieldName,
                 Access = request.Access,
-                ReadId = Shader.PropertyToID(name + "Read"),
-                WriteId = Shader.PropertyToID(name + "Write"),
+                ReadId = SimShaderIds.FieldRead,
+                WriteId = SimShaderIds.FieldWrite,
             });
+        }
+    }
+
+    private void ValidateSingleDistinctFieldName()
+    {
+        string first = null;
+        for (int i = 0; i < fieldBinds.Count; i++)
+        {
+            string name = fieldBinds[i].FieldName;
+            if (first == null)
+            {
+                first = name;
+                continue;
+            }
+
+            if (!string.Equals(first, name, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"{DisplayName}: FieldKernelPass with generic FieldRead/FieldWrite slots supports " +
+                    "exactly one distinct field name per pass. Multi-field-per-kernel passes need " +
+                    "index-based slots (M2c, not yet implemented).");
+            }
         }
     }
 

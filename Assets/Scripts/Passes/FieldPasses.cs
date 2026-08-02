@@ -109,11 +109,7 @@ public sealed class DecayFieldPass : FieldKernelPass
 
     public override string DisplayName => "Decay Field";
     public override PassCategory Category => PassCategory.Transport;
-    // FieldKernelPass binds {fieldName}Read/Write — HLSL must match (DecayField vs DecayAgentVelocity).
-    protected override string KernelName =>
-        string.Equals(fieldName, "agentVelocity", StringComparison.Ordinal)
-            ? "DecayAgentVelocity"
-            : "DecayField";
+    protected override string KernelName => "DecayField";
 
     public override IReadOnlyList<FieldRequest> FieldWrites =>
         FieldRequestSets.Single(
@@ -164,7 +160,7 @@ public sealed class SampleVelocityFieldPass : ParticleKernelPass
     {
         base.Initialize(context);
         fieldDescriptor = context.Fields.Get(velocityFieldName).Descriptor;
-        velocityReadId = Shader.PropertyToID(velocityFieldName + "Read");
+        velocityReadId = SimShaderIds.FieldRead;
     }
 
     protected override void SetParams(SimContext context, float deltaTime)

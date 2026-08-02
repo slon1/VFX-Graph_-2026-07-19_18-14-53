@@ -68,7 +68,7 @@ Kernel в `Shape/Force/DynamicsPasses.compute` + класс `: ParticleKernelPas
 ### Field
 
 1. Kernel в `Assets/Shaders/GPU/Passes/FieldPasses.compute` (`numthreads(8,8,1)`).
-2. Имена текстур: `{fieldName}Read`, `{fieldName}Write`.
+2. Имена текстур (фиксированные слоты, не имя поля): `FieldRead` (SRV), `FieldWrite` (UAV). Один пасс = одно distinct field name; multi-field-per-kernel — M2c.
 3. Класс `: FieldKernelPass`, объявить `FieldWrites` / `FieldReads` с `FieldAccess`:
    - **WriteInPlace** — splat в Current, без swap.
    - **WritePingPong** — Current→Next, World сделает Swap (только если пасс записал dispatch).

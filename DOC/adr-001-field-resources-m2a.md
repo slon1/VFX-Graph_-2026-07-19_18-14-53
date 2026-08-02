@@ -49,7 +49,8 @@ iOS Metal), поэтому bandwidth и GC-аллокации в кадре — 
 
 World сканирует `FieldWrites` пасса при записи CommandBuffer и вызывает
 `FieldSet.Swap` после каждого `WritePingPong`-пасса. Кернелы видят только
-`{fieldName}Read` / `{fieldName}Write` и не знают о ping-pong.
+фиксированные слоты `FieldRead` / `FieldWrite` и не знают о ping-pong
+(см. ADR-003; имя поля не входит в HLSL-идентификатор).
 
 **Дополнение (ревью):** swap выполняется только если пасс реально записал
 dispatch (`SimPass.LastExecuteDispatched`) — иначе пасс с невалидным kernel
@@ -111,11 +112,11 @@ Read-поля могут иметь другое разрешение — чте
   каждый кадр ⇒ массивы `FieldRequest` кэшируются (`FieldRequestSets.Single`,
   `[NonSerialized]`-кэш, пересборка при смене имени). `new[] {...}` в свойстве —
   запрещённый паттерн.
-- **Биндинг текстур:** `{fieldName}Read` (SRV) / `{fieldName}Write` (UAV);
-  семплер `sampler_linear_clamp` — keyword-based inline sampler Unity
-  (тот же механизм, что `sampler_LinearClamp` в SRP Core `GlobalSamplers.hlsl`);
-  имя **корректно**, менять не нужно (проверено на ревью: заявление о паттерне
-  `{filter}_{wrap}_sampler` — ошибочно).
+- **Биндинг текстур:** `FieldRead` (SRV) / `FieldWrite` (UAV) — фиксированные
+  слоты single-field-per-kernel (ADR-003); семплер `sampler_linear_clamp` —
+  keyword-based inline sampler Unity (тот же механизм, что `sampler_LinearClamp`
+  в SRP Core `GlobalSamplers.hlsl`); имя семплера **корректно**, менять не нужно
+  (проверено на ревью: заявление о паттерне `{filter}_{wrap}_sampler` — ошибочно).
 - **Биндеры:** `VfxParticleBinder` биндит один раз в Initialize (буферы
   стабильны), `FieldQuadBinder` перебиндивает Current каждый кадр (swap меняет
   идентичность текстуры). Асимметрия ожидаема — не «чинить».
