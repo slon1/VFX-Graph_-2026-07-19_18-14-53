@@ -176,6 +176,13 @@ public sealed class SimulationWorld : MonoBehaviour
             return;
         }
 
+        if (!ValidateAndAllocateFieldAccum())
+        {
+            Teardown();
+            enabled = false;
+            return;
+        }
+
         AutoRegisterAttributes();
         InitializePositionFromRest();
 
@@ -265,6 +272,100 @@ public sealed class SimulationWorld : MonoBehaviour
         return true;
     }
 
+    private bool ValidateAndAllocateFieldAccum()
+    {
+        FieldAccumPassValidator.Result validation = FieldAccumPassValidator.Validate(
+            effect.Passes,
+            name => fields.TryGet(name, out SimField field) ? field.Descriptor : null);
+
+        for (int i = 0; i < validation.Warnings.Count; i++)
+        {
+            Debug.LogWarning(validation.Warnings[i], this);
+        }
+
+        if (!validation.Success)
+        {
+            for (int i = 0; i < validation.Errors.Count; i++)
+            {
+                Debug.LogError(validation.Errors[i], this);
+            }
+
+            return false;
+        }
+
+        IReadOnlyList<SimPass> passes = effect.Passes;
+        for (int p = 0; p < passes.Count; p++)
+        {
+            SimPass pass = passes[p];
+            if (pass == null || !pass.Enabled)
+            {
+                continue;
+            }
+
+            if (!AllocateAccumFromClears(pass) ||
+                !AllocateAccumFromRequests(pass, pass.FieldAccumWrites) ||
+                !AllocateAccumFromRequests(pass, pass.FieldAccumReads))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool AllocateAccumFromClears(SimPass pass)
+    {
+        IReadOnlyList<FieldAccumClearRequest> clears = pass.FieldAccumClears;
+        for (int i = 0; i < clears.Count; i++)
+        {
+            FieldAccumClearRequest request = clears[i];
+            if (!fields.TryGet(request.FieldName, out SimField field))
+            {
+                return false;
+            }
+
+            try
+            {
+                fields.GetOrCreateAccumBuffer(field.Descriptor, request.Channels);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    $"SimulationWorld: failed to allocate accum for '{request.FieldName}': {exception.Message}",
+                    this);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool AllocateAccumFromRequests(SimPass pass, IReadOnlyList<FieldAccumRequest> requests)
+    {
+        for (int i = 0; i < requests.Count; i++)
+        {
+            FieldAccumRequest request = requests[i];
+            if (!fields.TryGet(request.FieldName, out SimField field))
+            {
+                return false;
+            }
+
+            try
+            {
+                fields.GetOrCreateAccumBuffer(field.Descriptor, request.Channels);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    $"SimulationWorld: failed to allocate accum for '{request.FieldName}': {exception.Message}",
+                    this);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private bool ValidateRequestList(SimPass pass, IReadOnlyList<FieldRequest> requests, bool isWrite)
     {
         for (int i = 0; i < requests.Count; i++)
@@ -298,23 +399,19 @@ public sealed class SimulationWorld : MonoBehaviour
                 return false;
             }
 
-            if (isWrite)
+            if (!FieldRequest.ChannelsCompatible(
+                    request.Access, request.Channels, descriptor.ChannelCount))
             {
-                if (descriptor.ChannelCount != request.Channels)
-                {
-                    Debug.LogError(
-                        $"SimulationWorld: pass '{pass.DisplayName}' writes field '{request.FieldName}' " +
-                        $"with {request.Channels} channels, but format has {descriptor.ChannelCount}. " +
-                        "UAV write requires exact channel count; change the field format or the pass.",
-                        this);
-                    return false;
-                }
-            }
-            else if (descriptor.ChannelCount < request.Channels)
-            {
+                string expected = request.Access == FieldAccess.Read
+                    ? $">= {request.Channels}"
+                    : $"== {request.Channels}";
                 Debug.LogError(
-                    $"SimulationWorld: pass '{pass.DisplayName}' requires field '{request.FieldName}' " +
-                    $"with >= {request.Channels} channels, but format has {descriptor.ChannelCount}.",
+                    $"SimulationWorld: field '{request.FieldName}' used by pass '{pass.DisplayName}' " +
+                    $"with Access={request.Access} requires channel count {expected}, but descriptor " +
+                    $"format {descriptor.Format} has {descriptor.ChannelCount} channel(s)." +
+                    (isWrite
+                        ? " UAV write requires exact channel count; change the field format or the pass."
+                        : string.Empty),
                     this);
                 return false;
             }
@@ -424,11 +521,35 @@ public sealed class SimulationWorld : MonoBehaviour
         vfxBinder.Initialize(context);
         binders.Add(vfxBinder);
 
-        if (effect.ShowVelocityFieldQuad && fields.TryGet("velocity", out _))
+        if (effect.ShowVelocityFieldQuad)
         {
-            fieldQuadBinder = new FieldQuadBinder("velocity", transform);
-            fieldQuadBinder.Initialize(context);
-            binders.Add(fieldQuadBinder);
+            string quadField = null;
+            if (fields.TryGet("velocity", out _))
+            {
+                quadField = "velocity";
+            }
+            else if (fields.TryGet("agentVelocity", out _))
+            {
+                quadField = "agentVelocity";
+            }
+            else
+            {
+                foreach (KeyValuePair<string, SimField> pair in fields.Fields)
+                {
+                    if (pair.Value.Descriptor.Semantic == FieldSemantic.Velocity)
+                    {
+                        quadField = pair.Key;
+                        break;
+                    }
+                }
+            }
+
+            if (quadField != null)
+            {
+                fieldQuadBinder = new FieldQuadBinder(quadField, transform);
+                fieldQuadBinder.Initialize(context);
+                binders.Add(fieldQuadBinder);
+            }
         }
     }
 

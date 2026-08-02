@@ -71,7 +71,7 @@ internal static class AttrSets
 /// <summary>
 /// Caches single-entry FieldRequest arrays so FieldReads/FieldWrites don't allocate
 /// on every access — World reads FieldWrites every frame for ping-pong swaps.
-/// The cache is rebuilt when the serialized field name changes (inspector tweak).
+/// Rebuild uses <see cref="FieldRequest"/> value equality (not fieldName alone).
 /// </summary>
 internal static class FieldRequestSets
 {
@@ -79,13 +79,111 @@ internal static class FieldRequestSets
         ref FieldRequest[] cache,
         string fieldName,
         FieldAccess access,
-        FieldSemantic semantic,
+        FieldSemantic requiredSemantic,
         int channels)
     {
-        if (cache == null ||
-            !string.Equals(cache[0].FieldName, fieldName, StringComparison.Ordinal))
+        FieldRequest current = new FieldRequest(fieldName, access, requiredSemantic, channels);
+
+        if (cache == null || cache.Length != 1 || !cache[0].Equals(current))
         {
-            cache = new[] { new FieldRequest(fieldName, access, semantic, channels) };
+            cache = new[] { current };
+        }
+
+        return cache;
+    }
+}
+
+/// <summary>
+/// Clear of a P2G uint accum buffer. Channels = value channels (count is BufferCount-1 plumbing).
+/// </summary>
+public readonly struct FieldAccumClearRequest : IEquatable<FieldAccumClearRequest>
+{
+    public string FieldName { get; }
+    public int Channels { get; }
+
+    public FieldAccumClearRequest(string fieldName, int channels)
+    {
+        FieldName = fieldName;
+        Channels = channels;
+    }
+
+    public bool Equals(FieldAccumClearRequest other) =>
+        string.Equals(FieldName, other.FieldName, StringComparison.Ordinal) &&
+        Channels == other.Channels;
+
+    public override bool Equals(object obj) => obj is FieldAccumClearRequest other && Equals(other);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(
+            FieldName != null ? StringComparer.Ordinal.GetHashCode(FieldName) : 0,
+            Channels);
+}
+
+/// <summary>
+/// Scatter (write) / Normalize (read) request for a P2G accum buffer.
+/// Scale/Bias must match between Scatter and Normalize for the same field (Build hard-error).
+/// </summary>
+public readonly struct FieldAccumRequest : IEquatable<FieldAccumRequest>
+{
+    public string FieldName { get; }
+    public int Channels { get; }
+    public float Scale { get; }
+    public float Bias { get; }
+
+    public FieldAccumRequest(string fieldName, int channels, float scale, float bias)
+    {
+        FieldName = fieldName;
+        Channels = channels;
+        Scale = scale;
+        Bias = bias;
+    }
+
+    public bool Equals(FieldAccumRequest other) =>
+        string.Equals(FieldName, other.FieldName, StringComparison.Ordinal) &&
+        Channels == other.Channels &&
+        Scale.Equals(other.Scale) &&
+        Bias.Equals(other.Bias);
+
+    public override bool Equals(object obj) => obj is FieldAccumRequest other && Equals(other);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(
+            FieldName != null ? StringComparer.Ordinal.GetHashCode(FieldName) : 0,
+            Channels,
+            Scale,
+            Bias);
+}
+
+internal static class FieldAccumClearRequestSets
+{
+    public static FieldAccumClearRequest[] Single(
+        ref FieldAccumClearRequest[] cache,
+        string fieldName,
+        int channels)
+    {
+        FieldAccumClearRequest current = new FieldAccumClearRequest(fieldName, channels);
+        if (cache == null || cache.Length != 1 || !cache[0].Equals(current))
+        {
+            cache = new[] { current };
+        }
+
+        return cache;
+    }
+}
+
+internal static class FieldAccumRequestSets
+{
+    public static FieldAccumRequest[] Single(
+        ref FieldAccumRequest[] cache,
+        string fieldName,
+        int channels,
+        float scale,
+        float bias)
+    {
+        FieldAccumRequest current = new FieldAccumRequest(fieldName, channels, scale, bias);
+        if (cache == null || cache.Length != 1 || !cache[0].Equals(current))
+        {
+            cache = new[] { current };
         }
 
         return cache;
@@ -100,6 +198,8 @@ internal static class FieldRequestSets
 public abstract class SimPass
 {
     private static readonly FieldRequest[] EmptyFieldRequests = { };
+    private static readonly FieldAccumClearRequest[] EmptyAccumClears = { };
+    private static readonly FieldAccumRequest[] EmptyAccumRequests = { };
 
     [SerializeField] private bool enabled = true;
 
@@ -123,6 +223,15 @@ public abstract class SimPass
 
     /// <summary>Field resources this pass writes (InPlace or PingPong). Default empty.</summary>
     public virtual IReadOnlyList<FieldRequest> FieldWrites => EmptyFieldRequests;
+
+    /// <summary>P2G accum clears (ClearFieldAccumPass).</summary>
+    public virtual IReadOnlyList<FieldAccumClearRequest> FieldAccumClears => EmptyAccumClears;
+
+    /// <summary>P2G accum scatter writes (ParticleToFieldScatterPass).</summary>
+    public virtual IReadOnlyList<FieldAccumRequest> FieldAccumWrites => EmptyAccumRequests;
+
+    /// <summary>P2G accum normalize reads (NormalizeFieldAccumPass).</summary>
+    public virtual IReadOnlyList<FieldAccumRequest> FieldAccumReads => EmptyAccumRequests;
 
     /// <summary>
     /// False when the last Execute early-outed without recording GPU work (e.g. kernel

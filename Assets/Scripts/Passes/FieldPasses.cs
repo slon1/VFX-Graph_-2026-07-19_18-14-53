@@ -3,6 +3,48 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
+/// Per-frame reset of a field's Current to <see cref="FieldDescriptor.ClearValue"/>
+/// (WriteInPlace, no compute). Place before P2G / splat accumulators.
+/// </summary>
+[Serializable]
+public sealed class ClearFieldPass : SimPass
+{
+    [SerializeField] private string fieldName = "velocity";
+    [SerializeField] private FieldSemantic requiredSemantic = FieldSemantic.Velocity;
+    [SerializeField, Min(1)] private int channels = 2;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+    private SimField field;
+
+    public override string DisplayName => "Clear Field";
+    public override PassCategory Category => PassCategory.Emit;
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.None;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.None;
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, fieldName,
+            FieldAccess.WriteInPlace, requiredSemantic, channels);
+
+    public override void Initialize(SimContext context)
+    {
+        field = context.Fields.Get(fieldName);
+    }
+
+    public override void Execute(SimContext context, float deltaTime)
+    {
+        LastExecuteDispatched = false;
+        if (field == null)
+        {
+            return;
+        }
+
+        field.ClearCurrent(context.Cmd);
+        LastExecuteDispatched = true;
+    }
+}
+
+/// <summary>
 /// Additive splat of touch motion into a velocity field (WriteInPlace — no swap).
 /// </summary>
 [Serializable]
@@ -53,6 +95,12 @@ public sealed class DecayFieldPass : FieldKernelPass
 
     [NonSerialized] private FieldRequest[] fieldWritesCache;
 
+    public string FieldName
+    {
+        get => fieldName;
+        set => fieldName = value;
+    }
+
     public float DecayRate
     {
         get => decayRate;
@@ -61,7 +109,11 @@ public sealed class DecayFieldPass : FieldKernelPass
 
     public override string DisplayName => "Decay Field";
     public override PassCategory Category => PassCategory.Transport;
-    protected override string KernelName => "DecayField";
+    // FieldKernelPass binds {fieldName}Read/Write — HLSL must match (DecayField vs DecayAgentVelocity).
+    protected override string KernelName =>
+        string.Equals(fieldName, "agentVelocity", StringComparison.Ordinal)
+            ? "DecayAgentVelocity"
+            : "DecayField";
 
     public override IReadOnlyList<FieldRequest> FieldWrites =>
         FieldRequestSets.Single(

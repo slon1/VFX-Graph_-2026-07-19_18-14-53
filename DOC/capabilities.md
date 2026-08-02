@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-07-26  
+**Снимок:** 2026-08-02  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · архитектура: [`architecture.md`](architecture.md) · статус: [`status.md`](status.md)
 
@@ -28,15 +28,21 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: TouchInjectVelocity (`MaxFieldSpeed`), DecayField, SampleVelocityField.
+- Пассы: ClearField, TouchInjectVelocity, DecayField, SampleVelocityField.
 - Debug: `FieldQuadBinder` + shader `M3D/FieldDebug`.
+
+### P2G (M2b.1)
+
+- `FieldAccumBuffer` + ClearAccum / ScatterVelocity / NormalizeVelocity (average per texel).
+- Композиция: accumulate-onto-decaying vs Replace (ClearField + ClearAccum + Scatter + Normalize).
+- Демо: **AgentFieldEcho**.
 
 ### Pass library
 
 | Категория | Примеры |
 | --- | --- |
 | Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, Integrate, Bounds, … |
-| Emit / Transport | TouchInjectVelocityField, DecayField, SampleVelocityField |
+| Emit / Transport | ClearField, TouchInject, Decay, SampleVelocity, ClearAccum, Scatter, Normalize |
 
 ### Демо-пресеты
 
@@ -45,6 +51,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | TwistedCube | shape |
 | GalaxySwirl / ReactiveDust | dynamics + touch на частицах |
 | **HybridTouchField** | touch → velocity field → particles |
+| **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 
 ---
 
@@ -52,14 +59,9 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 | Тема | Сейчас |
 | --- | --- |
-| Нет Stable Fluids | advect/pressure — M2b |
+| Нет Stable Fluids | advect/pressure — позже |
 | Нет emitters | lifetime/compaction позже |
 | Нет SpatialHash | boids/sand позже |
 | Fields только 2D | R16 / RG16 |
 | Policy C для fields | нет runtime autogen |
-
----
-
-## Быстрый старт
-
-См. [`getting-started.md`](getting-started.md). Hybrid: Effect = HybridTouchField, InputRouter = GroundXZ, Play, водить мышью.
+| P2G average only | Sum/Max — позже; overflow суммы — док, не guard |

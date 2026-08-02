@@ -28,22 +28,22 @@ MonoBehaviour:
   simulationSpeed: 1
   fields: []
   passes:
-  - rid: 1403064288842612805
-  - rid: 1403064288842612806
-  - rid: 1403064288842612807
-  - rid: 1403064288842612808
-  - rid: 1403064288842612809
+  - rid: 7167045659731427397
+  - rid: 7167045659731427398
+  - rid: 7167045659731427399
+  - rid: 7167045659731427400
+  - rid: 7167045659731427401
   showVelocityFieldQuad: 0
   references:
     version: 2
     RefIds:
-    - rid: 1403064288842612805
+    - rid: 7167045659731427397
       type: {class: SpringToRestPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         stiffness: 12
         damping: 3
-    - rid: 1403064288842612806
+    - rid: 7167045659731427398
       type: {class: TurbulencePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
@@ -51,18 +51,18 @@ MonoBehaviour:
         amplitude: 0.6
         octaves: 3
         speed: 0.5
-    - rid: 1403064288842612807
+    - rid: 7167045659731427399
       type: {class: TouchForcePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         dragStrength: 0
         pushStrength: 25
-    - rid: 1403064288842612808
+    - rid: 7167045659731427400
       type: {class: DragPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         drag: 2
-    - rid: 1403064288842612809
+    - rid: 7167045659731427401
       type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1

@@ -13,6 +13,7 @@ public static class M3DDemoTools
     private const string GalaxySwirlPath = EffectsFolder + "/GalaxySwirl.asset";
     private const string ReactiveDustPath = EffectsFolder + "/ReactiveDust.asset";
     private const string HybridTouchFieldPath = EffectsFolder + "/HybridTouchField.asset";
+    private const string AgentFieldEchoPath = EffectsFolder + "/AgentFieldEcho.asset";
 
     private static readonly string[] PassLibraryPaths =
     {
@@ -20,6 +21,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/ForcePasses.compute",
         "Assets/Shaders/GPU/Passes/DynamicsPasses.compute",
         "Assets/Shaders/GPU/Passes/FieldPasses.compute",
+        "Assets/Shaders/GPU/Passes/P2GPasses.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]
@@ -72,9 +74,31 @@ public static class M3DDemoTools
                 Bounce = 0.2f,
             });
 
+        // M2b.1 P2G round-trip: particles → agentVelocity field (accumulate-onto-decaying).
+        // No ClearFieldPass: field remembers recent motion via Decay. Replace semantics =
+        // ClearFieldPass → ClearFieldAccum → Scatter → Normalize (same passes, different order).
+        FieldDescriptor agentVelocity = FieldDescriptor.CreateDefault("agentVelocity", FieldSemantic.Velocity);
+        CreateEffect(AgentFieldEchoPath, cubeResolution: 64, simulationSpeed: 1f,
+            fields: new[] { agentVelocity },
+            velocityQuad: true,
+            new CopyRestPass(),
+            new CurlNoisePass { Frequency = 0.5f, Amplitude = 1.2f },
+            new DragPass { Drag = 0.8f },
+            new SpeedLimitPass { MaxSpeed = 16f },
+            new IntegratePass(),
+            new BoxBoundsPass
+            {
+                Extents = new Vector3(5f, 0.5f, 5f),
+                Behaviour = BoundsBehaviour.Wrap,
+            },
+            new ClearFieldAccumPass(),
+            new ScatterVelocityToFieldPass(),
+            new NormalizeVelocityAccumPass(),
+            new DecayFieldPass { FieldName = "agentVelocity", DecayRate = 1.5f });
+
         AssetDatabase.SaveAssets();
         Debug.Log(
-            "M3D: created demo effects: TwistedCube, GalaxySwirl, ReactiveDust, HybridTouchField.");
+            "M3D: created demo effects: TwistedCube, GalaxySwirl, ReactiveDust, HybridTouchField, AgentFieldEcho.");
     }
 
     [MenuItem("Tools/M3D/Setup Open Scene")]
@@ -175,6 +199,36 @@ public static class M3DDemoTools
         EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
         EditorSceneManager.SaveOpenScenes();
         Debug.Log("M3D: scene assigned HybridTouchField (GroundXZ).");
+    }
+
+    [MenuItem("Tools/M3D/Assign AgentFieldEcho To Scene")]
+    public static void AssignAgentFieldEchoToScene()
+    {
+        SimulationWorld world = Object.FindAnyObjectByType<SimulationWorld>();
+        EffectAsset echo = AssetDatabase.LoadAssetAtPath<EffectAsset>(AgentFieldEchoPath);
+        if (world == null || echo == null)
+        {
+            Debug.LogError("M3D: SimulationWorld or AgentFieldEcho.asset missing — run Create Demo Effects.");
+            return;
+        }
+
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = echo;
+        SerializedProperty library = worldSo.FindProperty("passLibrary");
+        EnsurePassLibrary(library);
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        InputRouter router = world.GetComponent<InputRouter>();
+        if (router != null)
+        {
+            SerializedObject routerSo = new SerializedObject(router);
+            routerSo.FindProperty("planeMode").enumValueIndex = (int)InteractionPlaneMode.GroundXZ;
+            routerSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
+        EditorSceneManager.SaveOpenScenes();
+        Debug.Log("M3D: scene assigned AgentFieldEcho (P2G accumulate-onto-decaying).");
     }
 
     private static void EnsurePassLibrary(SerializedProperty library)

@@ -28,17 +28,17 @@ MonoBehaviour:
   simulationSpeed: 1
   fields: []
   passes:
-  - rid: 1403064288842612797
-  - rid: 1403064288842612798
+  - rid: 7167045659731427389
+  - rid: 7167045659731427390
   showVelocityFieldQuad: 0
   references:
     version: 2
     RefIds:
-    - rid: 1403064288842612797
+    - rid: 7167045659731427389
       type: {class: CopyRestPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-    - rid: 1403064288842612798
+    - rid: 7167045659731427390
       type: {class: TwistPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1

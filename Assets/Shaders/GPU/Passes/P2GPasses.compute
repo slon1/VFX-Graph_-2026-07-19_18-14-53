@@ -1,0 +1,101 @@
+// P2G: ClearUintBuffer, ScatterVelocity, NormalizeVelocityAccum.
+// Accum layout per texel: [vx, vy, count] with BufferCount = ValueChannels + 1 (count last).
+
+#pragma kernel ClearUintBuffer
+#pragma kernel ScatterVelocity
+#pragma kernel NormalizeVelocityAccum
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+#define PARTICLE_THREADS 64
+
+RWStructuredBuffer<uint> AccumBuffer;
+uint ElementCount;
+uint BufferCount;
+uint ValueChannels;
+
+StructuredBuffer<float3> position;
+StructuredBuffer<float3> velocity;
+uint ParticleCount;
+
+float ValueScale;
+float ValueBias;
+
+RWTexture2D<float2> agentVelocityWrite;
+
+float EncodeFixed(float value, float scale, float bias)
+{
+    float x = (value + bias) * scale;
+    // NaN-guard first (x == x is false for NaN), then clamp negatives from undersized Bias.
+    x = (x == x) ? max(x, 0.0) : 0.0;
+    return x;
+}
+
+[numthreads(PARTICLE_THREADS, 1, 1)]
+void ClearUintBuffer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ElementCount)
+    {
+        return;
+    }
+
+    AccumBuffer[id.x] = 0;
+}
+
+[numthreads(PARTICLE_THREADS, 1, 1)]
+void ScatterVelocity(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float2 uv = WorldToFieldUV(position[id.x]);
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
+    {
+        return;
+    }
+
+    int2 texel = int2(uv * float2(FieldResolution));
+    texel = clamp(texel, int2(0, 0), FieldResolution - 1);
+    int texelIdx = texel.y * FieldResolution.x + texel.x;
+    int baseIndex = texelIdx * (int)BufferCount;
+
+    float3 vel = velocity[id.x];
+    float2 v = float2(dot(vel, FieldAxisU), dot(vel, FieldAxisV));
+
+    uint encodedX = (uint)EncodeFixed(v.x, ValueScale, ValueBias);
+    uint encodedY = (uint)EncodeFixed(v.y, ValueScale, ValueBias);
+
+    InterlockedAdd(AccumBuffer[baseIndex + 0], encodedX);
+    InterlockedAdd(AccumBuffer[baseIndex + 1], encodedY);
+    InterlockedAdd(AccumBuffer[baseIndex + (int)ValueChannels], 1);
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void NormalizeVelocityAccum(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int texelIdx = id.y * FieldResolution.x + id.x;
+    int baseIndex = texelIdx * (int)BufferCount;
+
+    uint rawX = AccumBuffer[baseIndex + 0];
+    uint rawY = AccumBuffer[baseIndex + 1];
+    uint count = AccumBuffer[baseIndex + (int)ValueChannels];
+
+    float2 decoded = 0;
+    if (count > 0)
+    {
+        float invScale = 1.0 / max(ValueScale, 1e-5);
+        float c = (float)count;
+        decoded.x = (rawX * invScale - c * ValueBias) / c;
+        decoded.y = (rawY * invScale - c * ValueBias) / c;
+    }
+
+    agentVelocityWrite[id.xy] = agentVelocityWrite[id.xy] + decoded;
+}

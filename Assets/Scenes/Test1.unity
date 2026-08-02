@@ -532,12 +532,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40024deb4f1f31e45bc61e845729cb9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationWorld
-  effect: {fileID: 11400000, guid: a1b2c3d4e5f6789012345678abcdef01, type: 2}
+  effect: {fileID: 11400000, guid: b1c37018be2ce5149b31661ad8ea9635, type: 2}
   passLibrary:
   - {fileID: 7200000, guid: a60dea895cfede043bc140022ff70824, type: 3}
   - {fileID: 7200000, guid: d11bdaf5caad3f14aba4b9f99bf511b7, type: 3}
   - {fileID: 7200000, guid: 3bb1de14e09fe5447a59b9799c8be52c, type: 3}
   - {fileID: 7200000, guid: fde56d50209b06840a2da4ae0b4828fd, type: 3}
+  - {fileID: 7200000, guid: 95410a6f9ab44e5468121b290629b759, type: 3}
   visualEffect: {fileID: 1583680167}
   inputRouter: {fileID: 1583680169}
 --- !u!1660057539 &9223372036854775807

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
   sourceKind: 0
   cubeSource:
-    resolution: 100
+    resolution: 64
     cubeSize: 2
   meshSource:
     mesh: {fileID: 0}
@@ -38,43 +38,44 @@ MonoBehaviour:
     axisV: {x: 0, y: 0, z: 1}
     size: {x: 10, y: 10}
   passes:
-  - rid: 1403064288842612810
-  - rid: 1403064288842612811
-  - rid: 1403064288842612812
-  - rid: 1403064288842612813
-  - rid: 1403064288842612814
-  - rid: 1403064288842612815
+  - rid: 7167045659731427402
+  - rid: 7167045659731427403
+  - rid: 7167045659731427404
+  - rid: 7167045659731427405
+  - rid: 7167045659731427406
+  - rid: 7167045659731427407
   showVelocityFieldQuad: 1
   references:
     version: 2
     RefIds:
-    - rid: 1403064288842612810
+    - rid: 7167045659731427402
       type: {class: TouchInjectVelocityFieldPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         velocityFieldName: velocity
-    - rid: 1403064288842612811
+        maxFieldSpeed: 20
+    - rid: 7167045659731427403
       type: {class: DecayFieldPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         fieldName: velocity
         decayRate: 1.5
-    - rid: 1403064288842612812
+    - rid: 7167045659731427404
       type: {class: SampleVelocityFieldPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         velocityFieldName: velocity
         strength: 1
-    - rid: 1403064288842612813
+    - rid: 7167045659731427405
       type: {class: DragPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         drag: 0.5
-    - rid: 1403064288842612814
+    - rid: 7167045659731427406
       type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-    - rid: 1403064288842612815
+    - rid: 7167045659731427407
       type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1

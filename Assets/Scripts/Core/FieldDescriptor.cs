@@ -127,7 +127,7 @@ public sealed class FieldDescriptor
 /// (extra channels are legal to sample).
 /// </summary>
 [Serializable]
-public struct FieldRequest
+public struct FieldRequest : IEquatable<FieldRequest>
 {
     [SerializeField] private string fieldName;
     [SerializeField] private FieldAccess access;
@@ -150,4 +150,30 @@ public struct FieldRequest
         this.requiredSemantic = requiredSemantic;
         this.channels = channels;
     }
+
+    /// <summary>
+    /// Write UAV layouts need exact channel count; Read may sample fewer channels
+    /// from a wider format (e.g. RG from RGBA).
+    /// </summary>
+    public static bool ChannelsCompatible(FieldAccess access, int requestChannels, int descriptorChannels)
+    {
+        return access == FieldAccess.Read
+            ? descriptorChannels >= requestChannels
+            : descriptorChannels == requestChannels;
+    }
+
+    public bool Equals(FieldRequest other) =>
+        string.Equals(fieldName, other.fieldName, StringComparison.Ordinal) &&
+        access == other.access &&
+        requiredSemantic == other.requiredSemantic &&
+        channels == other.channels;
+
+    public override bool Equals(object obj) => obj is FieldRequest other && Equals(other);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(
+            fieldName != null ? StringComparer.Ordinal.GetHashCode(fieldName) : 0,
+            (int)access,
+            (int)requiredSemantic,
+            channels);
 }
