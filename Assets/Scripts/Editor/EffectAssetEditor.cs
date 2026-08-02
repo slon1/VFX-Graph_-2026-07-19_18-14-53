@@ -104,7 +104,17 @@ public sealed class EffectAssetEditor : Editor
     private void ShowAddMenu(Rect buttonRect, ReorderableList list)
     {
         GenericMenu menu = new GenericMenu();
-        List<Type> types = new List<Type>(TypeCache.GetTypesDerivedFrom<SimPass>());
+        List<Type> types = new List<Type>();
+        foreach (Type type in TypeCache.GetTypesDerivedFrom<SimPass>())
+        {
+            if (!IsAddablePassType(type))
+            {
+                continue;
+            }
+
+            types.Add(type);
+        }
+
         types.Sort((a, b) =>
         {
             SimPass sa = (SimPass)Activator.CreateInstance(a);
@@ -115,11 +125,6 @@ public sealed class EffectAssetEditor : Editor
 
         foreach (Type type in types)
         {
-            if (type.IsAbstract)
-            {
-                continue;
-            }
-
             SimPass sample = (SimPass)Activator.CreateInstance(type);
             Type captured = type;
             menu.AddItem(
@@ -129,6 +134,26 @@ public sealed class EffectAssetEditor : Editor
         }
 
         menu.DropDown(buttonRect);
+    }
+
+    /// <summary>
+    /// Only concrete runtime passes with a public default ctor.
+    /// Skips nested test stubs and Editor-assembly types (TypeCache sees both).
+    /// </summary>
+    private static bool IsAddablePassType(Type type)
+    {
+        if (type == null || type.IsAbstract || type.IsGenericTypeDefinition || type.IsNested)
+        {
+            return false;
+        }
+
+        // Production passes live with SimPass (Assembly-CSharp); EditMode stubs are Editor asm.
+        if (type.Assembly != typeof(SimPass).Assembly)
+        {
+            return false;
+        }
+
+        return type.GetConstructor(Type.EmptyTypes) != null;
     }
 
     private void AddPass(Type passType)
