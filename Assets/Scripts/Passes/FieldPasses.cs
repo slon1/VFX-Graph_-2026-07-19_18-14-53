@@ -171,3 +171,56 @@ public sealed class SampleVelocityFieldPass : ParticleKernelPass
         SetFloat(context, SampleStrengthId, strength);
     }
 }
+
+/// <summary>
+/// Hybrid G2P force: central-difference gradient of a scalar field at each particle,
+/// added as acceleration (direction * Strength * dt). Raw finite differences — does not
+/// require or assume prior Diffuse; noisy on sharp/raw fields by design.
+/// Negative Strength moves against the gradient (descent / separation).
+/// </summary>
+[Serializable]
+public sealed class SampleGradientFieldPass : ParticleKernelPass
+{
+    private static readonly int SampleStrengthId = Shader.PropertyToID("SampleStrength");
+
+    [SerializeField] private string fieldName = "density";
+    [SerializeField] private float strength = 1f;
+
+    private FieldDescriptor fieldDescriptor;
+    private int fieldReadId;
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+
+    public float Strength
+    {
+        get => strength;
+        set => strength = value;
+    }
+
+    public override string DisplayName => "Sample Gradient Field";
+    public override PassCategory Category => PassCategory.Force;
+    protected override string KernelName => "SampleGradient";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Position;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, fieldName,
+            FieldAccess.Read, FieldSemantic.Scalar, 1);
+
+    public override void Initialize(SimContext context)
+    {
+        base.Initialize(context);
+        fieldDescriptor = context.Fields.Get(fieldName).Descriptor;
+        fieldReadId = SimShaderIds.FieldRead;
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SimField field = context.Fields.Get(fieldName);
+        context.Cmd.SetComputeTextureParam(Kernel.Shader, Kernel.Index, fieldReadId, field.Current);
+        FieldShaderParams.Push(context.Cmd, Kernel.Shader, fieldDescriptor);
+        SetFloat(context, SampleStrengthId, strength);
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+    }
+}

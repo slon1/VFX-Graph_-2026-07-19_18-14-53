@@ -1,11 +1,11 @@
-# Status — M3D Framework (Milestone 2b.1.1)
+# Status — M3D Framework (Milestone 2b.2)
 
-**Дата:** 2026-08-02  
-**Итерация:** 5.2 — Generic field slot naming (`FieldRead` / `FieldWrite`)  
+**Дата:** 2026-08-04  
+**Итерация:** 5.3 — Sample Gradient Field (G2P force)  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -41,7 +41,8 @@ Simulation Resources (`ParticleSet`, `FieldSet`) ≠ services (Input, GPU, binde
 | `ClearFieldPass`               | WriteInPlace             | Current → `ClearValue`                   |
 | `TouchInjectVelocityFieldPass` | WriteInPlace             | тач → splat; `MaxFieldSpeed`             |
 | `DecayFieldPass`               | WritePingPong            | `* exp(-rate·dt)`                        |
-| `SampleVelocityFieldPass`      | Read + particle Velocity | G2P hybrid                               |
+| `SampleVelocityFieldPass`      | Read + particle Velocity | G2P hybrid transport                     |
+| `SampleGradientFieldPass`      | Read Scalar + Velocity   | G2P force ∇ → `* Strength * dt`          |
 
 ---
 
@@ -54,23 +55,15 @@ Simulation Resources (`ParticleSet`, `FieldSet`) ≠ services (Input, GPU, binde
 | `ScatterVelocityToFieldPass` | InterlockedAdd + plane projection |
 | `NormalizeVelocityAccumPass` | average decode → field Add |
 
-Build: Channels↔descriptor; Scale/Bias Scatter↔Normalize; SM **Normalize→Unclear** (enabled-only).  
-Encode: NaN-guard, затем `max(0,·)`. Нет runtime overflow-guard на сумму.
-
-Демо **AgentFieldEcho**: CurlNoise→Drag→SpeedLimit→Integrate→ClearAccum→Scatter→Normalize→Decay (accumulate-onto-decaying; без ClearFieldPass). Replace = добавить ClearFieldPass перед ClearAccum.
-
-Меню: `Create Demo Effects`, `Assign AgentFieldEcho To Scene`.
+Демо **AgentFieldEcho**. ADR-002 / M2b.1.1 slots (ADR-003).
 
 ---
 
-## Milestone 2b.1.1 — Generic field slots (готово)
+## Milestone 2b.2 — Gradient sample (готово)
 
-Фиксированные HLSL-слоты `FieldRead` / `FieldWrite` (`SimShaderIds`) вместо `{fieldName}Read/Write`.  
-`DecayAgentVelocity` удалён; `DecayField` обслуживает любое velocity-поле.  
-`FieldKernelPass`: guard `unique(FieldName)==1` до `FindKernel`.  
-ADR-003 реализован.
-
-Тесты: `FieldAccumPassValidatorTests`, `FieldRequestTests`, `FieldSlotNamingTests`.
+`SampleGradientFieldPass` + `GradientPasses.compute` (`Texture2D<float> FieldRead`).  
+Central differences; `FieldUvGradientToWorld`; Force integration; Scalar/`density`.  
+ADR-004. Тест: `SampleGradientFieldPassTests`.
 
 ---
 
@@ -80,14 +73,14 @@ ADR-003 реализован.
 Assets/Scripts/Core/       FieldAccumBuffer.cs, FieldSet.cs, FieldDescriptor.cs
 Assets/Scripts/Runtime/    SimPass (+FieldAccum*), FieldAccumPassValidator, SimulationWorld
 Assets/Scripts/Passes/     FieldPasses.cs, P2GPasses.cs
-Assets/Shaders/GPU/Passes/ FieldPasses.compute, P2GPasses.compute
+Assets/Shaders/GPU/Passes/ FieldPasses.compute, P2GPasses.compute, GradientPasses.compute
 Assets/Shaders/GPU/Includes/ FieldSampling.hlsl
 Assets/Effects/            HybridTouchField.asset, AgentFieldEcho.asset
-Assets/Tests/Editor/       FieldRequestTests.cs, FieldAccumPassValidatorTests.cs, FieldSlotNamingTests.cs
+Assets/Tests/Editor/       FieldRequestTests, FieldAccumPassValidatorTests, FieldSlotNamingTests, SampleGradientFieldPassTests
 ```
 
 ---
 
 ## Вне скоупа (далее)
 
-M2b.2 Gradient sample · M2b.3 Diffuse · M2c multi-field-per-kernel · AgentFieldDensity (Replace) · Stable Fluids · spatial hash · AggregationMode enum · runtime overflow guard
+M2b.3 Diffuse · M2c multi-field-per-kernel · AgentFieldDensity (Replace) · Stable Fluids · spatial hash · AggregationMode enum · runtime overflow guard

@@ -1,7 +1,7 @@
 # Getting Started — для новых программистов
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
-Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 
@@ -19,7 +19,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation (inject/decay/sample), **P2G scatter** (AgentFieldEcho), hybrid touch demo, тач/мышь.  
+Есть: particle passes, field foundation (inject/decay/sample), **P2G scatter**, **G2P gradient force**, hybrid touch demo, тач/мышь.  
 Пока нет: Stable Fluids, spatial hash / boids, particle emitters с lifetime.
 
 ---
@@ -89,7 +89,9 @@ Per-frame обнуление **текстуры** поля: `ClearFieldPass` —
 5. Build проверяет Channels↔descriptor, Scale/Bias, state machine (см. `FieldAccumPassValidator`).
 6. Sampling/plane: `FieldSampling.hlsl` + `FieldShaderParams.Push`.
 
-Hybrid (field + particles): как `SampleVelocityFieldPass` — `ParticleKernelPass` + `FieldReads`.
+Hybrid (field + particles):
+- значение: `SampleVelocityFieldPass` — Transport, `ParticleKernelPass` + `FieldReads`;
+- градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`.
 
 Добавить `.compute` в `SimulationWorld.Pass Library`, если новый файл.
 
@@ -103,5 +105,5 @@ Hybrid (field + particles): как `SampleVelocityFieldPass` — `ParticleKernel
 | P2G SM / Channels validation | `Runtime/FieldAccumPassValidator.cs` |
 | Field descriptor / requests | `Core/FieldDescriptor.cs`, `Core/FieldSet.cs`, `Core/FieldAccumBuffer.cs` |
 | Контракт пасса | `Runtime/SimPass.cs` |
-| Field / P2G kernels | `Passes/FieldPasses.cs`, `Passes/P2GPasses.cs`, `Shaders/GPU/Passes/` |
+| Field / P2G / Gradient kernels | `Passes/FieldPasses.cs`, `Passes/P2GPasses.cs`, `Shaders/GPU/Passes/` |
 | Binders | `VfxParticleBinder.cs`, `FieldQuadBinder.cs` |

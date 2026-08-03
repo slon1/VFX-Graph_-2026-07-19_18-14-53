@@ -1,4 +1,4 @@
-// Shared field plane sampling — used by FieldPasses and P2GPasses.
+// Shared field plane sampling — used by FieldPasses, P2GPasses, GradientPasses.
 
 #ifndef M3D_FIELD_SAMPLING_HLSL
 #define M3D_FIELD_SAMPLING_HLSL
@@ -22,6 +22,12 @@ float3 FieldUVToWorldVelocity(float2 fieldVel)
 {
     // Field stores velocity in plane axes (RG = U/V components).
     return FieldAxisU * fieldVel.x + FieldAxisV * fieldVel.y;
+}
+
+// UV-space gradient → world direction along field plane axes (no /FieldSize).
+float3 FieldUvGradientToWorld(float2 gradUv)
+{
+    return FieldAxisU * gradUv.x + FieldAxisV * gradUv.y;
 }
 
 #endif

@@ -28,7 +28,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: ClearField, TouchInjectVelocity, DecayField, SampleVelocityField.
+- Пассы: ClearField, TouchInjectVelocity, DecayField, SampleVelocityField, **SampleGradientField**.
 - Texture slots: `FieldRead` / `FieldWrite` (не `{fieldName}…`; ADR-003 / M2b.1.1).
 - Debug: `FieldQuadBinder` + shader `M3D/FieldDebug`.
 
@@ -39,11 +39,16 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - Демо: **AgentFieldEcho**.
 - Normalize пишет в `FieldWrite` (generic slot).
 
+### G2P gradient (M2b.2)
+
+- `SampleGradientFieldPass` — Force: `velocity += ∇φ * Strength * dt` (Scalar field, ADR-004).
+- Kernel в `GradientPasses.compute` (`Texture2D<float> FieldRead`).
+
 ### Pass library
 
 | Категория | Примеры |
 | --- | --- |
-| Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, Integrate, Bounds, … |
+| Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, Integrate, Bounds, … |
 | Emit / Transport | ClearField, TouchInject, Decay, SampleVelocity, ClearAccum, Scatter, Normalize |
 
 ### Демо-пресеты
