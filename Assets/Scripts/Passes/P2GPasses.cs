@@ -279,3 +279,46 @@ public sealed class NormalizeVelocityAccumPass : NormalizeFieldAccumPass
 
     public override string DisplayName => "Normalize Velocity Accum";
 }
+
+/// <summary>
+/// Scatters a constant presence contribution (1.0) per particle into a scalar density accum.
+/// NormalizeDensityAccumPass decodes as a <b>sum</b> (∝ count), not ADR-002 velocity average.
+/// Pair with ClearField(density) each frame for Replace (no Scalar Decay in M2b.2.1).
+/// </summary>
+[Serializable]
+public sealed class ScatterDensityToFieldPass : ParticleToFieldScatterPass
+{
+    [SerializeField] private string targetFieldName = "density";
+    [SerializeField] private float valueScale = 4096f;
+    [SerializeField] private float valueBias = 0f;
+
+    protected override string KernelName => "ScatterDensity";
+    protected override string TargetFieldName => targetFieldName;
+    protected override int Channels => 1;
+    protected override float ValueScale => valueScale;
+    protected override float ValueBias => valueBias;
+
+    public override string DisplayName => "Scatter Density To Field";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Position;
+}
+
+/// <summary>
+/// Decodes density accum as sum per texel (raw/Scale − count·Bias, no /count) and adds into
+/// the Scalar field. Requires ClearField on the same field each frame for Replace semantics.
+/// </summary>
+[Serializable]
+public sealed class NormalizeDensityAccumPass : NormalizeFieldAccumPass
+{
+    [SerializeField] private string fieldName = "density";
+    [SerializeField] private float valueScale = 4096f;
+    [SerializeField] private float valueBias = 0f;
+
+    protected override string KernelName => "NormalizeDensityAccum";
+    protected override string FieldName => fieldName;
+    protected override int Channels => 1;
+    protected override float ValueScale => valueScale;
+    protected override float ValueBias => valueBias;
+    protected override FieldSemantic RequiredSemantic => FieldSemantic.Scalar;
+
+    public override string DisplayName => "Normalize Density Accum";
+}

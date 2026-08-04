@@ -1,0 +1,78 @@
+// P2G density: ScatterDensity, NormalizeDensityAccum (sum decode, not average).
+// Accum layout per texel: [value, count] with BufferCount = ValueChannels(1) + 1.
+// Field texture slot: FieldWrite = RWTexture2D<float> (separate from P2GPasses float2).
+
+#pragma kernel ScatterDensity
+#pragma kernel NormalizeDensityAccum
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+#define PARTICLE_THREADS 64
+
+RWStructuredBuffer<uint> AccumBuffer;
+uint BufferCount;
+uint ValueChannels;
+
+StructuredBuffer<float3> position;
+uint ParticleCount;
+
+float ValueScale;
+float ValueBias;
+
+RWTexture2D<float> FieldWrite;
+
+float EncodeFixed(float value, float scale, float bias)
+{
+    float x = (value + bias) * scale;
+    x = (x == x) ? max(x, 0.0) : 0.0;
+    return x;
+}
+
+[numthreads(PARTICLE_THREADS, 1, 1)]
+void ScatterDensity(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float2 uv = WorldToFieldUV(position[id.x]);
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
+    {
+        return;
+    }
+
+    int2 texel = int2(uv * float2(FieldResolution));
+    texel = clamp(texel, int2(0, 0), FieldResolution - 1);
+    int texelIdx = texel.y * FieldResolution.x + texel.x;
+    int baseIndex = texelIdx * (int)BufferCount;
+
+    uint encoded = (uint)EncodeFixed(1.0, ValueScale, ValueBias);
+    InterlockedAdd(AccumBuffer[baseIndex + 0], encoded);
+    InterlockedAdd(AccumBuffer[baseIndex + (int)ValueChannels], 1);
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void NormalizeDensityAccum(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int texelIdx = id.y * FieldResolution.x + id.x;
+    int baseIndex = texelIdx * (int)BufferCount;
+
+    uint raw = AccumBuffer[baseIndex + 0];
+    uint count = AccumBuffer[baseIndex + (int)ValueChannels];
+
+    if (count > 0)
+    {
+        float invScale = 1.0 / max(ValueScale, 1e-5);
+        float c = (float)count;
+        // Sum (not average): cancels Bias for constant contribution 1.0; ∝ particle count.
+        float decoded = raw * invScale - c * ValueBias;
+        FieldWrite[id.xy] = FieldWrite[id.xy] + decoded;
+    }
+}

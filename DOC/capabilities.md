@@ -39,6 +39,11 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - Демо: **AgentFieldEcho**.
 - Normalize пишет в `FieldWrite` (generic slot).
 
+### Density P2G (M2b.2.1)
+
+- `ScatterDensity` / `NormalizeDensityAccum` — sum (∝ count), Scalar field; `DensityPasses.compute`.
+- Replace: **ClearField(density)** каждый кадр (Scalar Decay → M2b.3).
+
 ### G2P gradient (M2b.2)
 
 - `SampleGradientFieldPass` — Force: `velocity += ∇φ * Strength * dt` (Scalar field, ADR-004).
@@ -49,7 +54,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | Категория | Примеры |
 | --- | --- |
 | Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, Integrate, Bounds, … |
-| Emit / Transport | ClearField, TouchInject, Decay, SampleVelocity, ClearAccum, Scatter, Normalize |
+| Emit / Transport | ClearField, TouchInject, Decay, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
 

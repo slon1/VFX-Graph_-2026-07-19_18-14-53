@@ -1,7 +1,7 @@
 # Getting Started — для новых программистов
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
-Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 
@@ -19,7 +19,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation (inject/decay/sample), **P2G scatter**, **G2P gradient force**, hybrid touch demo, тач/мышь.  
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient force**, hybrid touch demo, тач/мышь.  
 Пока нет: Stable Fluids, spatial hash / boids, particle emitters с lifetime.
 
 ---
@@ -82,16 +82,18 @@ Per-frame обнуление **текстуры** поля: `ClearFieldPass` —
 
 ### P2G (частица → поле)
 
-1. Kernels в `Assets/Shaders/GPU/Passes/P2GPasses.compute`.
-2. `: ParticleToFieldScatterPass` / `: NormalizeFieldAccumPass` (+ `ClearFieldAccumPass`).
-3. Списки: `FieldAccumClears` / `FieldAccumWrites` / `FieldAccumReads` (не путать с текстурными FieldWrites).
-4. `Channels` = value-каналы; count всегда последний в accum (`BufferCount = Channels+1`).
-5. Build проверяет Channels↔descriptor, Scale/Bias, state machine (см. `FieldAccumPassValidator`).
-6. Sampling/plane: `FieldSampling.hlsl` + `FieldShaderParams.Push`.
+1. Velocity: kernels в `P2GPasses.compute` (average decode).
+2. Density: kernels в `DensityPasses.compute` (sum decode, ∝ count); **ClearField** на density каждый кадр для Replace.
+3. `: ParticleToFieldScatterPass` / `: NormalizeFieldAccumPass` (+ `ClearFieldAccumPass`).
+4. Списки: `FieldAccumClears` / `FieldAccumWrites` / `FieldAccumReads` (не путать с текстурными FieldWrites).
+5. `Channels` = value-каналы; count всегда последний в accum (`BufferCount = Channels+1`).
+6. Build проверяет Channels↔descriptor, Scale/Bias, state machine (см. `FieldAccumPassValidator`).
+7. Sampling/plane: `FieldSampling.hlsl` + `FieldShaderParams.Push`.
 
 Hybrid (field + particles):
 - значение: `SampleVelocityFieldPass` — Transport, `ParticleKernelPass` + `FieldReads`;
-- градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`.
+- градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`;
+- cohesion-скелет: ClearField(density) → ScatterDensity → NormalizeDensity → SampleGradient.
 
 Добавить `.compute` в `SimulationWorld.Pass Library`, если новый файл.
 
