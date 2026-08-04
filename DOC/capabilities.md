@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-08-02  
+**Снимок:** 2026-08-04  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
@@ -28,7 +28,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: ClearField, TouchInjectVelocity, DecayField, SampleVelocityField, **SampleGradientField**.
+- Пассы: ClearField, TouchInjectVelocity, DecayField, SampleVelocityField, **SampleGradientField**, **DiffuseField**.
 - Texture slots: `FieldRead` / `FieldWrite` (не `{fieldName}…`; ADR-003 / M2b.1.1).
 - Debug: `FieldQuadBinder` + shader `M3D/FieldDebug`.
 
@@ -42,19 +42,24 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 ### Density P2G (M2b.2.1)
 
 - `ScatterDensity` / `NormalizeDensityAccum` — sum (∝ count), Scalar field; `DensityPasses.compute`.
-- Replace: **ClearField(density)** каждый кадр (Scalar Decay → M2b.3).
+- Replace: **ClearField(density)** каждый кадр (Scalar Decay → M2b.3.1).
 
 ### G2P gradient (M2b.2)
 
 - `SampleGradientFieldPass` — Force: `velocity += ∇φ * Strength * dt` (Scalar field, ADR-004).
 - Kernel в `GradientPasses.compute` (`Texture2D<float> FieldRead`).
 
+### Diffuse (M2b.3)
+
+- `DiffuseFieldPass` — 5-point explicit Laplacian, WritePingPong, Scalar; `DiffusePasses.compute`.
+- Рекомендация: `NormalizeDensity → Diffuse (несколько мягких) → SampleGradient`. ADR-006.
+
 ### Pass library
 
 | Категория | Примеры |
 | --- | --- |
 | Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, Integrate, Bounds, … |
-| Emit / Transport | ClearField, TouchInject, Decay, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
+| Emit / Transport | ClearField, TouchInject, Decay, **Diffuse**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
 

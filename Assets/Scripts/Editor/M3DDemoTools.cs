@@ -24,6 +24,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/P2GPasses.compute",
         "Assets/Shaders/GPU/Passes/GradientPasses.compute",
         "Assets/Shaders/GPU/Passes/DensityPasses.compute",
+        "Assets/Shaders/GPU/Passes/DiffusePasses.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]

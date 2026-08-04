@@ -35,6 +35,8 @@ internal static class SimShaderIds
     /// <summary>Fixed texture slots for single-field kernels (not {fieldName}Read/Write).</summary>
     public static readonly int FieldRead = Shader.PropertyToID("FieldRead");
     public static readonly int FieldWrite = Shader.PropertyToID("FieldWrite");
+
+    public static readonly int DiffusionRate = Shader.PropertyToID("DiffusionRate");
 }
 
 /// <summary>

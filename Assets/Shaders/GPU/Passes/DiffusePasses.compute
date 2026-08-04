@@ -1,0 +1,41 @@
+// Scalar field diffusion: 5-point explicit Laplacian (WritePingPong).
+// Texture slots: FieldRead (SRV) / FieldWrite (UAV) as Texture2D<float>.
+// Neighbors via Load + clamp to [0, Resolution-1] (Neumann); OOB Load would return 0.
+
+#pragma kernel DiffuseField
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+
+Texture2D<float> FieldRead;
+RWTexture2D<float> FieldWrite;
+
+float DeltaTime;
+float DiffusionRate;
+
+float LoadClamped(int2 q)
+{
+    int2 maxP = FieldResolution - 1;
+    q = clamp(q, int2(0, 0), maxP);
+    return FieldRead.Load(int3(q, 0));
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void DiffuseField(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float c = LoadClamped(p);
+    float n = LoadClamped(p + int2(0, 1));
+    float s = LoadClamped(p + int2(0, -1));
+    float e = LoadClamped(p + int2(1, 0));
+    float w = LoadClamped(p + int2(-1, 0));
+
+    float laplacian = n + s + e + w - 4.0 * c;
+    FieldWrite[p] = c + DiffusionRate * DeltaTime * laplacian;
+}

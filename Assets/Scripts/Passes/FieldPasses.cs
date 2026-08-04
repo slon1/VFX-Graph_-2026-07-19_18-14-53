@@ -123,6 +123,48 @@ public sealed class DecayFieldPass : FieldKernelPass
 }
 
 /// <summary>
+/// Explicit 5-point Laplacian diffusion on a scalar field (WritePingPong).
+/// UV-index scheme: new = C + DiffusionRate * DeltaTime * (N+S+E+W-4C).
+/// Empirically keep DiffusionRate * DeltaTime ≲ 0.2–0.25 or checkerboard instability appears.
+/// Scalar Decay is out of scope (M2b.3.1). Prefer several mild Diffuse passes over one huge rate.
+/// </summary>
+[Serializable]
+public sealed class DiffuseFieldPass : FieldKernelPass
+{
+    [SerializeField] private string fieldName = "density";
+    [SerializeField, Min(0f)] private float diffusionRate = 0.15f;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string FieldName
+    {
+        get => fieldName;
+        set => fieldName = value;
+    }
+
+    public float DiffusionRate
+    {
+        get => diffusionRate;
+        set => diffusionRate = value;
+    }
+
+    public override string DisplayName => "Diffuse Field";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "DiffuseField";
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, fieldName,
+            FieldAccess.WritePingPong, FieldSemantic.Scalar, 1);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+        SetFloat(context, SimShaderIds.DiffusionRate, diffusionRate);
+    }
+}
+
+/// <summary>
 /// Hybrid G2P: bilinear-sample velocity field at each particle, add to particle velocity.
 /// Declares both FieldReads and particle Writes — stress-tests the dual request lists.
 /// </summary>

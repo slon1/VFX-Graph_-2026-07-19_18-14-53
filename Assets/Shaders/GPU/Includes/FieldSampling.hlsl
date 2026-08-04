@@ -1,4 +1,4 @@
-// Shared field plane sampling — used by FieldPasses, P2GPasses, GradientPasses.
+// Shared field plane sampling — used by FieldPasses, P2GPasses, GradientPasses, DiffusePasses.
 
 #ifndef M3D_FIELD_SAMPLING_HLSL
 #define M3D_FIELD_SAMPLING_HLSL

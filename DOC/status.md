@@ -1,11 +1,11 @@
-# Status — M3D Framework (Milestone 2b.2.1)
+# Status — M3D Framework (Milestone 2b.3)
 
 **Дата:** 2026-08-04  
-**Итерация:** 5.4 — Density P2G scatter (sum)  
+**Итерация:** 5.5 — Diffuse Field (5-point Laplacian)  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -47,7 +47,15 @@ FieldSet / FieldAccess / ClearField / TouchInject / Decay / SampleVelocity. Poli
 Sum decode (∝ count), Scalar/`density`. Replace: ClearField каждый кадр. ADR-005.  
 Тест: `ScatterDensityFieldPassTests`.
 
-Cohesion-локально: ClearField(density) → ClearAccum → ScatterDensity → NormalizeDensity → SampleGradient → …
+Cohesion-локально: ClearField(density) → ClearAccum → ScatterDensity → NormalizeDensity → Diffuse×mild → SampleGradient → …
+
+---
+
+## Milestone 2b.3 — Diffuse Field (готово)
+
+`DiffuseFieldPass` + `DiffusePasses.compute`. Explicit 5-point Laplacian, WritePingPong, Scalar.  
+CFL: `rate·dt ≲ 0.2–0.25`. ADR-006. Тест: `DiffuseFieldPassTests`.  
+Scalar Decay → **M2b.3.1**.
 
 ---
 
@@ -55,12 +63,12 @@ Cohesion-локально: ClearField(density) → ClearAccum → ScatterDensity
 
 ```
 Assets/Scripts/Passes/     FieldPasses.cs, P2GPasses.cs
-Assets/Shaders/GPU/Passes/ FieldPasses, P2GPasses, GradientPasses, DensityPasses
-Assets/Tests/Editor/       … SampleGradientFieldPassTests, ScatterDensityFieldPassTests
+Assets/Shaders/GPU/Passes/ FieldPasses, P2GPasses, GradientPasses, DensityPasses, DiffusePasses
+Assets/Tests/Editor/       … SampleGradientFieldPassTests, ScatterDensityFieldPassTests, DiffuseFieldPassTests
 ```
 
 ---
 
 ## Вне скоупа (далее)
 
-M2b.3 Diffuse + Scalar Decay · M2c multi-field · Stable Fluids · spatial hash · AggregationMode enum
+M2b.3.1 Scalar Decay · M2c multi-field · Stable Fluids · spatial hash · AggregationMode enum
