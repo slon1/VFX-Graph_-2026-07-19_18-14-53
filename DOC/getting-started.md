@@ -95,7 +95,8 @@ Hybrid (field + particles):
 - значение: `SampleVelocityFieldPass` — Transport, `ParticleKernelPass` + `FieldReads`;
 - градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`;
 - сглаживание: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
-- cohesion-скелет: ClearField(density) → ScatterDensity → NormalizeDensity → **Diffuse×mild** → SampleGradient.
+- cohesion-скелет: ClearField(density) → ScatterDensity → NormalizeDensity → **несколько мягких Diffuse подряд в кадре** → SampleGradient;
+- дальнодействие: вялое притяжение далёких кластеров — ожидаемо (скорость сходимости Diffuse); лечится числом Diffuse за кадр, грубее resolution или rate≲0.25 — не «просто больше кадров». См. [`status.md`](status.md).
 
 Добавить `.compute` в `SimulationWorld.Pass Library`, если новый файл.
 

@@ -59,7 +59,7 @@ public sealed class FieldQuadBinder : IRenderBinder
         }
 
         quadObject.transform.position = descriptor.Origin;
-        quadObject.transform.rotation = Quaternion.LookRotation(n, descriptor.AxisV.normalized);
+        //quadObject.transform.rotation = Quaternion.LookRotation(n, descriptor.AxisV.normalized);
         quadObject.transform.localScale = new Vector3(descriptor.Size.x, descriptor.Size.y, 1f);
 
         MeshRenderer renderer = quadObject.GetComponent<MeshRenderer>();

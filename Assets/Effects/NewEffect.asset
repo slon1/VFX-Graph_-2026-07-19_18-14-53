@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c53c179a8210264ea3a817857fc19ed, type: 3}
   m_Name: NewEffect
   m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
-  sourceKind: 2
+  sourceKind: 0
   cubeSource:
     resolution: 100
     cubeSize: 2
@@ -26,30 +26,47 @@ MonoBehaviour:
     targetWidth: 2
     heightScale: 1
   simulationSpeed: 1
+  fields:
+  - id:
+      name: agentVelocity
+      semantic: 0
+    format: 46
+    resolution: {x: 256, y: 256}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 10, y: 10}
   passes:
-  - rid: 1403064263376634139
-  - rid: 1403064263376634140
-  - rid: 1403064263376634141
-  - rid: 1403064263376634142
+  - rid: 7167045665592967255
+  - rid: 7167045665592967256
+  - rid: 7167045665592967257
+  - rid: 7167045665592967258
+  showVelocityFieldQuad: 0
   references:
     version: 2
     RefIds:
-    - rid: 1403064263376634139
-      type: {class: SpringToRestPass, ns: , asm: Assembly-CSharp}
+    - rid: 7167045665592967255
+      type: {class: CurlNoisePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-        stiffness: 10
-        damping: 2
-    - rid: 1403064263376634140
-      type: {class: CopyRestPass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1
-    - rid: 1403064263376634141
+        frequency: 0.8
+        amplitude: 2
+        speed: 0.3
+    - rid: 7167045665592967256
       type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-    - rid: 1403064263376634142
+    - rid: 7167045665592967257
       type: {class: SpeedLimitPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-        maxSpeed: 10
+        maxSpeed: 0.27
+    - rid: 7167045665592967258
+      type: {class: SphereColliderPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        center: {x: 0, y: 0, z: 0}
+        radius: 1
+        bounce: 0.5
+        friction: 0.1

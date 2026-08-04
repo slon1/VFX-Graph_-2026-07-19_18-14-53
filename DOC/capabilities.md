@@ -52,7 +52,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 ### Diffuse (M2b.3)
 
 - `DiffuseFieldPass` — 5-point explicit Laplacian, WritePingPong, Scalar; `DiffusePasses.compute`.
-- Рекомендация: `NormalizeDensity → Diffuse (несколько мягких) → SampleGradient`. ADR-006.
+- Рекомендация: `NormalizeDensity → несколько мягких Diffuse подряд в кадре → SampleGradient` (не «больше кадров ожидания»). Дальнодействие = rate × число Diffuse/кадр × размер текселя; вялость между далёкими кластерами — ожидаемая сходимость, не баг. ADR-006 / [`status.md`](status.md).
 
 ### Pass library
 

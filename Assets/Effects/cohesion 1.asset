@@ -31,7 +31,7 @@ MonoBehaviour:
       name: density
       semantic: 2
     format: 45
-    resolution: {x: 256, y: 256}
+    resolution: {x: 64, y: 64}
     clearValue: {r: 0, g: 0, b: 0, a: 0}
     origin: {x: 0, y: 0, z: 0}
     axisU: {x: 1, y: 0, z: 0}
@@ -43,9 +43,12 @@ MonoBehaviour:
   - rid: 7167045689404555548
   - rid: 7167045689404555549
   - rid: 7167045689404555550
+  - rid: 7167045699452010557
   - rid: 7167045689404555551
   - rid: 7167045689404555552
-  showVelocityFieldQuad: 1
+  - rid: 7167045699452010558
+  - rid: 7167045699452010559
+  showVelocityFieldQuad: 0
   references:
     version: 2
     RefIds:
@@ -91,3 +94,23 @@ MonoBehaviour:
       type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
+    - rid: 7167045699452010557
+      type: {class: CurlNoisePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        frequency: 0.3
+        amplitude: 0.3
+        speed: 0.3
+    - rid: 7167045699452010558
+      type: {class: SpeedLimitPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        maxSpeed: 6
+    - rid: 7167045699452010559
+      type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        center: {x: 0, y: 0, z: 0}
+        extents: {x: 6.78, y: 8, z: 8}
+        behaviour: 1
+        bounce: 0.518
