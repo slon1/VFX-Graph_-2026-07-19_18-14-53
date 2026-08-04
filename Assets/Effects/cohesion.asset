@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c53c179a8210264ea3a817857fc19ed, type: 3}
+  m_Name: cohesion
+  m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
+  sourceKind: 0
+  cubeSource:
+    resolution: 100
+    cubeSize: 4
+  meshSource:
+    mesh: {fileID: 0}
+    centerPivot: 1
+    normalizeScale: 1
+    targetSize: 2
+  bitmapSource:
+    texture: {fileID: 2800000, guid: 7fa30cea7f23c9c4aad6d028cdc72ae9, type: 3}
+    targetWidth: 2
+    heightScale: 1
+  simulationSpeed: 1
+  fields:
+  - id:
+      name: density
+      semantic: 2
+    format: 45
+    resolution: {x: 256, y: 256}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 1, z: 0}
+    size: {x: 6, y: 6}
+  passes:
+  - rid: 7167045689404555546
+  - rid: 7167045689404555547
+  - rid: 7167045689404555548
+  - rid: 7167045689404555549
+  - rid: 7167045689404555550
+  - rid: 7167045689404555551
+  - rid: 7167045689404555552
+  showVelocityFieldQuad: 1
+  references:
+    version: 2
+    RefIds:
+    - rid: 7167045689404555546
+      type: {class: ClearFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: density
+        requiredSemantic: 2
+        channels: 1
+    - rid: 7167045689404555547
+      type: {class: ClearFieldAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: density
+        channels: 1
+    - rid: 7167045689404555548
+      type: {class: ScatterDensityToFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        targetFieldName: density
+        valueScale: 4096
+        valueBias: 0
+    - rid: 7167045689404555549
+      type: {class: NormalizeDensityAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: density
+        valueScale: 4096
+        valueBias: 0
+    - rid: 7167045689404555550
+      type: {class: SampleGradientFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: density
+        strength: 1.73
+    - rid: 7167045689404555551
+      type: {class: DragPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 0
+        drag: 1
+    - rid: 7167045689404555552
+      type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1

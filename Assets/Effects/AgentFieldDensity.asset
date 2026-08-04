@@ -1,0 +1,114 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c53c179a8210264ea3a817857fc19ed, type: 3}
+  m_Name: AgentFieldDensity
+  m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
+  sourceKind: 0
+  cubeSource:
+    resolution: 100
+    cubeSize: 2
+  meshSource:
+    mesh: {fileID: 0}
+    centerPivot: 1
+    normalizeScale: 1
+    targetSize: 2
+  bitmapSource:
+    texture: {fileID: 2800000, guid: 7fa30cea7f23c9c4aad6d028cdc72ae9, type: 3}
+    targetWidth: 2
+    heightScale: 1
+  simulationSpeed: 1
+  fields:
+  - id:
+      name: agentVelocity
+      semantic: 0
+    format: 46
+    resolution: {x: 512, y: 512}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 10, y: 10}
+  passes:
+  - rid: 7167045665592967263
+  - rid: 7167045665592967264
+  - rid: 7167045665592967265
+  - rid: 7167045665592967266
+  - rid: 7167045665592967267
+  - rid: 7167045665592967268
+  - rid: 7167045665592967259
+  - rid: 7167045665592967260
+  - rid: 7167045665592967261
+  - rid: 7167045665592967262
+  showVelocityFieldQuad: 1
+  references:
+    version: 2
+    RefIds:
+    - rid: 7167045665592967259
+      type: {class: ClearFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: agentVelocity
+        requiredSemantic: 0
+        channels: 2
+    - rid: 7167045665592967260
+      type: {class: ClearFieldAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: agentVelocity
+        channels: 2
+    - rid: 7167045665592967261
+      type: {class: ScatterVelocityToFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        targetFieldName: agentVelocity
+        valueScale: 4096
+        valueBias: 32
+    - rid: 7167045665592967262
+      type: {class: NormalizeVelocityAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: agentVelocity
+        valueScale: 4096
+        valueBias: 32
+    - rid: 7167045665592967263
+      type: {class: CopyRestPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 0
+    - rid: 7167045665592967264
+      type: {class: CurlNoisePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        frequency: 0.8
+        amplitude: 2
+        speed: 0.3
+    - rid: 7167045665592967265
+      type: {class: DragPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        drag: 1
+    - rid: 7167045665592967266
+      type: {class: SpeedLimitPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        maxSpeed: 10
+    - rid: 7167045665592967267
+      type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+    - rid: 7167045665592967268
+      type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        center: {x: 0, y: 0, z: 0}
+        extents: {x: 2, y: 2, z: 2}
+        behaviour: 0
+        bounce: 0.6
