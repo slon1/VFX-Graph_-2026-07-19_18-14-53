@@ -48,7 +48,12 @@ MonoBehaviour:
   - rid: 7167045659731427415
   - rid: 7167045659731427416
   - rid: 7167045659731427417
-  showVelocityFieldQuad: 1
+  debugFieldQuads:
+  - fieldName: agentVelocity
+    mode: 0
+    colorScale: 2
+  showVelocityFieldQuad: 0
+  showDensityFieldQuad: 0
   references:
     version: 2
     RefIds:

@@ -1,10 +1,10 @@
 # ADR-001: Field resources (Milestone 2a) — архитектурные решения и их причины
 
-**Статус:** принято (реализовано)
-**Дата:** 2026-07-26, дополнено 2026-07-28 / 2026-08-02
-**Область:** FieldSet / FieldDescriptor / FieldAccess / SimPass / SimulationWorld
+**Статус:** принято (реализовано)  
+**Дата:** 2026-07-26, дополнено 2026-07-28 / 2026-08-02 / 2026-08-04  
+**Область:** FieldSet / FieldDescriptor / FieldAccess / SimPass / SimulationWorld  
 **Связанные документы:** `architecture.md`, `status.md`,
-`last/ADR-002-Generic-P2G-Scatter.md`, `last/ADR-003-Generic-Field-Slot-Naming.md`
+`last/ADR-002` … `ADR-007`, `last/roadmap_m2a.md`
 
 ---
 
@@ -118,7 +118,7 @@ Read-поля могут иметь другое разрешение — чте
   в SRP Core `GlobalSamplers.hlsl`); имя семплера **корректно**, менять не нужно
   (проверено на ревью: заявление о паттерне `{filter}_{wrap}_sampler` — ошибочно).
 - **Биндеры:** `VfxParticleBinder` биндит один раз в Initialize (буферы
-  стабильны), `FieldQuadBinder` перебиндивает Current каждый кадр (swap меняет
+  стабильны), `FieldDebugQuadsBinder` перебиндивает Current каждый кадр (swap меняет
   идентичность текстуры). Асимметрия ожидаема — не «чинить».
 - **RenderTexture, не RTHandle:** RTHandle-система URP — для camera-scaled
   таргетов, полям она даёт только связанность.
@@ -131,6 +131,6 @@ Read-поля могут иметь другое разрешение — чте
   пересматривается в M3+ вместе с унификацией ресурсов.
 - (−) Multi-field пассы с разными плоскостями невозможны до введения
   per-field params — заблокировано валидацией, а не тихой ошибкой.
-- Известный бэклог M2b: advect/Jacobi (Stable Fluids), ClampFieldPass или
-  клэмп в inject, дропдаун имён полей в инспекторе пасса, обобщение
-  FieldQuadBinder (сейчас жёстко «velocity»).
+- Известный бэклог: advect/Jacobi (Stable Fluids), ClampFieldPass или
+  клэмп в inject, M2c multi-field. Debug field quads — список слотов на EffectAsset
+  (`FieldDebugQuadsBinder`, не жёсткий bool на velocity).

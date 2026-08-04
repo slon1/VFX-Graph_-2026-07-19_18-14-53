@@ -9,6 +9,7 @@ DoD закрыт:
 3. EditMode: `ScatterDensityFieldPassTests`
 4. Docs: ADR-005 механика, roadmap M2b.2.1 ✅
 
-Ручной PR-чеклист (не коммитить Effect): ClearField(density) каждый кадр → ClearAccum(density,1) → Scatter → Normalize → SampleGradient; два кластера — сильнее к более жирному; без ClearField density растёт.
+Ручной PR-чеклист (не коммитить Effect): ClearField(density) каждый кадр → ClearAccum(density,1) → Scatter → Normalize → SampleGradient; два кластера — сильнее к более жирному; без ClearField density растёт.  
+Accumulate (после M2b.3.1): без ClearField; после Normalize — DecayFieldScalar.
 
-Следующий шаг: M2b.3 Diffuse (+ Scalar Decay).
+Следующий шаг на момент закрытия: M2b.3 Diffuse → M2b.3.1 Scalar Decay (оба ✅). Дальше: M2c.

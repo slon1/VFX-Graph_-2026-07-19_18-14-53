@@ -30,7 +30,7 @@ UV-index scheme (без `/h²`) — rate как quality knob (как Gradient AD
 
 ### Scalar Decay
 
-**Не в M2b.3.** Откладывается на **M2b.3.1** — отдельный мини-тикет сразу после Diffuse (тот же typed-float паттерн, второй прецедент после `DiffusePasses.compute`).
+Реализовано в **M2b.3.1** — см. [ADR-007](ADR-007-Scalar-Field-Decay.md).
 
 ### Последствия
 

@@ -88,8 +88,6 @@ public sealed class TouchInjectVelocityFieldPass : FieldKernelPass
 [Serializable]
 public sealed class DecayFieldPass : FieldKernelPass
 {
-    private static readonly int DecayFactorId = Shader.PropertyToID("DecayFactor");
-
     [SerializeField] private string fieldName = "velocity";
     [SerializeField, Min(0f)] private float decayRate = 1.5f;
 
@@ -118,7 +116,47 @@ public sealed class DecayFieldPass : FieldKernelPass
 
     protected override void SetParams(SimContext context, float deltaTime)
     {
-        SetFloat(context, DecayFactorId, Mathf.Exp(-decayRate * deltaTime));
+        SetFloat(context, SimShaderIds.DecayFactor, Mathf.Exp(-decayRate * deltaTime));
+    }
+}
+
+/// <summary>
+/// Exponential decay on a scalar field (WritePingPong). Same factor formula as velocity Decay:
+/// new = value * exp(-DecayRate * dt). Enables Accumulate-onto-decaying for density
+/// (ClearAccum → Scatter → Normalize → Decay) without ClearField each frame.
+/// </summary>
+[Serializable]
+public sealed class DecayFieldScalarPass : FieldKernelPass
+{
+    [SerializeField] private string fieldName = "density";
+    [SerializeField, Min(0f)] private float decayRate = 1.5f;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string FieldName
+    {
+        get => fieldName;
+        set => fieldName = value;
+    }
+
+    public float DecayRate
+    {
+        get => decayRate;
+        set => decayRate = value;
+    }
+
+    public override string DisplayName => "Decay Field (Scalar)";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "DecayFieldScalar";
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, fieldName,
+            FieldAccess.WritePingPong, FieldSemantic.Scalar, 1);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, SimShaderIds.DecayFactor, Mathf.Exp(-decayRate * deltaTime));
     }
 }
 
@@ -126,7 +164,7 @@ public sealed class DecayFieldPass : FieldKernelPass
 /// Explicit 5-point Laplacian diffusion on a scalar field (WritePingPong).
 /// UV-index scheme: new = C + DiffusionRate * DeltaTime * (N+S+E+W-4C).
 /// Empirically keep DiffusionRate * DeltaTime ≲ 0.2–0.25 or checkerboard instability appears.
-/// Scalar Decay is out of scope (M2b.3.1). Prefer several mild Diffuse passes over one huge rate.
+/// Prefer several mild Diffuse passes over one huge rate.
 /// </summary>
 [Serializable]
 public sealed class DiffuseFieldPass : FieldKernelPass

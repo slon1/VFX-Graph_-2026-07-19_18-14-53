@@ -28,9 +28,9 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: ClearField, TouchInjectVelocity, DecayField, SampleVelocityField, **SampleGradientField**, **DiffuseField**.
+- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SampleGradientField**, **DiffuseField**.
 - Texture slots: `FieldRead` / `FieldWrite` (не `{fieldName}…`; ADR-003 / M2b.1.1).
-- Debug: `FieldQuadBinder` + shader `M3D/FieldDebug`.
+- Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — список слотов на EffectAsset (`VectorRg` / `ScalarHeatmap`), layout по AxisU.
 
 ### P2G (M2b.1)
 
@@ -42,7 +42,8 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 ### Density P2G (M2b.2.1)
 
 - `ScatterDensity` / `NormalizeDensityAccum` — sum (∝ count), Scalar field; `DensityPasses.compute`.
-- Replace: **ClearField(density)** каждый кадр (Scalar Decay → M2b.3.1).
+- **Replace:** ClearField(density) каждый кадр.  
+- **Accumulate-onto-decaying:** без ClearField; после Normalize — `DecayFieldScalar` (M2b.3.1 / ADR-007).
 
 ### G2P gradient (M2b.2)
 
@@ -54,12 +55,17 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - `DiffuseFieldPass` — 5-point explicit Laplacian, WritePingPong, Scalar; `DiffusePasses.compute`.
 - Рекомендация: `NormalizeDensity → несколько мягких Diffuse подряд в кадре → SampleGradient` (не «больше кадров ожидания»). Дальнодействие = rate × число Diffuse/кадр × размер текселя; вялость между далёкими кластерами — ожидаемая сходимость, не баг. ADR-006 / [`status.md`](status.md).
 
+### Scalar Decay (M2b.3.1)
+
+- `DecayFieldScalarPass` — `value * exp(-rate·dt)`, WritePingPong, Scalar; `DecayPasses.compute` (Load).
+- Пайплайн памяти: `ClearAccum → ScatterDensity → NormalizeDensity → DecayFieldScalar → [Diffuse…] → SampleGradient`.
+
 ### Pass library
 
 | Категория | Примеры |
 | --- | --- |
 | Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, Integrate, Bounds, … |
-| Emit / Transport | ClearField, TouchInject, Decay, **Diffuse**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
+| Emit / Transport | ClearField, TouchInject, Decay / **DecayScalar**, **Diffuse**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
 

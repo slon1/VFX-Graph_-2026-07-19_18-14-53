@@ -1,0 +1,27 @@
+// Scalar field decay: new = value * DecayFactor (WritePingPong).
+// Texture slots: FieldRead (SRV) / FieldWrite (UAV) as Texture2D<float>.
+// Point sample via Load (no bilinear); Load returns float — do not use .r.
+
+#pragma kernel DecayFieldScalar
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+
+Texture2D<float> FieldRead;
+RWTexture2D<float> FieldWrite;
+
+float DecayFactor;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void DecayFieldScalar(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float v = FieldRead.Load(int3(p, 0));
+    FieldWrite[p] = v * DecayFactor;
+}

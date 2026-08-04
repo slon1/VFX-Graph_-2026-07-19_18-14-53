@@ -25,6 +25,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/GradientPasses.compute",
         "Assets/Shaders/GPU/Passes/DensityPasses.compute",
         "Assets/Shaders/GPU/Passes/DiffusePasses.compute",
+        "Assets/Shaders/GPU/Passes/DecayPasses.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]
@@ -37,13 +38,13 @@ public static class M3DDemoTools
 
         CreateEffect(TwistedCubePath, cubeResolution: 100, simulationSpeed: 1f,
             fields: null,
-            velocityQuad: false,
+            debugQuads: null,
             new CopyRestPass(),
             new TwistPass { Strength = 1f });
 
         CreateEffect(GalaxySwirlPath, cubeResolution: 100, simulationSpeed: 1f,
             fields: null,
-            velocityQuad: false,
+            debugQuads: null,
             new VortexPass { Strength = 8f, Radius = 4f, Axis = Vector3.up },
             new CurlNoisePass { Frequency = 0.6f, Amplitude = 1.5f },
             new DragPass { Drag = 0.8f },
@@ -53,7 +54,7 @@ public static class M3DDemoTools
 
         CreateEffect(ReactiveDustPath, cubeResolution: 100, simulationSpeed: 1f,
             fields: null,
-            velocityQuad: false,
+            debugQuads: null,
             new SpringToRestPass { Stiffness = 12f, Damping = 3f },
             new TurbulencePass { Amplitude = 0.6f, Frequency = 1.2f, Octaves = 3 },
             new TouchForcePass { DragStrength = 0f, PushStrength = 25f },
@@ -64,7 +65,7 @@ public static class M3DDemoTools
         FieldDescriptor velocityField = FieldDescriptor.CreateDefault("velocity", FieldSemantic.Velocity);
         CreateEffect(HybridTouchFieldPath, cubeResolution: 64, simulationSpeed: 1f,
             fields: new[] { velocityField },
-            velocityQuad: true,
+            debugQuads: new[] { DebugFieldQuadSlot.Velocity() },
             new TouchInjectVelocityFieldPass(),
             new DecayFieldPass { DecayRate = 1.5f },
             new SampleVelocityFieldPass { Strength = 1f },
@@ -83,7 +84,7 @@ public static class M3DDemoTools
         FieldDescriptor agentVelocity = FieldDescriptor.CreateDefault("agentVelocity", FieldSemantic.Velocity);
         CreateEffect(AgentFieldEchoPath, cubeResolution: 64, simulationSpeed: 1f,
             fields: new[] { agentVelocity },
-            velocityQuad: true,
+            debugQuads: new[] { DebugFieldQuadSlot.Velocity("agentVelocity") },
             new CopyRestPass(),
             new CurlNoisePass { Frequency = 0.5f, Amplitude = 1.2f },
             new DragPass { Drag = 0.8f },
@@ -249,7 +250,7 @@ public static class M3DDemoTools
         int cubeResolution,
         float simulationSpeed,
         FieldDescriptor[] fields,
-        bool velocityQuad,
+        DebugFieldQuadSlot[] debugQuads,
         params SimPass[] passes)
     {
         EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
@@ -259,7 +260,7 @@ public static class M3DDemoTools
         }
 
         EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
-        asset.EditorConfigure(DataSourceKind.Cube, simulationSpeed, passes, fields, velocityQuad);
+        asset.EditorConfigure(DataSourceKind.Cube, simulationSpeed, passes, fields, debugQuads);
 
         SerializedObject so = new SerializedObject(asset);
         so.FindProperty("cubeSource.resolution").intValue = cubeResolution;

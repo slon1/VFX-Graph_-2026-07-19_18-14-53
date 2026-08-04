@@ -1,7 +1,7 @@
 # Getting Started — для новых программистов
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
-Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 
@@ -19,7 +19,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse (5-point Laplacian)**, hybrid touch demo, тач/мышь.  
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse**, **Scalar Decay**, hybrid touch demo, тач/мышь.  
 Пока нет: Stable Fluids, spatial hash / boids, particle emitters с lifetime.
 
 ---
@@ -46,16 +46,21 @@ Pass Library должен включать `P2GPasses.compute`.
 2. Добавить пассы (Emit/Transport для полей).
 3. **Materialize missing fields from passes** — или вручную заполнить Fields.
 4. Runtime **не** создаст поле сам: опечатка в имени → ошибка Build с именем пасса и поля.
-5. Включить `Show Velocity Field Quad` для debug RG-вида (`velocity` или `agentVelocity`).
+5. Debug-quadы: список **Debug Field Quads** на EffectAsset (имя поля из dropdown + mode + colorScale). Убрать = скрыть. Несколько слотов → quads рядом по AxisU с подписью имени.
 
 Типичный hybrid:
 
 `TouchInjectVelocityField → DecayField → SampleVelocityField → Integrate`
 
-Типичный P2G (память поля):
+Типичный P2G (память поля, velocity):
 
 `ClearFieldAccum → ScatterVelocity → NormalizeVelocity → DecayField`  
 (Replace: вставить `ClearFieldPass` перед ClearAccum.)
+
+Типичный density Accumulate (после M2b.3.1):
+
+`ClearAccum → ScatterDensity → NormalizeDensity → DecayFieldScalar → [Diffuse…] → SampleGradient`  
+(Replace: `ClearField(density)` каждый кадр вместо DecayScalar.)
 
 ---
 
@@ -83,7 +88,9 @@ Per-frame обнуление **текстуры** поля: `ClearFieldPass` —
 ### P2G (частица → поле)
 
 1. Velocity: kernels в `P2GPasses.compute` (average decode).
-2. Density: kernels в `DensityPasses.compute` (sum decode, ∝ count); **ClearField** на density каждый кадр для Replace.
+2. Density: kernels в `DensityPasses.compute` (sum decode, ∝ count).
+   - **Replace:** `ClearField(density)` каждый кадр.
+   - **Accumulate-onto-decaying:** без ClearField; после Normalize — `DecayFieldScalar` (`DecayPasses.compute`, Load).
 3. Diffuse: kernel в `DiffusePasses.compute` (5-point Load Laplacian); несколько мягких шагов лучше одного большого rate.
 4. `: ParticleToFieldScatterPass` / `: NormalizeFieldAccumPass` (+ `ClearFieldAccumPass`).
 5. Списки: `FieldAccumClears` / `FieldAccumWrites` / `FieldAccumReads` (не путать с текстурными FieldWrites).
@@ -95,7 +102,9 @@ Hybrid (field + particles):
 - значение: `SampleVelocityFieldPass` — Transport, `ParticleKernelPass` + `FieldReads`;
 - градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`;
 - сглаживание: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
-- cohesion-скелет: ClearField(density) → ScatterDensity → NormalizeDensity → **несколько мягких Diffuse подряд в кадре** → SampleGradient;
+- scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
+- cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;
+- cohesion Accumulate: ClearAccum → Scatter → Normalize → **DecayFieldScalar** → [Diffuse…] → SampleGradient;
 - дальнодействие: вялое притяжение далёких кластеров — ожидаемо (скорость сходимости Diffuse); лечится числом Diffuse за кадр, грубее resolution или rate≲0.25 — не «просто больше кадров». См. [`status.md`](status.md).
 
 Добавить `.compute` в `SimulationWorld.Pass Library`, если новый файл.
@@ -111,4 +120,4 @@ Hybrid (field + particles):
 | Field descriptor / requests | `Core/FieldDescriptor.cs`, `Core/FieldSet.cs`, `Core/FieldAccumBuffer.cs` |
 | Контракт пасса | `Runtime/SimPass.cs` |
 | Field / P2G / Gradient kernels | `Passes/FieldPasses.cs`, `Passes/P2GPasses.cs`, `Shaders/GPU/Passes/` |
-| Binders | `VfxParticleBinder.cs`, `FieldQuadBinder.cs` |
+| Binders | `VfxParticleBinder.cs`, `FieldDebugQuadsBinder.cs` |

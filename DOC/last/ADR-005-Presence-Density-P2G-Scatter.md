@@ -2,7 +2,7 @@
 
 **Статус:** Реализовано (M2b.2.1)  
 **Дата:** 2026-08-03  
-**Контекст:** M3D Framework, мини-шаг перед M2b.3
+**Контекст:** M3D Framework, Milestone 2b.2.1
 
 ### Контекст
 
@@ -26,10 +26,13 @@
   Bias сокращается алгебраически при любом Bias для вклада `1.0` (защита от copy-paste Bias≠0).
 - **Semantic:** `FieldSemantic.Scalar`, Channels=1; defaults `density`, Scale=4096, Bias=0
 - **ADR-002:** average остаётся каноном для **velocity**; sum — осознанное исключение только в Density normalize
-- **Replace:** каждый кадр обязателен `ClearField(density)` до Scatter/Normalize; иначе `+=` копит density между кадрами. Scalar Decay — **вне скоупа**, переносится к M2b.3 (вместе с Diffuse / scalar write patterns)
+- **Replace:** каждый кадр обязателен `ClearField(density)` до Scatter/Normalize; иначе `+=` копит density между кадрами.
+- **Accumulate-onto-decaying:** без ClearField; после Normalize — `DecayFieldScalarPass` ([ADR-007](ADR-007-Scalar-Field-Decay.md))
 - **Overflow uint:** при Scale=4096 потолок ~1e6 частиц/тексель (как документированный лимит P2G velocity)
 - **Pass Library:** `DensityPasses.compute` в `M3DDemoTools.PassLibraryPaths`
 
 ### Последствия
 
-Ноль изменений в абстрактных базах, валидаторе, state machine. Cohesion-пайплайн локально: ClearField → ClearAccum(ch=1) → ScatterDensity → NormalizeDensity → SampleGradient → …
+Ноль изменений в абстрактных базах, валидаторе, state machine.  
+Cohesion Replace: ClearField → ClearAccum → ScatterDensity → NormalizeDensity → [Diffuse…] → SampleGradient.  
+Cohesion Accumulate: ClearAccum → Scatter → Normalize → DecayScalar → [Diffuse…] → SampleGradient.

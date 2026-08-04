@@ -26,7 +26,7 @@ public sealed class SimulationWorld : MonoBehaviour
     private readonly Dictionary<SimPass, ProfilingSampler> samplers =
         new Dictionary<SimPass, ProfilingSampler>();
     private readonly List<IRenderBinder> binders = new List<IRenderBinder>();
-    private FieldQuadBinder fieldQuadBinder;
+    private FieldDebugQuadsBinder fieldDebugQuadsBinder;
     private float simulationTime;
     private bool built;
 
@@ -521,35 +521,12 @@ public sealed class SimulationWorld : MonoBehaviour
         vfxBinder.Initialize(context);
         binders.Add(vfxBinder);
 
-        if (effect.ShowVelocityFieldQuad)
+        IReadOnlyList<DebugFieldQuadSlot> debugQuads = effect.DebugFieldQuads;
+        if (debugQuads != null && debugQuads.Count > 0)
         {
-            string quadField = null;
-            if (fields.TryGet("velocity", out _))
-            {
-                quadField = "velocity";
-            }
-            else if (fields.TryGet("agentVelocity", out _))
-            {
-                quadField = "agentVelocity";
-            }
-            else
-            {
-                foreach (KeyValuePair<string, SimField> pair in fields.Fields)
-                {
-                    if (pair.Value.Descriptor.Semantic == FieldSemantic.Velocity)
-                    {
-                        quadField = pair.Key;
-                        break;
-                    }
-                }
-            }
-
-            if (quadField != null)
-            {
-                fieldQuadBinder = new FieldQuadBinder(quadField, transform);
-                fieldQuadBinder.Initialize(context);
-                binders.Add(fieldQuadBinder);
-            }
+            fieldDebugQuadsBinder = new FieldDebugQuadsBinder(debugQuads, transform);
+            fieldDebugQuadsBinder.Initialize(context);
+            binders.Add(fieldDebugQuadsBinder);
         }
     }
 
@@ -604,8 +581,8 @@ public sealed class SimulationWorld : MonoBehaviour
     {
         built = false;
 
-        fieldQuadBinder?.Dispose();
-        fieldQuadBinder = null;
+        fieldDebugQuadsBinder?.Dispose();
+        fieldDebugQuadsBinder = null;
         binders.Clear();
 
         fields?.Dispose();

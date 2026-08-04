@@ -1,7 +1,7 @@
 # Архитектура фреймворка GPU-симуляций (M3D Framework)
 
 **Дата:** 2026-07-26, обновлено 2026-08-02
-**Статус:** M2a + M2b.1 / M2b.1.1 реализованы (см. [`status.md`](status.md), roadmap [`last/roadmap_m2a.md`](last/roadmap_m2a.md))
+**Статус:** M2a … M2b.3.1 реализованы (см. [`status.md`](status.md), roadmap [`last/roadmap_m2a.md`](last/roadmap_m2a.md))
 **Онбординг:** [`getting-started.md`](getting-started.md)
 **Стек:** Unity 6 · URP · Compute Shaders · VFX Graph (renderer) · UniTask
 **Платформа:** Android (Vulkan) / iOS (Metal), тач-управление, GPU-first
@@ -223,10 +223,11 @@ Particle attributes по-прежнему авторегистрируются; 
 | --- | --- |
 | Только `ParticleSet` | + `FieldSet` (dual RT, World-owned Swap) |
 | `Reads`/`Writes` (attrs) | + `FieldReads`/`FieldWrites` (`FieldRequest`) |
-| VFX bind в World | `IRenderBinder` (VFX + optional FieldQuad) |
+| VFX bind в World | `IRenderBinder` (VFX + `FieldDebugQuadsBinder`) |
 | — | `HybridTouchField` demo |
 
 **Milestone 1:** каркас частиц + ~17 пассов.  
 **Milestone 2a (готово):** Field foundation + hybrid.  
 **M2b.1 / M2b.1.1 (готово):** P2G scatter + generic `FieldRead`/`FieldWrite` slots.  
-**Дальше:** Stable Fluids → spatial hash/boids → emitters → richer hybrids.
+**M2b.2 … M2b.3.1 (готово):** Gradient, Density P2G (sum), Diffuse, Scalar Decay; debug quads — список слотов.  
+**Дальше:** M2c multi-field → Stable Fluids → spatial hash/boids → emitters → richer hybrids.

@@ -12,7 +12,7 @@ G2P сейчас покрывает только "значение поля в �
 
 Гибридный `SampleGradientFieldPass : ParticleKernelPass` с `FieldReads` (зеркало `SampleVelocityFieldPass` по Reads/Writes = Position/Velocity). Central differences по 4 соседним сэмплам вокруг UV частицы; `Channels=1`, `FieldSemantic.Scalar`; UV-градиент → мир через `FieldUvGradientToWorld` (без `/FieldSize`).
 
-Пасс **не** предполагает Diffuse (M2b.3): читает поле как есть. На raw/резких полях градиент шумный — ожидаемо; сглаживание — композиция EffectAsset.
+Пасс читает поле как есть. На raw/резких полях градиент шумный — ожидаемо; сглаживание — композиция с `DiffuseFieldPass` ([ADR-006](ADR-006-Diffuse-Field-Pass.md)).
 
 ### Механика
 

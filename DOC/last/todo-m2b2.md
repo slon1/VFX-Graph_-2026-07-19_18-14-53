@@ -11,4 +11,4 @@ DoD закрыт:
 
 Ручной PR-чеклист (не коммитить Paint/Effect): радиал length(uv-0.5) — направление от центра, |grad|≈const; вне поля → 0; у края без взрыва.
 
-Следующий шаг roadmap: M2b.3 Diffuse.
+Следующий шаг roadmap на момент закрытия: M2b.2.1 Density → M2b.3 Diffuse → M2b.3.1 Scalar Decay (все ✅). Дальше: M2c.

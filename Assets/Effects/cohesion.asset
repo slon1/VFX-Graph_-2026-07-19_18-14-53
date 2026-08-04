@@ -40,12 +40,21 @@ MonoBehaviour:
   passes:
   - rid: 7167045689404555546
   - rid: 7167045689404555547
+  - rid: 7167045708565184579
   - rid: 7167045689404555548
   - rid: 7167045689404555549
   - rid: 7167045689404555550
   - rid: 7167045689404555551
   - rid: 7167045689404555552
-  showVelocityFieldQuad: 1
+  debugFieldQuads:
+  - fieldName: velocity
+    mode: 0
+    colorScale: 2
+  - fieldName: density
+    mode: 1
+    colorScale: 1
+  showVelocityFieldQuad: 0
+  showDensityFieldQuad: 0
   references:
     version: 2
     RefIds:
@@ -91,3 +100,9 @@ MonoBehaviour:
       type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
+    - rid: 7167045708565184579
+      type: {class: DiffuseFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: density
+        diffusionRate: 1

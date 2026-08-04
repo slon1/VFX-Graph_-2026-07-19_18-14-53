@@ -42,7 +42,9 @@ MonoBehaviour:
   - rid: 7167045665592967256
   - rid: 7167045665592967257
   - rid: 7167045665592967258
+  debugFieldQuads: []
   showVelocityFieldQuad: 0
+  showDensityFieldQuad: 0
   references:
     version: 2
     RefIds:

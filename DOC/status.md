@@ -1,11 +1,11 @@
-# Status — M3D Framework (Milestone 2b.3)
+# Status — M3D Framework (Milestone 2b.3.1)
 
 **Дата:** 2026-08-04  
-**Итерация:** 5.5 — Diffuse Field (5-point Laplacian)  
+**Итерация:** 5.6 — Scalar Field Decay  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -44,18 +44,15 @@ FieldSet / FieldAccess / ClearField / TouchInject / Decay / SampleVelocity. Poli
 ## Milestone 2b.2.1 — Density P2G (готово)
 
 `ScatterDensityToFieldPass` / `NormalizeDensityAccumPass` + `DensityPasses.compute`.  
-Sum decode (∝ count), Scalar/`density`. Replace: ClearField каждый кадр. ADR-005.  
+Sum decode (∝ count), Scalar/`density`. ADR-005.  
 Тест: `ScatterDensityFieldPassTests`.
-
-Cohesion-локально: ClearField(density) → ClearAccum → ScatterDensity → NormalizeDensity → Diffuse×mild → SampleGradient → …
 
 ---
 
 ## Milestone 2b.3 — Diffuse Field (готово)
 
 `DiffuseFieldPass` + `DiffusePasses.compute`. Explicit 5-point Laplacian, WritePingPong, Scalar.  
-CFL: `rate·dt ≲ 0.2–0.25`. ADR-006. Тест: `DiffuseFieldPassTests`.  
-Scalar Decay → **M2b.3.1**.
+CFL: `rate·dt ≲ 0.2–0.25`. ADR-006. Тест: `DiffuseFieldPassTests`.
 
 ### Рекомендация: дальнодействие Diffuse-cohesion
 
@@ -67,16 +64,26 @@ MCP mid-smoke (res=64, rate=0.15, dt=1, пики на texel 10 и 50): mid `grad
 
 ---
 
+## Milestone 2b.3.1 — Scalar Decay (готово)
+
+`DecayFieldScalarPass` + `DecayPasses.compute` (Load). `SimShaderIds.DecayFactor` общий с velocity Decay.  
+Default rate 1.5. ADR-007. Тест: `DecayFieldScalarPassTests`.
+
+**Replace:** ClearField(density) каждый кадр → ClearAccum → Scatter → Normalize → …  
+**Accumulate-onto-decaying:** ClearAccum → Scatter → Normalize → **DecayFieldScalar** → [Diffuse…] → SampleGradient (без ClearField).
+
+---
+
 ## Файлы (ключевые)
 
 ```
 Assets/Scripts/Passes/     FieldPasses.cs, P2GPasses.cs
-Assets/Shaders/GPU/Passes/ FieldPasses, P2GPasses, GradientPasses, DensityPasses, DiffusePasses
-Assets/Tests/Editor/       … SampleGradientFieldPassTests, ScatterDensityFieldPassTests, DiffuseFieldPassTests
+Assets/Shaders/GPU/Passes/ FieldPasses, P2GPasses, GradientPasses, DensityPasses, DiffusePasses, DecayPasses
+Assets/Tests/Editor/       … DiffuseFieldPassTests, DecayFieldScalarPassTests
 ```
 
 ---
 
 ## Вне скоупа (далее)
 
-M2b.3.1 Scalar Decay · M2c multi-field · Stable Fluids · spatial hash · AggregationMode enum
+M2c multi-field · Stable Fluids · spatial hash · AggregationMode enum

@@ -37,6 +37,7 @@ internal static class SimShaderIds
     public static readonly int FieldWrite = Shader.PropertyToID("FieldWrite");
 
     public static readonly int DiffusionRate = Shader.PropertyToID("DiffusionRate");
+    public static readonly int DecayFactor = Shader.PropertyToID("DecayFactor");
 }
 
 /// <summary>
