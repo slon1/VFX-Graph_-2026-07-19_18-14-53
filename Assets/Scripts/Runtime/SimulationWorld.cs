@@ -197,7 +197,7 @@ public sealed class SimulationWorld : MonoBehaviour
         for (int i = 0; i < passes.Count; i++)
         {
             SimPass pass = passes[i];
-            if (pass == null)
+            if (pass == null || !pass.Enabled)
             {
                 continue;
             }

@@ -42,6 +42,7 @@ MonoBehaviour:
   - rid: 7167045689404555547
   - rid: 7167045689404555548
   - rid: 7167045689404555549
+  - rid: 7167045711628599357
   - rid: 7167045689404555550
   - rid: 7167045699452010557
   - rid: 7167045689404555551
@@ -102,20 +103,26 @@ MonoBehaviour:
     - rid: 7167045699452010557
       type: {class: CurlNoisePass, ns: , asm: Assembly-CSharp}
       data:
-        enabled: 0
+        enabled: 1
         frequency: 0.1
         amplitude: 0.1
         speed: 0.3
     - rid: 7167045699452010558
       type: {class: SpeedLimitPass, ns: , asm: Assembly-CSharp}
       data:
-        enabled: 1
+        enabled: 0
         maxSpeed: 6
     - rid: 7167045699452010559
       type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
       data:
-        enabled: 0
+        enabled: 1
         center: {x: 0, y: 0, z: 0}
-        extents: {x: 6.78, y: 8, z: 8}
+        extents: {x: 19.52, y: 21.3, z: 32.6}
         behaviour: 1
         bounce: 0.518
+    - rid: 7167045711628599357
+      type: {class: DecayFieldScalarPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: density
+        decayRate: 1.5

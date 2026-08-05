@@ -653,7 +653,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InputRouter
   targetCamera: {fileID: 961739752}
-  planeMode: 1
+  planeMode: 0
   planeDistance: 6
   touchRadius: 1
   touchStrength: 10
@@ -678,6 +678,7 @@ MonoBehaviour:
   - {fileID: 7200000, guid: 95410a6f9ab44e5468121b290629b759, type: 3}
   - {fileID: 7200000, guid: a8c3e7f1b2d94e6a9f0c4d5e6a7b8c9d, type: 3}
   - {fileID: 7200000, guid: b9d4f8e2c3a05f7b1e2d6c8a9f0b1c2d, type: 3}
+  - {fileID: 7200000, guid: a8c3e1f0b4d27e9c5a1f8b0d3e4c5a6b, type: 3}
   visualEffect: {fileID: 1583680167}
   inputRouter: {fileID: 1583680169}
 --- !u!1660057539 &9223372036854775807
