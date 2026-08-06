@@ -1,7 +1,7 @@
 # Getting Started — для новых программистов
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
-Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 
@@ -19,8 +19,8 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse**, **Scalar Decay**, hybrid touch demo, тач/мышь.  
-Пока нет: Stable Fluids, spatial hash / boids, particle emitters с lifetime.
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse**, **Scalar Decay**, **multi-field Role A/B** (SwapFields), hybrid touch demo, тач/мышь.  
+Пока нет: Gray-Scott, Stable Fluids, spatial hash / boids, particle emitters с lifetime.
 
 ---
 
@@ -74,7 +74,7 @@ Kernel в `Shape/Force/DynamicsPasses.compute` + класс `: ParticleKernelPas
 ### Field
 
 1. Kernel в `Assets/Shaders/GPU/Passes/FieldPasses.compute` (`numthreads(8,8,1)`).
-2. Имена текстур (фиксированные слоты, не имя поля): `FieldRead` (SRV), `FieldWrite` (UAV). Один пасс = одно distinct field name; multi-field-per-kernel — M2c.
+2. Имена текстур: single-field — `FieldRead` / `FieldWrite`; multi-field — `FieldReadA/B` + `FieldWriteA/B` (`FieldSlotRole`, ADR-008). Multi-role требует одинаковые Resolution + plane.
 3. Класс `: FieldKernelPass`, объявить `FieldWrites` / `FieldReads` с `FieldAccess`:
    - **WriteInPlace** — splat в Current, без swap.
    - **WritePingPong** — Current→Next, World сделает Swap (только если пасс записал dispatch).

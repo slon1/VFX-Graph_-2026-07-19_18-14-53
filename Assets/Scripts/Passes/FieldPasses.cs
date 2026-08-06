@@ -304,3 +304,39 @@ public sealed class SampleGradientFieldPass : ParticleKernelPass
         SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
     }
 }
+
+/// <summary>
+/// Synthetic multi-field proof (ADR-008 / M2c): swap two scalar ping-pong fields via Role A/B slots.
+/// Not Gray-Scott — only validates FieldReadA/B + FieldWriteA/B binding.
+/// </summary>
+[Serializable]
+public sealed class SwapFieldsPass : FieldKernelPass
+{
+    [SerializeField] private string fieldNameA = "fieldA";
+    [SerializeField] private string fieldNameB = "fieldB";
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string FieldNameA
+    {
+        get => fieldNameA;
+        set => fieldNameA = value;
+    }
+
+    public string FieldNameB
+    {
+        get => fieldNameB;
+        set => fieldNameB = value;
+    }
+
+    public override string DisplayName => "Swap Fields";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "SwapFields";
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Pair(
+            ref fieldWritesCache,
+            fieldNameA, FieldSlotRole.A, FieldAccess.WritePingPong, FieldSemantic.Scalar, 1,
+            fieldNameB, FieldSlotRole.B, FieldAccess.WritePingPong, FieldSemantic.Scalar, 1);
+}
+

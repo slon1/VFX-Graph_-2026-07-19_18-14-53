@@ -24,6 +24,16 @@ public enum FieldAccess
     WritePingPong = 2,
 }
 
+/// <summary>
+/// HLSL texture slot role for multi-field-per-kernel binding (ADR-008).
+/// Single-field passes keep default <see cref="A"/> and use legacy FieldRead/FieldWrite.
+/// </summary>
+public enum FieldSlotRole
+{
+    A = 0,
+    B = 1,
+}
+
 /// <summary>Identity of a declared field on EffectAsset. Registry key is Name.</summary>
 [Serializable]
 public struct FieldId : IEquatable<FieldId>
@@ -133,22 +143,26 @@ public struct FieldRequest : IEquatable<FieldRequest>
     [SerializeField] private FieldAccess access;
     [SerializeField] private FieldSemantic requiredSemantic;
     [SerializeField] private int channels;
+    [SerializeField] private FieldSlotRole role;
 
     public string FieldName => fieldName;
     public FieldAccess Access => access;
     public FieldSemantic RequiredSemantic => requiredSemantic;
     public int Channels => channels;
+    public FieldSlotRole Role => role;
 
     public FieldRequest(
         string fieldName,
         FieldAccess access,
         FieldSemantic requiredSemantic,
-        int channels)
+        int channels,
+        FieldSlotRole role = FieldSlotRole.A)
     {
         this.fieldName = fieldName;
         this.access = access;
         this.requiredSemantic = requiredSemantic;
         this.channels = channels;
+        this.role = role;
     }
 
     /// <summary>
@@ -166,7 +180,8 @@ public struct FieldRequest : IEquatable<FieldRequest>
         string.Equals(fieldName, other.fieldName, StringComparison.Ordinal) &&
         access == other.access &&
         requiredSemantic == other.requiredSemantic &&
-        channels == other.channels;
+        channels == other.channels &&
+        role == other.role;
 
     public override bool Equals(object obj) => obj is FieldRequest other && Equals(other);
 
@@ -175,5 +190,6 @@ public struct FieldRequest : IEquatable<FieldRequest>
             fieldName != null ? StringComparer.Ordinal.GetHashCode(fieldName) : 0,
             (int)access,
             (int)requiredSemantic,
-            channels);
+            channels,
+            (int)role);
 }

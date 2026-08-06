@@ -1,0 +1,27 @@
+// Multi-field-per-kernel proof (ADR-008 / M2c): SwapFields.
+// Texture slots: FieldReadA/B (SRV) + FieldWriteA/B (UAV), Texture2D<float>.
+// Point sample via Load (no .r). Both fields must share Resolution/plane (validated in C#).
+
+#pragma kernel SwapFields
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+
+Texture2D<float> FieldReadA;
+Texture2D<float> FieldReadB;
+RWTexture2D<float> FieldWriteA;
+RWTexture2D<float> FieldWriteB;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void SwapFields(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    FieldWriteA[p] = FieldReadB.Load(int3(p, 0));
+    FieldWriteB[p] = FieldReadA.Load(int3(p, 0));
+}

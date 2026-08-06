@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-08-04  
+**Снимок:** 2026-08-07  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
@@ -29,8 +29,14 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
 - Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SampleGradientField**, **DiffuseField**.
-- Texture slots: `FieldRead` / `FieldWrite` (не `{fieldName}…`; ADR-003 / M2b.1.1).
+- Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
 - Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — список слотов на EffectAsset (`VectorRg` / `ScalarHeatmap`), layout по AxisU.
+
+### Multi-field kernel (M2c)
+
+- `FieldSlotRole` A/B на `FieldRequest`; `FieldRequestSets.Pair`.
+- Multi-role: matching Resolution + plane (hard error); proof `SwapFieldsPass`.
+- Gray-Scott — следующий шаг (не в M2c).
 
 ### P2G (M2b.1)
 
@@ -65,7 +71,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | Категория | Примеры |
 | --- | --- |
 | Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, Integrate, Bounds, … |
-| Emit / Transport | ClearField, TouchInject, Decay / **DecayScalar**, **Diffuse**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
+| Emit / Transport | ClearField, TouchInject, Decay / **DecayScalar**, **Diffuse**, **SwapFields**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
 
@@ -88,3 +94,4 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | Fields только 2D | R16 / RG16 |
 | Policy C для fields | нет runtime autogen |
 | P2G average only | Sum/Max — позже; overflow суммы — док, не guard |
+| Multi-field kernel ≤2 | Role A/B; Gray-Scott — следующий шаг |

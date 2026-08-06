@@ -97,7 +97,15 @@ public sealed class SimField : IDisposable
         }
 
         rt.Release();
-        UnityEngine.Object.Destroy(rt);
+        if (Application.isPlaying)
+        {
+            UnityEngine.Object.Destroy(rt);
+        }
+        else
+        {
+            UnityEngine.Object.DestroyImmediate(rt);
+        }
+
         rt = null;
     }
 }

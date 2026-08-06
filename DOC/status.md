@@ -1,11 +1,11 @@
-# Status — M3D Framework (Milestone 2b.3.1)
+# Status — M3D Framework (Milestone 2c)
 
-**Дата:** 2026-08-04  
-**Итерация:** 5.6 — Scalar Field Decay  
+**Дата:** 2026-08-07  
+**Итерация:** 5.7 — Multi-Field-Per-Kernel Binding  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -74,16 +74,26 @@ Default rate 1.5. ADR-007. Тест: `DecayFieldScalarPassTests`.
 
 ---
 
+## Milestone 2c — Multi-field-per-kernel (готово)
+
+`FieldSlotRole` A/B, `FieldRequestSets.Pair`, слоты `FieldReadA/B`/`FieldWriteA/B`.  
+Single-role пассы остаются на `FieldRead`/`FieldWrite`. Multi-role: geometry hard error (Resolution + plane).  
+Proof: `SwapFieldsPass` + `MultiFieldTestPasses.compute`. ADR-008.  
+Тесты: `FieldSlotNamingTests`, `SwapFieldsPassTests`. Gray-Scott — следующий шаг.
+
+---
+
 ## Файлы (ключевые)
 
 ```
-Assets/Scripts/Passes/     FieldPasses.cs, P2GPasses.cs
-Assets/Shaders/GPU/Passes/ FieldPasses, P2GPasses, GradientPasses, DensityPasses, DiffusePasses, DecayPasses
-Assets/Tests/Editor/       … DiffuseFieldPassTests, DecayFieldScalarPassTests
+Assets/Scripts/Passes/     FieldPasses.cs (SwapFieldsPass, …), P2GPasses.cs
+Assets/Scripts/Runtime/    SimPass.cs (FieldKernelPass roles), SimulationWorld.cs
+Assets/Shaders/GPU/Passes/ MultiFieldTestPasses, DiffusePasses, DecayPasses, …
+Assets/Tests/Editor/       FieldSlotNamingTests, SwapFieldsPassTests, …
 ```
 
 ---
 
 ## Вне скоупа (далее)
 
-M2c multi-field · Stable Fluids · spatial hash · AggregationMode enum
+Gray-Scott · Stable Fluids · spatial hash · AggregationMode enum

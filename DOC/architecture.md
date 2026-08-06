@@ -1,7 +1,7 @@
 # Архитектура фреймворка GPU-симуляций (M3D Framework)
 
-**Дата:** 2026-07-26, обновлено 2026-08-02
-**Статус:** M2a … M2b.3.1 реализованы (см. [`status.md`](status.md), roadmap [`last/roadmap_m2a.md`](last/roadmap_m2a.md))
+**Дата:** 2026-07-26, обновлено 2026-08-07
+**Статус:** M2a … M2c реализованы (см. [`status.md`](status.md), roadmap [`last/roadmap_m2a.md`](last/roadmap_m2a.md))
 **Онбординг:** [`getting-started.md`](getting-started.md)
 **Стек:** Unity 6 · URP · Compute Shaders · VFX Graph (renderer) · UniTask
 **Платформа:** Android (Vulkan) / iOS (Metal), тач-управление, GPU-first

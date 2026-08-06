@@ -36,6 +36,12 @@ internal static class SimShaderIds
     public static readonly int FieldRead = Shader.PropertyToID("FieldRead");
     public static readonly int FieldWrite = Shader.PropertyToID("FieldWrite");
 
+    /// <summary>Role slots for multi-field-per-kernel passes (ADR-008). Single-field keeps FieldRead/Write.</summary>
+    public static readonly int FieldReadA = Shader.PropertyToID("FieldReadA");
+    public static readonly int FieldWriteA = Shader.PropertyToID("FieldWriteA");
+    public static readonly int FieldReadB = Shader.PropertyToID("FieldReadB");
+    public static readonly int FieldWriteB = Shader.PropertyToID("FieldWriteB");
+
     public static readonly int DiffusionRate = Shader.PropertyToID("DiffusionRate");
     public static readonly int DecayFactor = Shader.PropertyToID("DecayFactor");
 }
@@ -87,13 +93,41 @@ internal static class FieldRequestSets
         string fieldName,
         FieldAccess access,
         FieldSemantic requiredSemantic,
-        int channels)
+        int channels,
+        FieldSlotRole role = FieldSlotRole.A)
     {
-        FieldRequest current = new FieldRequest(fieldName, access, requiredSemantic, channels);
+        FieldRequest current = new FieldRequest(fieldName, access, requiredSemantic, channels, role);
 
         if (cache == null || cache.Length != 1 || !cache[0].Equals(current))
         {
             cache = new[] { current };
+        }
+
+        return cache;
+    }
+
+    public static FieldRequest[] Pair(
+        ref FieldRequest[] cache,
+        string fieldNameA,
+        FieldSlotRole roleA,
+        FieldAccess accessA,
+        FieldSemantic semanticA,
+        int channelsA,
+        string fieldNameB,
+        FieldSlotRole roleB,
+        FieldAccess accessB,
+        FieldSemantic semanticB,
+        int channelsB)
+    {
+        FieldRequest a = new FieldRequest(fieldNameA, accessA, semanticA, channelsA, roleA);
+        FieldRequest b = new FieldRequest(fieldNameB, accessB, semanticB, channelsB, roleB);
+
+        if (cache == null ||
+            cache.Length != 2 ||
+            !cache[0].Equals(a) ||
+            !cache[1].Equals(b))
+        {
+            cache = new[] { a, b };
         }
 
         return cache;
@@ -366,6 +400,7 @@ public abstract class FieldKernelPass : SimPass
     {
         public string FieldName;
         public FieldAccess Access;
+        public FieldSlotRole Role;
         public int ReadId;
         public int WriteId;
     }
@@ -373,11 +408,35 @@ public abstract class FieldKernelPass : SimPass
     protected abstract string KernelName { get; }
     protected KernelHandle Kernel => kernel;
 
-    /// <summary>Field whose plane/resolution drive FieldParams (first write, else first read).</summary>
+    private bool multiRoleBindings;
+
+    /// <summary>
+    /// Field whose plane/resolution drive FieldParams.
+    /// Multi-role: Role=A. Single-role: first write, else first read.
+    /// </summary>
     protected virtual string PrimaryFieldName
     {
         get
         {
+            if (multiRoleBindings)
+            {
+                for (int i = 0; i < FieldWrites.Count; i++)
+                {
+                    if (FieldWrites[i].Role == FieldSlotRole.A)
+                    {
+                        return FieldWrites[i].FieldName;
+                    }
+                }
+
+                for (int i = 0; i < FieldReads.Count; i++)
+                {
+                    if (FieldReads[i].Role == FieldSlotRole.A)
+                    {
+                        return FieldReads[i].FieldName;
+                    }
+                }
+            }
+
             if (FieldWrites.Count > 0)
             {
                 return FieldWrites[0].FieldName;
@@ -393,9 +452,10 @@ public abstract class FieldKernelPass : SimPass
     public override void Initialize(SimContext context)
     {
         fieldBinds.Clear();
+        multiRoleBindings = false;
         CollectFieldBinds(FieldReads);
         CollectFieldBinds(FieldWrites);
-        ValidateSingleDistinctFieldName();
+        AssignSlotIdsAndValidateRoles();
         ValidateAccessConflicts();
 
         string primary = PrimaryFieldName;
@@ -405,7 +465,19 @@ public abstract class FieldKernelPass : SimPass
                 $"{DisplayName}: FieldKernelPass requires at least one field request.");
         }
 
-        // After unique-name guard so EditMode multi-field tests need no compute library.
+        // Role guard runs before Fields/FindKernel so EditMode stubs can use null context.
+        if (multiRoleBindings)
+        {
+            if (context == null || context.Fields == null)
+            {
+                throw new InvalidOperationException(
+                    $"{DisplayName}: multi-field-per-kernel pass requires a SimContext with Fields.");
+            }
+
+            ValidateMatchingFieldGeometry(context);
+        }
+
+        // After unique-name / role guards so EditMode multi-field tests need no compute library.
         kernel = context.FindKernel(KernelName);
         primaryDescriptor = context.Fields.Get(primary).Descriptor;
     }
@@ -483,9 +555,7 @@ public abstract class FieldKernelPass : SimPass
     }
 
     /// <summary>
-    /// Binds fixed FieldRead/FieldWrite slots (generic across field names).
-    /// Safe because Build exact-channel validation ensures the UAV/SRV HLSL type
-    /// (e.g. float2) matches descriptor.ChannelCount for every write/read request.
+    /// Collects binds with roles; slot property IDs assigned in <see cref="AssignSlotIdsAndValidateRoles"/>.
     /// </summary>
     private void CollectFieldBinds(IReadOnlyList<FieldRequest> requests)
     {
@@ -496,30 +566,132 @@ public abstract class FieldKernelPass : SimPass
             {
                 FieldName = request.FieldName,
                 Access = request.Access,
-                ReadId = SimShaderIds.FieldRead,
-                WriteId = SimShaderIds.FieldWrite,
+                Role = request.Role,
+                ReadId = 0,
+                WriteId = 0,
             });
         }
     }
 
-    private void ValidateSingleDistinctFieldName()
+    /// <summary>
+    /// Guard matrix (ADR-008 / M2c): per-role unique FieldName; roles exactly {A} or {A,B};
+    /// single-role → legacy FieldRead/FieldWrite; multi-role → *A/*B.
+    /// </summary>
+    private void AssignSlotIdsAndValidateRoles()
     {
-        string first = null;
+        if (fieldBinds.Count == 0)
+        {
+            multiRoleBindings = false;
+            return;
+        }
+
+        Dictionary<FieldSlotRole, string> roleToName =
+            new Dictionary<FieldSlotRole, string>();
+        Dictionary<string, FieldSlotRole> nameToRole =
+            new Dictionary<string, FieldSlotRole>(StringComparer.Ordinal);
+
+        for (int i = 0; i < fieldBinds.Count; i++)
+        {
+            FieldBind bind = fieldBinds[i];
+            if (roleToName.TryGetValue(bind.Role, out string existingName))
+            {
+                if (!string.Equals(existingName, bind.FieldName, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        $"{DisplayName}: FieldSlotRole.{bind.Role} is bound to both " +
+                        $"'{existingName}' and '{bind.FieldName}'. " +
+                        "At most one distinct field name is allowed per role (ADR-008).");
+                }
+            }
+            else
+            {
+                roleToName.Add(bind.Role, bind.FieldName);
+            }
+
+            if (nameToRole.TryGetValue(bind.FieldName, out FieldSlotRole existingRole))
+            {
+                if (existingRole != bind.Role)
+                {
+                    throw new InvalidOperationException(
+                        $"{DisplayName}: field '{bind.FieldName}' cannot use both " +
+                        $"FieldSlotRole.{existingRole} and FieldSlotRole.{bind.Role}.");
+                }
+            }
+            else
+            {
+                nameToRole.Add(bind.FieldName, bind.Role);
+            }
+        }
+
+        bool hasA = roleToName.ContainsKey(FieldSlotRole.A);
+        bool hasB = roleToName.ContainsKey(FieldSlotRole.B);
+        if (hasA && hasB)
+        {
+            multiRoleBindings = true;
+        }
+        else if (hasA && !hasB)
+        {
+            multiRoleBindings = false;
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"{DisplayName}: field slot roles must be exactly {{A}} (single-field) or " +
+                "{A, B} (multi-field). Role set {B} without A is not allowed (ADR-008).");
+        }
+
+        for (int i = 0; i < fieldBinds.Count; i++)
+        {
+            FieldBind bind = fieldBinds[i];
+            if (multiRoleBindings)
+            {
+                if (bind.Role == FieldSlotRole.A)
+                {
+                    bind.ReadId = SimShaderIds.FieldReadA;
+                    bind.WriteId = SimShaderIds.FieldWriteA;
+                }
+                else
+                {
+                    bind.ReadId = SimShaderIds.FieldReadB;
+                    bind.WriteId = SimShaderIds.FieldWriteB;
+                }
+            }
+            else
+            {
+                bind.ReadId = SimShaderIds.FieldRead;
+                bind.WriteId = SimShaderIds.FieldWrite;
+            }
+
+            fieldBinds[i] = bind;
+        }
+    }
+
+    private void ValidateMatchingFieldGeometry(SimContext context)
+    {
+        FieldDescriptor reference = null;
+        string referenceName = null;
+
         for (int i = 0; i < fieldBinds.Count; i++)
         {
             string name = fieldBinds[i].FieldName;
-            if (first == null)
+            FieldDescriptor descriptor = context.Fields.Get(name).Descriptor;
+            if (reference == null)
             {
-                first = name;
+                reference = descriptor;
+                referenceName = name;
                 continue;
             }
 
-            if (!string.Equals(first, name, StringComparison.Ordinal))
+            if (descriptor.Resolution != reference.Resolution ||
+                descriptor.Origin != reference.Origin ||
+                descriptor.AxisU != reference.AxisU ||
+                descriptor.AxisV != reference.AxisV ||
+                descriptor.Size != reference.Size)
             {
                 throw new InvalidOperationException(
-                    $"{DisplayName}: FieldKernelPass with generic FieldRead/FieldWrite slots supports " +
-                    "exactly one distinct field name per pass. Multi-field-per-kernel passes need " +
-                    "index-based slots (M2c, not yet implemented).");
+                    $"{DisplayName}: multi-field-per-kernel requires matching Resolution and plane " +
+                    $"(Origin, AxisU, AxisV, Size) for all roles. " +
+                    $"'{referenceName}' and '{name}' differ (ADR-008 / M2c).");
             }
         }
     }
