@@ -340,3 +340,149 @@ public sealed class SwapFieldsPass : FieldKernelPass
             fieldNameB, FieldSlotRole.B, FieldAccess.WritePingPong, FieldSemantic.Scalar, 1);
 }
 
+/// <summary>
+/// Gray-Scott reaction-diffusion on two scalar fields (ADR-009 / M2c.1).
+/// U=RoleA, V=RoleB, WritePingPong; simultaneous snapshot update in one kernel.
+/// </summary>
+[Serializable]
+public sealed class GrayScottPass : FieldKernelPass
+{
+    private static readonly int GrayScottDuId = Shader.PropertyToID("GrayScottDu");
+    private static readonly int GrayScottDvId = Shader.PropertyToID("GrayScottDv");
+    private static readonly int GrayScottFeedId = Shader.PropertyToID("GrayScottFeed");
+    private static readonly int GrayScottKillId = Shader.PropertyToID("GrayScottKill");
+
+    [SerializeField] private string fieldNameU = "U";
+    [SerializeField] private string fieldNameV = "V";
+    [SerializeField, Min(0f)] private float diffusionRateU = 0.16f;
+    [SerializeField, Min(0f)] private float diffusionRateV = 0.08f;
+    [SerializeField, Min(0f)] private float feedRate = 0.035f;
+    [SerializeField, Min(0f)] private float killRate = 0.06f;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string FieldNameU
+    {
+        get => fieldNameU;
+        set => fieldNameU = value;
+    }
+
+    public string FieldNameV
+    {
+        get => fieldNameV;
+        set => fieldNameV = value;
+    }
+
+    public float DiffusionRateU
+    {
+        get => diffusionRateU;
+        set => diffusionRateU = value;
+    }
+
+    public float DiffusionRateV
+    {
+        get => diffusionRateV;
+        set => diffusionRateV = value;
+    }
+
+    public float FeedRate
+    {
+        get => feedRate;
+        set => feedRate = value;
+    }
+
+    public float KillRate
+    {
+        get => killRate;
+        set => killRate = value;
+    }
+
+    public override string DisplayName => "Gray-Scott Reaction-Diffusion";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "GrayScottReact";
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Pair(
+            ref fieldWritesCache,
+            fieldNameU, FieldSlotRole.A, FieldAccess.WritePingPong, FieldSemantic.Scalar, 1,
+            fieldNameV, FieldSlotRole.B, FieldAccess.WritePingPong, FieldSemantic.Scalar, 1);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+        SetFloat(context, GrayScottDuId, diffusionRateU);
+        SetFloat(context, GrayScottDvId, diffusionRateV);
+        SetFloat(context, GrayScottFeedId, feedRate);
+        SetFloat(context, GrayScottKillId, killRate);
+    }
+}
+
+/// <summary>
+/// One-shot UV disk seed into a scalar field (WriteInPlace). Fires once per Initialize/Rebuild
+/// via <see cref="FieldKernelPass.ShouldDispatch"/> + hasFired (ADR-009 / M2c.1).
+/// </summary>
+[Serializable]
+public sealed class SeedScalarDiskPass : FieldKernelPass
+{
+    private static readonly int SeedCenterUVId = Shader.PropertyToID("SeedCenterUV");
+    private static readonly int SeedRadiusUVId = Shader.PropertyToID("SeedRadiusUV");
+    private static readonly int SeedValueId = Shader.PropertyToID("SeedValue");
+
+    [SerializeField] private string fieldName = "V";
+    [SerializeField] private Vector2 centerUV = new Vector2(0.5f, 0.5f);
+    [SerializeField, Min(0f)] private float radiusUV = 0.06f;
+    [SerializeField] private float value = 1f;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+    [NonSerialized] private bool hasFired;
+
+    public string FieldName
+    {
+        get => fieldName;
+        set => fieldName = value;
+    }
+
+    public Vector2 CenterUV
+    {
+        get => centerUV;
+        set => centerUV = value;
+    }
+
+    public float RadiusUV
+    {
+        get => radiusUV;
+        set => radiusUV = value;
+    }
+
+    public float Value
+    {
+        get => value;
+        set => this.value = value;
+    }
+
+    public override string DisplayName => "Seed Scalar Disk";
+    public override PassCategory Category => PassCategory.Emit;
+    protected override string KernelName => "SeedScalarDisk";
+    protected override bool ShouldDispatch => !hasFired;
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, fieldName,
+            FieldAccess.WriteInPlace, FieldSemantic.Scalar, 1);
+
+    public override void Initialize(SimContext context)
+    {
+        base.Initialize(context);
+        hasFired = false;
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetVector(context, SeedCenterUVId, new Vector3(centerUV.x, centerUV.y, 0f));
+        SetFloat(context, SeedRadiusUVId, radiusUV);
+        SetFloat(context, SeedValueId, value);
+        // Guard already passed ShouldDispatch; dispatch will run after this call.
+        hasFired = true;
+    }
+}
+

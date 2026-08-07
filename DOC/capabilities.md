@@ -36,7 +36,12 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 - `FieldSlotRole` A/B на `FieldRequest`; `FieldRequestSets.Pair`.
 - Multi-role: matching Resolution + plane (hard error); proof `SwapFieldsPass`.
-- Gray-Scott — следующий шаг (не в M2c).
+
+### Gray-Scott (M2c.1)
+
+- `GrayScottPass` — dual Scalar U/V, WritePingPong; `GrayScottPasses.compute`.
+- `SeedScalarDiskPass` — one-shot disk (ShouldDispatch / hasFired, reset на Initialize).
+- Рекомендация: N=1–4 GrayScottPass за кадр при Speed=1 (калибровать эмпирически). ADR-009.
 
 ### P2G (M2b.1)
 
@@ -71,7 +76,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | Категория | Примеры |
 | --- | --- |
 | Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, Integrate, Bounds, … |
-| Emit / Transport | ClearField, TouchInject, Decay / **DecayScalar**, **Diffuse**, **SwapFields**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
+| Emit / Transport | ClearField, **SeedScalarDisk**, TouchInject, Decay / **DecayScalar**, **Diffuse**, **SwapFields**, **GrayScott**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
 
@@ -94,4 +99,4 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | Fields только 2D | R16 / RG16 |
 | Policy C для fields | нет runtime autogen |
 | P2G average only | Sum/Max — позже; overflow суммы — док, не guard |
-| Multi-field kernel ≤2 | Role A/B; Gray-Scott — следующий шаг |
+| Multi-field kernel ≤2 | Role A/B; Gray-Scott = M2c.1 |

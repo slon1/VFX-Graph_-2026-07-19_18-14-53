@@ -1,0 +1,86 @@
+// Gray-Scott reaction-diffusion + one-shot scalar disk seed (ADR-009 / M2c.1).
+// Texture slots: multi-field FieldReadA/B + FieldWriteA/B (React); WriteInPlace FieldWrite (Seed).
+// Load without .r (Texture2D<float> / RWTexture2D<float>).
+
+#pragma kernel GrayScottReact
+#pragma kernel SeedScalarDisk
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+
+// --- GrayScottReact (WritePingPong Role A=U, B=V) ---
+
+Texture2D<float> FieldReadA;
+Texture2D<float> FieldReadB;
+RWTexture2D<float> FieldWriteA;
+RWTexture2D<float> FieldWriteB;
+
+float DeltaTime;
+float GrayScottDu;
+float GrayScottDv;
+float GrayScottFeed;
+float GrayScottKill;
+
+float LoadClampedA(int2 q)
+{
+    int2 maxP = FieldResolution - 1;
+    q = clamp(q, int2(0, 0), maxP);
+    return FieldReadA.Load(int3(q, 0));
+}
+
+float LoadClampedB(int2 q)
+{
+    int2 maxP = FieldResolution - 1;
+    q = clamp(q, int2(0, 0), maxP);
+    return FieldReadB.Load(int3(q, 0));
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void GrayScottReact(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float u = FieldReadA.Load(int3(p, 0));
+    float v = FieldReadB.Load(int3(p, 0));
+
+    float lapU = LoadClampedA(p + int2(0, 1)) + LoadClampedA(p - int2(0, 1))
+               + LoadClampedA(p + int2(1, 0)) + LoadClampedA(p - int2(1, 0)) - 4.0 * u;
+    float lapV = LoadClampedB(p + int2(0, 1)) + LoadClampedB(p - int2(0, 1))
+               + LoadClampedB(p + int2(1, 0)) + LoadClampedB(p - int2(1, 0)) - 4.0 * v;
+
+    float reaction = u * v * v;
+    float newU = u + DeltaTime * (GrayScottDu * lapU - reaction + GrayScottFeed * (1.0 - u));
+    float newV = v + DeltaTime * (GrayScottDv * lapV + reaction - (GrayScottFeed + GrayScottKill) * v);
+
+    // Clamp to physical concentration range — not a substitute for CFL (ADR-009).
+    FieldWriteA[p] = saturate(newU);
+    FieldWriteB[p] = saturate(newV);
+}
+
+// --- SeedScalarDisk (WriteInPlace: RW load+store own texel only) ---
+
+RWTexture2D<float> FieldWrite;
+
+float2 SeedCenterUV;
+float SeedRadiusUV;
+float SeedValue;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void SeedScalarDisk(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float2 uv = (float2(p) + 0.5) * FieldTexelSize;
+    float dist = distance(uv, SeedCenterUV);
+    float current = FieldWrite[p];
+    FieldWrite[p] = dist <= SeedRadiusUV ? SeedValue : current;
+}

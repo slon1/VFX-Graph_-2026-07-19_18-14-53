@@ -408,6 +408,12 @@ public abstract class FieldKernelPass : SimPass
     protected abstract string KernelName { get; }
     protected KernelHandle Kernel => kernel;
 
+    /// <summary>
+    /// When false, sealed Execute early-outs without DispatchCompute (LastExecuteDispatched stays false).
+    /// Used by one-shot passes (e.g. SeedScalarDiskPass) without breaking the sealed Execute path.
+    /// </summary>
+    protected virtual bool ShouldDispatch => true;
+
     private bool multiRoleBindings;
 
     /// <summary>
@@ -486,7 +492,7 @@ public abstract class FieldKernelPass : SimPass
     {
         LastExecuteDispatched = false;
 
-        if (!kernel.IsValid || primaryDescriptor == null)
+        if (!kernel.IsValid || primaryDescriptor == null || !ShouldDispatch)
         {
             return;
         }

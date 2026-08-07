@@ -1,11 +1,11 @@
-# Status — M3D Framework (Milestone 2c)
+# Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-08-07  
-**Итерация:** 5.7 — Multi-Field-Per-Kernel Binding  
+**Итерация:** 5.8 — Gray-Scott Reaction-Diffusion  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -79,21 +79,30 @@ Default rate 1.5. ADR-007. Тест: `DecayFieldScalarPassTests`.
 `FieldSlotRole` A/B, `FieldRequestSets.Pair`, слоты `FieldReadA/B`/`FieldWriteA/B`.  
 Single-role пассы остаются на `FieldRead`/`FieldWrite`. Multi-role: geometry hard error (Resolution + plane).  
 Proof: `SwapFieldsPass` + `MultiFieldTestPasses.compute`. ADR-008.  
-Тесты: `FieldSlotNamingTests`, `SwapFieldsPassTests`. Gray-Scott — следующий шаг.
+Тесты: `FieldSlotNamingTests`, `SwapFieldsPassTests`.
+
+---
+
+## Milestone 2c.1 — Gray-Scott (готово)
+
+`GrayScottPass` (U+V multi-role WritePingPong) + `SeedScalarDiskPass` (one-shot via `ShouldDispatch`/`hasFired`).  
+`GrayScottPasses.compute`. Defaults Du/Dv/F/k калибровочные. `saturate` на выходе — clamp, не замена CFL. ADR-009.  
+Рекомендация: **N=1–4 `GrayScottPass` подряд за кадр** — компромисс скорость реакции vs стабильность; калибровать при Speed=1.  
+Тесты: `GrayScottPassTests`, `SeedScalarDiskPassTests`.
 
 ---
 
 ## Файлы (ключевые)
 
 ```
-Assets/Scripts/Passes/     FieldPasses.cs (SwapFieldsPass, …), P2GPasses.cs
-Assets/Scripts/Runtime/    SimPass.cs (FieldKernelPass roles), SimulationWorld.cs
-Assets/Shaders/GPU/Passes/ MultiFieldTestPasses, DiffusePasses, DecayPasses, …
-Assets/Tests/Editor/       FieldSlotNamingTests, SwapFieldsPassTests, …
+Assets/Scripts/Passes/     FieldPasses.cs (GrayScott, Seed, Swap, …), P2GPasses.cs
+Assets/Scripts/Runtime/    SimPass.cs (ShouldDispatch, roles), SimulationWorld.cs
+Assets/Shaders/GPU/Passes/ GrayScottPasses, MultiFieldTestPasses, DiffusePasses, …
+Assets/Tests/Editor/       GrayScottPassTests, SeedScalarDiskPassTests, …
 ```
 
 ---
 
 ## Вне скоупа (далее)
 
-Gray-Scott · Stable Fluids · spatial hash · AggregationMode enum
+LUT/trail (M2d) · Stable Fluids · spatial hash · AggregationMode enum
