@@ -517,9 +517,23 @@ public sealed class SimulationWorld : MonoBehaviour
     private void SetupBinders()
     {
         binders.Clear();
-        VfxParticleBinder vfxBinder = new VfxParticleBinder(visualEffect);
-        vfxBinder.Initialize(context);
-        binders.Add(vfxBinder);
+
+        if (particles.Count > 0)
+        {
+            VfxParticleBinder vfxBinder = new VfxParticleBinder(visualEffect);
+            vfxBinder.Initialize(context);
+            binders.Add(vfxBinder);
+        }
+        else if (visualEffect != null)
+        {
+            // Field-only: stop spawning leftover VFX points from a previous effect.
+            if (visualEffect.HasFloat("SpawnCount"))
+            {
+                visualEffect.SetFloat("SpawnCount", 0f);
+            }
+
+            visualEffect.Reinit();
+        }
 
         IReadOnlyList<DebugFieldQuadSlot> debugQuads = effect.DebugFieldQuads;
         if (debugQuads != null && debugQuads.Count > 0)
@@ -532,6 +546,12 @@ public sealed class SimulationWorld : MonoBehaviour
 
     private void AutoRegisterAttributes()
     {
+        // NoneSource: Capacity 0 — GraphicsBuffer cannot be allocated; particle passes early-out on Count==0.
+        if (particles.Capacity <= 0)
+        {
+            return;
+        }
+
         IReadOnlyList<SimPass> passes = effect.Passes;
         for (int i = 0; i < passes.Count; i++)
         {

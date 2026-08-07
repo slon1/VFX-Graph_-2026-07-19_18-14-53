@@ -1,8 +1,8 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-08-07  
+**Снимок:** 2026-08-08  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
-**Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
+**Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -18,11 +18,15 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 
 ## Что умеет сейчас
 
-### Particles
+### Particles / источники
 
-Источники Cube / Mesh / Bitmap → `restPosition`.  
+| `DataSourceKind` | Поведение |
+| --- | --- |
+| Cube / Mesh / Bitmap | Заполняют `restPosition`, задают `ParticleSet` capacity |
+| **None** | 0 частиц (`NoneSource`); field-only эффекты; particle-пассы no-op; VFX `SpawnCount=0` |
+
 Builtins: `restPosition`, `position`, `velocity`, `value`.  
-Авторегистрация атрибутов по Reads/Writes пассов.
+Авторегистрация атрибутов по Reads/Writes — **пропускается** при Capacity=0 (None).
 
 ### Fields (M2a)
 
@@ -42,6 +46,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - `GrayScottPass` — dual Scalar U/V, WritePingPong; `GrayScottPasses.compute`.
 - `SeedScalarDiskPass` — one-shot disk (ShouldDispatch / hasFired, reset на Initialize).
 - Рекомендация: N=1–4 GrayScottPass за кадр при Speed=1 (калибровать эмпирически). ADR-009.
+- Пресет: **`Assets/Effects/Gray-Scott.asset`** — `Source Kind = None`, debug quads U/V.
 
 ### P2G (M2b.1)
 
@@ -86,6 +91,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | GalaxySwirl / ReactiveDust | dynamics + touch на частицах |
 | **HybridTouchField** | touch → velocity field → particles |
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
+| **Gray-Scott** | field-only RD (`Source Kind = None`) |
 
 ---
 

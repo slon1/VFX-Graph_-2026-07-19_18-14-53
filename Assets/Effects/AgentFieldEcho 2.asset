@@ -39,11 +39,6 @@ MonoBehaviour:
     size: {x: 10, y: 10}
   passes:
   - rid: 7167045659731427409
-  - rid: 7167045659731427414
-  - rid: 7167045659731427415
-  - rid: 7167045659731427416
-  - rid: 7167045659731427417
-  - rid: 7167045659731427421
   - rid: 7167045659731427410
   - rid: 7167045659731427411
   - rid: 7167045659731427412
@@ -62,7 +57,7 @@ MonoBehaviour:
       data:
         enabled: 1
         frequency: 1
-        amplitude: 0.01
+        amplitude: -2.22
         speed: 1
     - rid: 7167045659731427410
       type: {class: DragPass, ns: , asm: Assembly-CSharp}
@@ -86,35 +81,3 @@ MonoBehaviour:
         extents: {x: 90, y: 90, z: 90}
         behaviour: 1
         bounce: 0.6
-    - rid: 7167045659731427414
-      type: {class: ClearFieldAccumPass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1
-        fieldName: agentVelocity
-        channels: 2
-    - rid: 7167045659731427415
-      type: {class: ScatterVelocityToFieldPass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1
-        targetFieldName: agentVelocity
-        valueScale: 4096
-        valueBias: 32
-    - rid: 7167045659731427416
-      type: {class: NormalizeVelocityAccumPass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1
-        fieldName: agentVelocity
-        valueScale: 4096
-        valueBias: 32
-    - rid: 7167045659731427417
-      type: {class: DecayFieldPass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1
-        fieldName: agentVelocity
-        decayRate: 1.5
-    - rid: 7167045659731427421
-      type: {class: SampleVelocityFieldPass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1
-        velocityFieldName: agentVelocity
-        strength: 1

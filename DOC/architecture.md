@@ -1,7 +1,7 @@
 # Архитектура фреймворка GPU-симуляций (M3D Framework)
 
-**Дата:** 2026-07-26, обновлено 2026-08-07
-**Статус:** M2a … M2c.1 реализованы (см. [`status.md`](status.md), roadmap [`last/roadmap_m2a.md`](last/roadmap_m2a.md))
+**Дата:** 2026-07-26, обновлено 2026-08-08
+**Статус:** M2a … M2c.1 реализованы; `DataSourceKind.None` для field-only (см. [`status.md`](status.md), roadmap [`last/roadmap_m2a.md`](last/roadmap_m2a.md))
 **Онбординг:** [`getting-started.md`](getting-started.md)
 **Стек:** Unity 6 · URP · Compute Shaders · VFX Graph (renderer) · UniTask
 **Платформа:** Android (Vulkan) / iOS (Metal), тач-управление, GPU-first
@@ -72,6 +72,10 @@ flowchart TB
 параметры exposed. Аналог `.hip`-файла Houdini / VFX-графа, но **реордерабельным списком
 в инспекторе** — 90 % пользы нод-графа за 5 % стоимости. EffectAsset = пресет:
 скопировал, поменял пассы и параметры — новый эффект.
+
+**Источник (`DataSourceKind`):** Cube / Mesh / Bitmap заполняют `restPosition` и capacity;
+**None** (`NoneSource`) — capacity 0, field-only (Gray-Scott и т.п.). `ParticleSet` всё равно
+создаётся World-ом, но без GraphicsBuffer-атрибутов; particle-пассы early-out на `Count==0`.
 
 ### SimulationWorld
 
@@ -213,7 +217,8 @@ struct TouchForce { float2 pos; float2 delta; float radius; float strength; };
 8. **Plane basis** принадлежит `FieldDescriptor`, не `InputRouter`. Один `FieldKernelPass` = один plane у всех полей пасса; write-поля — одно resolution (см. ADR-001).
 9. **DoD M2a:** hybrid `Touch → velocity field → particles → render` без special-case веток в `SimulationWorld`.
 
-Particle attributes по-прежнему авторегистрируются; fields — только из деклараций (намеренная асимметрия).
+Particle attributes авторегистрируются **только если** `ParticleSet.Capacity > 0` (у `None` — skip);
+fields — только из деклараций (намеренная асимметрия).
 
 ---
 
@@ -224,10 +229,12 @@ Particle attributes по-прежнему авторегистрируются; 
 | Только `ParticleSet` | + `FieldSet` (dual RT, World-owned Swap) |
 | `Reads`/`Writes` (attrs) | + `FieldReads`/`FieldWrites` (`FieldRequest`) |
 | VFX bind в World | `IRenderBinder` (VFX + `FieldDebugQuadsBinder`) |
-| — | `HybridTouchField` demo |
+| Источник всегда с частицами | + `DataSourceKind.None` (field-only) |
+| — | `HybridTouchField` / `Gray-Scott` demos |
 
 **Milestone 1:** каркас частиц + ~17 пассов.  
 **Milestone 2a (готово):** Field foundation + hybrid.  
 **M2b.1 / M2b.1.1 (готово):** P2G scatter + generic `FieldRead`/`FieldWrite` slots.  
 **M2b.2 … M2b.3.1 (готово):** Gradient, Density P2G (sum), Diffuse, Scalar Decay; debug quads — список слотов.  
-**Дальше:** M2c multi-field → Stable Fluids → spatial hash/boids → emitters → richer hybrids.
+**M2c / M2c.1 (готово):** multi-field Role A/B, Gray-Scott + Seed; `Source Kind = None`.  
+**Дальше:** LUT/trail (M2d) → Stable Fluids → spatial hash/boids → emitters → richer hybrids.

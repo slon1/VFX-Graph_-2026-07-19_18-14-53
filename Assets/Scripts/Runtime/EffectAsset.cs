@@ -12,6 +12,7 @@ public sealed class EffectAsset : ScriptableObject
     [SerializeField] private CubeSource cubeSource = new CubeSource();
     [SerializeField] private MeshSource meshSource = new MeshSource();
     [SerializeField] private BitmapSource bitmapSource = new BitmapSource();
+    [SerializeField] private NoneSource noneSource = new NoneSource();
     [SerializeField, Min(0f)] private float simulationSpeed = 1f;
     [SerializeField] private List<FieldDescriptor> fields = new List<FieldDescriptor>();
     [SerializeReference] private List<SimPass> passes = new List<SimPass>();
@@ -36,6 +37,8 @@ public sealed class EffectAsset : ScriptableObject
                 return meshSource;
             case DataSourceKind.Bitmap:
                 return bitmapSource;
+            case DataSourceKind.None:
+                return noneSource;
             default:
                 throw new System.ArgumentOutOfRangeException(
                     nameof(sourceKind), sourceKind, "Unknown data source kind.");

@@ -83,7 +83,7 @@ MonoBehaviour:
       data:
         enabled: 1
         center: {x: 0, y: 0, z: 0}
-        extents: {x: 90, y: 90, z: 90}
+        extents: {x: 20, y: 20, z: 20}
         behaviour: 1
         bounce: 0.6
     - rid: 7167045659731427414

@@ -13,4 +13,8 @@
 
 ### Вне скоупа
 
-Demo EffectAsset. 3+ поля. Agent→V P2G. LUT/trail (M2d). Wraparound. Runtime CFL guard.
+3+ поля. Agent→V P2G. LUT/trail (M2d). Wraparound. Runtime CFL guard.
+
+### Follow-up (закрыт с docs)
+
+Demo `Gray-Scott.asset` + `DataSourceKind.None` (`NoneSource`) — field-only без частиц.

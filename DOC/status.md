@@ -1,10 +1,10 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-08-07  
-**Итерация:** 5.8 — Gray-Scott Reaction-Diffusion  
+**Дата:** 2026-08-08  
+**Итерация:** 5.8 — Gray-Scott Reaction-Diffusion (+ `DataSourceKind.None`)  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
-**Онбординг:** [`getting-started.md`](getting-started.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
+**Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
 **ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
@@ -88,7 +88,13 @@ Proof: `SwapFieldsPass` + `MultiFieldTestPasses.compute`. ADR-008.
 `GrayScottPass` (U+V multi-role WritePingPong) + `SeedScalarDiskPass` (one-shot via `ShouldDispatch`/`hasFired`).  
 `GrayScottPasses.compute`. Defaults Du/Dv/F/k калибровочные. `saturate` на выходе — clamp, не замена CFL. ADR-009.  
 Рекомендация: **N=1–4 `GrayScottPass` подряд за кадр** — компромисс скорость реакции vs стабильность; калибровать при Speed=1.  
-Тесты: `GrayScottPassTests`, `SeedScalarDiskPassTests`.
+Тесты: `GrayScottPassTests`, `SeedScalarDiskPassTests`.  
+Пресет: `Assets/Effects/Gray-Scott.asset`.
+
+### Field-only: `DataSourceKind.None`
+
+`NoneSource` → `ParticleSet` capacity 0. Авторегистрация particle-атрибутов пропускается; particle-пассы no-op (`Count==0`); VFX `SpawnCount=0`.  
+Для RD / grid-only эффектов (Gray-Scott) — **Source Kind = None**, не «куб с 1 частицей».
 
 ---
 

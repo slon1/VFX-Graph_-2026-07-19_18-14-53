@@ -77,6 +77,11 @@ public sealed class EffectAssetEditor : Editor
             case DataSourceKind.Bitmap:
                 EditorGUILayout.PropertyField(bitmapSourceProperty, true);
                 break;
+            case DataSourceKind.None:
+                EditorGUILayout.HelpBox(
+                    "None — no particles (field-only). Particle passes are no-ops; use fields + field passes (e.g. Gray-Scott).",
+                    MessageType.Info);
+                break;
         }
 
         EditorGUILayout.PropertyField(simulationSpeedProperty);

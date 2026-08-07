@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c53c179a8210264ea3a817857fc19ed, type: 3}
+  m_Name: Gray-Scott 1
+  m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
+  sourceKind: 0
+  cubeSource:
+    resolution: 1
+    cubeSize: 1
+  meshSource:
+    mesh: {fileID: 0}
+    centerPivot: 1
+    normalizeScale: 1
+    targetSize: 2
+  bitmapSource:
+    texture: {fileID: 0}
+    targetWidth: 2
+    heightScale: 1
+  simulationSpeed: 1
+  fields:
+  - id:
+      name: U
+      semantic: 2
+    format: 45
+    resolution: {x: 128, y: 128}
+    clearValue: {r: 1, g: 1, b: 1, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 10, y: 10}
+  - id:
+      name: V
+      semantic: 2
+    format: 45
+    resolution: {x: 128, y: 128}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 10, y: 10}
+  passes:
+  - rid: 7167045775393554493
+  - rid: 7167045775393554494
+  - rid: 7167045775393554494
+  - rid: 7167045775393554494
+  debugFieldQuads:
+  - fieldName: U
+    mode: 1
+    colorScale: 2
+  - fieldName: V
+    mode: 1
+    colorScale: 2
+  showVelocityFieldQuad: 0
+  showDensityFieldQuad: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 7167045775393554493
+      type: {class: SeedScalarDiskPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: V
+        centerUV: {x: 0.5, y: 0.5}
+        radiusUV: 0.06
+        value: 1
+    - rid: 7167045775393554494
+      type: {class: GrayScottPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldNameU: U
+        fieldNameV: V
+        diffusionRateU: 0.16
+        diffusionRateV: 0.08
+        feedRate: 0.035
+        killRate: 0.06

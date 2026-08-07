@@ -1,6 +1,7 @@
 # Getting Started — для новых программистов
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
+**Каталог пассов** (назначение, dt, Pass Library): [`pass-catalog.md`](pass-catalog.md).  
 Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
@@ -13,13 +14,13 @@ GPU-фреймворк интерактивных симуляций (Unity 6 + 
 EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 ```
 
-- **Источник** заполняет `restPosition` (куб / mesh / bitmap).
+- **Источник** заполняет `restPosition` (куб / mesh / bitmap), либо **None** — без частиц (field-only).
 - **Пассы** меняют particles и/или fields на GPU.
 - **Binders** показывают результат (VFX Graph, debug field quad).
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse**, **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), hybrid touch demo, тач/мышь.  
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse**, **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь.  
 Пока нет: LUT/trail render, Stable Fluids, spatial hash / boids, particle emitters с lifetime.
 
 ---
@@ -34,11 +35,19 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **GalaxySwirl** / **ReactiveDust** — dynamics + touch.
    - **HybridTouchField** — Touch → velocity field → particles (+ velocity quad).
    - **AgentFieldEcho** — CurlNoise → P2G scatter velocity → field quad (без тача).
+   - **Gray-Scott** — field-only RD (`Source Kind = None`, quads U/V).
 3. Play. Для hybrid: InputRouter = **GroundXZ**.
 
 Меню: `Tools/M3D/Create Demo Effects`, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`.  
 После смены пассов/полей в Play — **Rebuild** на SimulationWorld.  
-Pass Library должен включать `P2GPasses.compute`.
+Pass Library должен включать нужные `.compute` (для GS — `GrayScottPasses.compute`).
+
+### Field-only (без частиц)
+
+1. `Source Kind = None` на EffectAsset (не Cube с малым resolution).
+2. Дескрипторы полей + field-пассы; particle-пассы можно не добавлять.
+3. Пример: `SeedScalarDisk(V)` → `GrayScottPass` × N; U clear=1, V clear=0; debug quads на U и V.
+4. Пресет: `Assets/Effects/Gray-Scott.asset`. Каталог: [`pass-catalog.md`](pass-catalog.md).
 
 ### Свой эффект с полями
 
@@ -117,6 +126,7 @@ Hybrid (field + particles):
 | Задача | Путь |
 | --- | --- |
 | Цикл / Swap / валидация полей | `Runtime/SimulationWorld.cs` |
+| Источники (Cube/Mesh/Bitmap/**None**) | `Sources/DataSourceKind.cs`, `Sources/NoneSource.cs` |
 | P2G SM / Channels validation | `Runtime/FieldAccumPassValidator.cs` |
 | Field descriptor / requests | `Core/FieldDescriptor.cs`, `Core/FieldSet.cs`, `Core/FieldAccumBuffer.cs` |
 | Контракт пасса | `Runtime/SimPass.cs` |
