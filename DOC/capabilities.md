@@ -47,6 +47,8 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - `SeedScalarDiskPass` — one-shot disk (ShouldDispatch / hasFired, reset на Initialize).
 - Рекомендация: N=1–4 GrayScottPass за кадр при Speed=1 (калибровать эмпирически). ADR-009.
 - Пресет: **`Assets/Effects/Gray-Scott.asset`** — `Source Kind = None`, поля **XZ**, `TouchInjectGrayScott` после React, debug quads U/V.
+- Гибрид: **`Assets/Effects/Gray-Scott-Boids.asset`** — boids + `agentPresence` Replace P2G → `AgentBoost`/`AgentErode` (gain 0.3); U/V/presence res 128 / size 50.
+- One-way: **`Assets/Effects/Gray-Scott-Agents.asset`** — движение частиц + presence → GS; **без** flock-полей и SampleVelocity/Gradient.
 
 ### P2G (M2b.1)
 
@@ -92,6 +94,8 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | **HybridTouchField** | touch → velocity field → particles |
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
+| **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |
+| **Gray-Scott-Agents** | agents → GS only (no field feedback) |
 
 ---
 

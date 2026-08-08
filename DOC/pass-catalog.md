@@ -48,6 +48,7 @@
 | `MultiFieldTestPasses.compute` | SwapFields (тест M2c) |
 | `GrayScottPasses.compute` | GrayScottReact, SeedScalarDisk |
 | `TouchGrayScottPasses.compute` | TouchInjectGrayScott |
+| `AgentFieldFeedbackPasses.compute` | AgentBoostField, AgentErodeField |
 
 `ClearFieldPass` и `ClearFieldAccumPass` — **без** своих `.compute` (Clear RT / ClearUintBuffer из P2G).
 
@@ -298,6 +299,26 @@
 | **Хорошо для** | Интерактивный Gray-Scott; **после** последнего `GrayScottPass` в кадре |
 | **Кисть** | `touchStrength≈1` — мягкий falloff; дефолт роутера 10 ≈ жёсткий диск |
 
+### AgentBoostField
+| | |
+|--|--|
+| **Назначение** | `V = max(V, saturate(presence * gain))` — агенты как катализатор |
+| **Библиотека / kernel** | `AgentFieldFeedbackPasses` / `AgentBoostField` |
+| **Fields** | Read RoleA Scalar (`agentPresence`) + WriteInPlace RoleB (`V`) |
+| **Параметры** | `gain` (0.3); source/target имена |
+| **dt** | Нет |
+| **Хорошо для** | После GrayScott; вместе с AgentErode |
+
+### AgentErodeField
+| | |
+|--|--|
+| **Назначение** | `U *= (1 - saturate(presence * gain))` |
+| **Библиотека / kernel** | `AgentFieldFeedbackPasses` / `AgentErodeField` |
+| **Fields** | Read RoleA Scalar (`agentPresence`) + WriteInPlace RoleB (`U`) |
+| **Параметры** | `gain` (0.3); source/target имена |
+| **dt** | Нет |
+| **Хорошо для** | После Boost; presence — Replace: ClearField→ClearAccum→Scatter→Normalize |
+
 ---
 
 ## P2G (частица → поле)
@@ -354,7 +375,11 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 
 **Boids-field:** Curl/Drag/Limit/Integrate/Bounds → alignment P2G+Decay → cohesion density+Diffuse → separation density → SampleVel / SampleGrad±  
 
-**Gray-Scott:** `Source Kind = None` → `SeedScalarDisk(V)` → `GrayScott×N` → `TouchInjectGrayScott` (поля на **XZ**, как Hybrid; U clear=1, V clear=0)
+**Gray-Scott:** `Source Kind = None` → `SeedScalarDisk(V)` → `GrayScott×N` → `TouchInjectGrayScott` (поля на **XZ**; U clear=1, V clear=0)
+
+**Gray-Scott-Boids:** boids-движение → `ClearField(agentPresence)` → ClearAccum→Scatter→Normalize → Seed → `GrayScott×N` → `AgentBoost` → `AgentErode` → (опц. Touch); U/V/presence **res 128, size 50** как flock plane
+
+**Gray-Scott-Agents:** Curl/Drag/Limit/Integrate/Bounds → presence Replace → Seed → GS×N → Boost/Erode → Touch — **без** flock-полей и SampleVelocity/Gradient (поле не рулит частицами)
 
 ---
 
@@ -385,7 +410,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 | `Assets/Scripts/Passes/ShapePasses.cs` | `ShapePasses.compute` |
 | `ForcePasses.cs` | `ForcePasses.compute` |
 | `DynamicsPasses.cs` | `DynamicsPasses.compute` |
-| `FieldPasses.cs` | `FieldPasses`, `Diffuse`, `Decay`, `MultiFieldTest`, `GrayScott`, `TouchGrayScott` |
+| `FieldPasses.cs` | `FieldPasses`, `Diffuse`, `Decay`, `MultiFieldTest`, `GrayScott`, `TouchGrayScott`, `AgentFieldFeedback` |
 | `P2GPasses.cs` | `P2GPasses`, `DensityPasses` |
 | G2P gradient | `GradientPasses.compute` |
 

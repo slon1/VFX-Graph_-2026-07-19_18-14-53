@@ -528,3 +528,111 @@ public sealed class TouchInjectGrayScottPass : FieldKernelPass
     }
 }
 
+/// <summary>
+/// Raise target scalar (default V) from agent presence: max(target, saturate(presence * gain)).
+/// Read Role A + WriteInPlace Role B. Place after GrayScottPass.
+/// </summary>
+[Serializable]
+public sealed class AgentBoostFieldPass : FieldKernelPass
+{
+    private static readonly int GainId = Shader.PropertyToID("Gain");
+
+    [SerializeField] private string sourceFieldName = "agentPresence";
+    [SerializeField] private string targetFieldName = "V";
+    [SerializeField, Min(0f)] private float gain = 0.3f;
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string SourceFieldName
+    {
+        get => sourceFieldName;
+        set => sourceFieldName = value;
+    }
+
+    public string TargetFieldName
+    {
+        get => targetFieldName;
+        set => targetFieldName = value;
+    }
+
+    public float Gain
+    {
+        get => gain;
+        set => gain = value;
+    }
+
+    public override string DisplayName => "Agent Boost Field";
+    public override PassCategory Category => PassCategory.Emit;
+    protected override string KernelName => "AgentBoostField";
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, sourceFieldName,
+            FieldAccess.Read, FieldSemantic.Scalar, 1, FieldSlotRole.A);
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, targetFieldName,
+            FieldAccess.WriteInPlace, FieldSemantic.Scalar, 1, FieldSlotRole.B);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, GainId, gain);
+    }
+}
+
+/// <summary>
+/// Erode target scalar (default U) from agent presence: target *= (1 - saturate(presence * gain)).
+/// Read Role A + WriteInPlace Role B. Place after GrayScottPass (typically after Boost).
+/// </summary>
+[Serializable]
+public sealed class AgentErodeFieldPass : FieldKernelPass
+{
+    private static readonly int GainId = Shader.PropertyToID("Gain");
+
+    [SerializeField] private string sourceFieldName = "agentPresence";
+    [SerializeField] private string targetFieldName = "U";
+    [SerializeField, Min(0f)] private float gain = 0.3f;
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string SourceFieldName
+    {
+        get => sourceFieldName;
+        set => sourceFieldName = value;
+    }
+
+    public string TargetFieldName
+    {
+        get => targetFieldName;
+        set => targetFieldName = value;
+    }
+
+    public float Gain
+    {
+        get => gain;
+        set => gain = value;
+    }
+
+    public override string DisplayName => "Agent Erode Field";
+    public override PassCategory Category => PassCategory.Emit;
+    protected override string KernelName => "AgentErodeField";
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, sourceFieldName,
+            FieldAccess.Read, FieldSemantic.Scalar, 1, FieldSlotRole.A);
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, targetFieldName,
+            FieldAccess.WriteInPlace, FieldSemantic.Scalar, 1, FieldSlotRole.B);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, GainId, gain);
+    }
+}
+

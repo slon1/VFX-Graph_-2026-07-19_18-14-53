@@ -1,0 +1,42 @@
+// Agent presence → Gray-Scott U/V feedback (WriteInPlace Role B, Read Role A).
+// Load without .r (Texture2D<float> / RWTexture2D<float>).
+
+#pragma kernel AgentBoostField
+#pragma kernel AgentErodeField
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+
+Texture2D<float> FieldReadA; // agentPresence
+RWTexture2D<float> FieldWriteB; // V (boost) or U (erode)
+
+float Gain;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void AgentBoostField(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float presence = FieldReadA.Load(int3(p, 0));
+    float boost = saturate(presence * Gain);
+    FieldWriteB[p] = max(FieldWriteB[p], boost);
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void AgentErodeField(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float presence = FieldReadA.Load(int3(p, 0));
+    float erode = saturate(presence * Gain);
+    FieldWriteB[p] = FieldWriteB[p] * (1.0 - erode);
+}

@@ -1,0 +1,337 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c53c179a8210264ea3a817857fc19ed, type: 3}
+  m_Name: Gray-Scott-Boids
+  m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
+  sourceKind: 0
+  cubeSource:
+    resolution: 25
+    cubeSize: 2
+  meshSource:
+    mesh: {fileID: 0}
+    centerPivot: 1
+    normalizeScale: 1
+    targetSize: 2
+  bitmapSource:
+    texture: {fileID: 0}
+    targetWidth: 2
+    heightScale: 1
+  simulationSpeed: 20
+  fields:
+  - id:
+      name: flockVel
+      semantic: 0
+    format: 46
+    resolution: {x: 128, y: 128}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 50, y: 50}
+  - id:
+      name: cohesionDensity
+      semantic: 2
+    format: 45
+    resolution: {x: 32, y: 32}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 50, y: 50}
+  - id:
+      name: separationDensity
+      semantic: 2
+    format: 45
+    resolution: {x: 128, y: 128}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 50, y: 50}
+  - id:
+      name: agentPresence
+      semantic: 2
+    format: 45
+    resolution: {x: 128, y: 128}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 50, y: 50}
+  - id:
+      name: U
+      semantic: 2
+    format: 45
+    resolution: {x: 128, y: 128}
+    clearValue: {r: 1, g: 1, b: 1, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 50, y: 50}
+  - id:
+      name: V
+      semantic: 2
+    format: 45
+    resolution: {x: 128, y: 128}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: 0, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 50, y: 50}
+  passes:
+  - rid: 8100000000000000001
+  - rid: 8100000000000000002
+  - rid: 8100000000000000003
+  - rid: 8100000000000000004
+  - rid: 8100000000000000005
+  - rid: 8100000000000000006
+  - rid: 8100000000000000007
+  - rid: 8100000000000000008
+  - rid: 8100000000000000009
+  - rid: 8100000000000000010
+  - rid: 8100000000000000011
+  - rid: 8100000000000000012
+  - rid: 8100000000000000013
+  - rid: 8100000000000000014
+  - rid: 8100000000000000014
+  - rid: 8100000000000000014
+  - rid: 8100000000000000014
+  - rid: 8100000000000000014
+  - rid: 8100000000000000014
+  - rid: 8100000000000000015
+  - rid: 8100000000000000016
+  - rid: 8100000000000000017
+  - rid: 8100000000000000018
+  - rid: 8100000000000000019
+  - rid: 8100000000000000020
+  - rid: 8100000000000000021
+  - rid: 8100000000000000022
+  - rid: 8100000000000000023
+  - rid: 8100000000000000024
+  - rid: 8100000000000000025
+  - rid: 8100000000000000026
+  - rid: 8100000000000000027
+  - rid: 8100000000000000027
+  - rid: 8100000000000000028
+  - rid: 8100000000000000029
+  - rid: 8100000000000000030
+  debugFieldQuads:
+  - fieldName: U
+    mode: 1
+    colorScale: 1
+  - fieldName: V
+    mode: 1
+    colorScale: 1
+  - fieldName: agentPresence
+    mode: 1
+    colorScale: 0.2
+  showVelocityFieldQuad: 0
+  showDensityFieldQuad: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 8100000000000000001
+      type: {class: CurlNoisePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        frequency: 0.8
+        amplitude: 0.04
+        speed: 0.3
+    - rid: 8100000000000000002
+      type: {class: DragPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        drag: 1.75
+    - rid: 8100000000000000003
+      type: {class: SpeedLimitPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        maxSpeed: 4
+    - rid: 8100000000000000004
+      type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+    - rid: 8100000000000000005
+      type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        center: {x: 0, y: 0, z: 0}
+        extents: {x: 50, y: 50, z: 50}
+        behaviour: 1
+        bounce: 0.6
+    - rid: 8100000000000000006
+      type: {class: ClearFieldAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        channels: 2
+    - rid: 8100000000000000007
+      type: {class: ScatterVelocityToFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        targetFieldName: flockVel
+        valueScale: 4096
+        valueBias: 32
+    - rid: 8100000000000000008
+      type: {class: NormalizeVelocityAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        valueScale: 4096
+        valueBias: 32
+    - rid: 8100000000000000009
+      type: {class: DecayFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        decayRate: 2
+    - rid: 8100000000000000010
+      type: {class: ClearFieldAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: cohesionDensity
+        channels: 1
+    - rid: 8100000000000000011
+      type: {class: ScatterDensityToFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        targetFieldName: cohesionDensity
+        valueScale: 4096
+        valueBias: 0
+    - rid: 8100000000000000012
+      type: {class: NormalizeDensityAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: cohesionDensity
+        valueScale: 4096
+        valueBias: 0
+    - rid: 8100000000000000013
+      type: {class: DecayFieldScalarPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: cohesionDensity
+        decayRate: 2
+    - rid: 8100000000000000014
+      type: {class: DiffuseFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: cohesionDensity
+        diffusionRate: 0.18
+    - rid: 8100000000000000015
+      type: {class: ClearFieldAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: separationDensity
+        channels: 1
+    - rid: 8100000000000000016
+      type: {class: ScatterDensityToFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        targetFieldName: separationDensity
+        valueScale: 4096
+        valueBias: 0
+    - rid: 8100000000000000017
+      type: {class: NormalizeDensityAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: separationDensity
+        valueScale: 4096
+        valueBias: 0
+    - rid: 8100000000000000018
+      type: {class: DecayFieldScalarPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: separationDensity
+        decayRate: 2
+    - rid: 8100000000000000019
+      type: {class: SampleVelocityFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        velocityFieldName: flockVel
+        strength: 0.6
+    - rid: 8100000000000000020
+      type: {class: SampleGradientFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: cohesionDensity
+        strength: 1
+    - rid: 8100000000000000021
+      type: {class: SampleGradientFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: separationDensity
+        strength: -0.9
+    - rid: 8100000000000000022
+      type: {class: ClearFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: agentPresence
+        requiredSemantic: 2
+        channels: 1
+    - rid: 8100000000000000023
+      type: {class: ClearFieldAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: agentPresence
+        channels: 1
+    - rid: 8100000000000000024
+      type: {class: ScatterDensityToFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        targetFieldName: agentPresence
+        valueScale: 4096
+        valueBias: 0
+    - rid: 8100000000000000025
+      type: {class: NormalizeDensityAccumPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: agentPresence
+        valueScale: 4096
+        valueBias: 0
+    - rid: 8100000000000000026
+      type: {class: SeedScalarDiskPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: V
+        centerUV: {x: 0.5, y: 0.5}
+        radiusUV: 0.06
+        value: 1
+    - rid: 8100000000000000027
+      type: {class: GrayScottPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldNameU: U
+        fieldNameV: V
+        diffusionRateU: 0.16
+        diffusionRateV: 0.08
+        feedRate: 0.035
+        killRate: 0.06
+    - rid: 8100000000000000028
+      type: {class: AgentBoostFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        sourceFieldName: agentPresence
+        targetFieldName: V
+        gain: 0.3
+    - rid: 8100000000000000029
+      type: {class: AgentErodeFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        sourceFieldName: agentPresence
+        targetFieldName: U
+        gain: 0.3
+    - rid: 8100000000000000030
+      type: {class: TouchInjectGrayScottPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldNameU: U
+        fieldNameV: V

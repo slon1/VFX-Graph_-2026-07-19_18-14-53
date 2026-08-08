@@ -36,11 +36,13 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **HybridTouchField** — Touch → velocity field → particles (+ velocity quad).
    - **AgentFieldEcho** — CurlNoise → P2G scatter velocity → field quad (без тача).
    - **Gray-Scott** — field-only RD (`Source Kind = None`, поля на **XZ**, quads U/V; тач после React).
+   - **Gray-Scott-Boids** — boids + `agentPresence` P2G → Boost/Erode в U/V (plane 50×50 / res 128).
+   - **Gray-Scott-Agents** — то же one-way: частицы красят GS, поле их не рулит.
 3. Play. Для hybrid / Gray-Scott: InputRouter = **GroundXZ**.
 
-Меню: `Tools/M3D/Create Demo Effects`, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`.  
+Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`.  
 После смены пассов/полей в Play — **Rebuild** на SimulationWorld.  
-Pass Library: для GS — `GrayScottPasses.compute` + `TouchGrayScottPasses.compute`.
+Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFeedbackPasses`.
 
 ### Field-only (без частиц)
 
@@ -49,6 +51,12 @@ Pass Library: для GS — `GrayScottPasses.compute` + `TouchGrayScottPasses.co
 3. Цепочка: `SeedScalarDisk(V)` → `GrayScottPass` × N → **`TouchInjectGrayScott`**; U clear=1, V clear=0; debug quads на U и V.
 4. Пресет: `Assets/Effects/Gray-Scott.asset`. Для мягкой кисти: `InputRouter.touchStrength ≈ 1` (дефолт 10 ≈ жёсткий диск). Каталог: [`pass-catalog.md`](pass-catalog.md).
 
+### Boids → Gray-Scott
+
+1. Пресет: `Assets/Effects/Gray-Scott-Boids.asset` (меню `Tools/M3D/Create Gray-Scott-Boids Effect`).
+2. Presence Replace: `ClearField(agentPresence)` → ClearAccum → ScatterDensity → Normalize → … → React → `AgentBoost` / `AgentErode` (`gain`≈0.3).
+3. U/V/`agentPresence` обязаны совпасть по Resolution+plane (M2c); Size 50 как boids, res 128.
+4. One-way без обратной связи: `Assets/Effects/Gray-Scott-Agents.asset` — только Curl/Drag/… + presence→GS (нет flockVel / Sample*).
 ### Свой эффект с полями
 
 1. `Create → M3D → Effect Asset`.
@@ -112,7 +120,7 @@ Hybrid (field + particles):
 - градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`;
 - сглаживание: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
-- Gray-Scott: `GrayScottPass` (U+V) + `SeedScalarDiskPass` (one-shot) + `TouchInjectGrayScottPass` (после React); N=1–4 React за кадр при Speed=1; поля XZ; ADR-009;
+- Gray-Scott: `GrayScottPass` + Seed + TouchInject; boids-гибрид: presence P2G → `AgentBoost`/`AgentErode` (`gain`); N=1–4 React; ADR-009;
 - cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;
 - cohesion Accumulate: ClearAccum → Scatter → Normalize → **DecayFieldScalar** → [Diffuse…] → SampleGradient;
 - дальнодействие: вялое притяжение далёких кластеров — ожидаемо (скорость сходимости Diffuse); лечится числом Diffuse за кадр, грубее resolution или rate≲0.25 — не «просто больше кадров». См. [`status.md`](status.md).

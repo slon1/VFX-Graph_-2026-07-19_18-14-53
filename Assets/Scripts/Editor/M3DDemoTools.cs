@@ -1,6 +1,8 @@
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.VFX;
 
 /// <summary>
@@ -14,6 +16,7 @@ public static class M3DDemoTools
     private const string ReactiveDustPath = EffectsFolder + "/ReactiveDust.asset";
     private const string HybridTouchFieldPath = EffectsFolder + "/HybridTouchField.asset";
     private const string AgentFieldEchoPath = EffectsFolder + "/AgentFieldEcho.asset";
+    private const string GrayScottBoidsPath = EffectsFolder + "/Gray-Scott-Boids.asset";
 
     private static readonly string[] PassLibraryPaths =
     {
@@ -29,6 +32,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/MultiFieldTestPasses.compute",
         "Assets/Shaders/GPU/Passes/GrayScottPasses.compute",
         "Assets/Shaders/GPU/Passes/TouchGrayScottPasses.compute",
+        "Assets/Shaders/GPU/Passes/AgentFieldFeedbackPasses.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]
@@ -106,6 +110,283 @@ public static class M3DDemoTools
         AssetDatabase.SaveAssets();
         Debug.Log(
             "M3D: created demo effects: TwistedCube, GalaxySwirl, ReactiveDust, HybridTouchField, AgentFieldEcho.");
+    }
+
+    [MenuItem("Tools/M3D/Create Gray-Scott-Boids Effect")]
+    public static void CreateGrayScottBoidsEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        Vector2 planeSize = new Vector2(50f, 50f);
+        Vector2Int res128 = new Vector2Int(128, 128);
+        Vector2Int res32 = new Vector2Int(32, 32);
+
+        FieldDescriptor flockVel = FieldDescriptor.CreateDefault("flockVel", FieldSemantic.Velocity);
+        FieldDescriptor cohesionDensity = FieldDescriptor.CreateDefault("cohesionDensity", FieldSemantic.Scalar);
+        FieldDescriptor separationDensity = FieldDescriptor.CreateDefault("separationDensity", FieldSemantic.Scalar);
+        FieldDescriptor agentPresence = FieldDescriptor.CreateDefault("agentPresence", FieldSemantic.Scalar);
+        FieldDescriptor fieldU = FieldDescriptor.CreateDefault("U", FieldSemantic.Scalar);
+        FieldDescriptor fieldV = FieldDescriptor.CreateDefault("V", FieldSemantic.Scalar);
+
+        ClearFieldPass clearPresence = new ClearFieldPass();
+        ClearFieldAccumPass clearPresenceAccum = new ClearFieldAccumPass();
+        ScatterDensityToFieldPass scatterPresence = new ScatterDensityToFieldPass();
+        NormalizeDensityAccumPass normalizePresence = new NormalizeDensityAccumPass();
+        SetPrivate(clearPresence, "fieldName", "agentPresence");
+        SetPrivate(clearPresence, "requiredSemantic", FieldSemantic.Scalar);
+        SetPrivate(clearPresence, "channels", 1);
+        SetPrivate(clearPresenceAccum, "fieldName", "agentPresence");
+        SetPrivate(clearPresenceAccum, "channels", 1);
+        SetPrivate(scatterPresence, "targetFieldName", "agentPresence");
+        SetPrivate(normalizePresence, "fieldName", "agentPresence");
+
+        ClearFieldAccumPass clearFlockAccum = new ClearFieldAccumPass();
+        ScatterVelocityToFieldPass scatterFlock = new ScatterVelocityToFieldPass();
+        NormalizeVelocityAccumPass normalizeFlock = new NormalizeVelocityAccumPass();
+        SetPrivate(clearFlockAccum, "fieldName", "flockVel");
+        SetPrivate(clearFlockAccum, "channels", 2);
+        SetPrivate(scatterFlock, "targetFieldName", "flockVel");
+        SetPrivate(normalizeFlock, "fieldName", "flockVel");
+
+        ClearFieldAccumPass clearCohesionAccum = new ClearFieldAccumPass();
+        ScatterDensityToFieldPass scatterCohesion = new ScatterDensityToFieldPass();
+        NormalizeDensityAccumPass normalizeCohesion = new NormalizeDensityAccumPass();
+        SetPrivate(clearCohesionAccum, "fieldName", "cohesionDensity");
+        SetPrivate(clearCohesionAccum, "channels", 1);
+        SetPrivate(scatterCohesion, "targetFieldName", "cohesionDensity");
+        SetPrivate(normalizeCohesion, "fieldName", "cohesionDensity");
+
+        ClearFieldAccumPass clearSepAccum = new ClearFieldAccumPass();
+        ScatterDensityToFieldPass scatterSep = new ScatterDensityToFieldPass();
+        NormalizeDensityAccumPass normalizeSep = new NormalizeDensityAccumPass();
+        SetPrivate(clearSepAccum, "fieldName", "separationDensity");
+        SetPrivate(clearSepAccum, "channels", 1);
+        SetPrivate(scatterSep, "targetFieldName", "separationDensity");
+        SetPrivate(normalizeSep, "fieldName", "separationDensity");
+
+        SampleVelocityFieldPass sampleFlock = new SampleVelocityFieldPass { Strength = 0.6f };
+        SampleGradientFieldPass sampleCohesion = new SampleGradientFieldPass { Strength = 1f };
+        SampleGradientFieldPass sampleSeparation = new SampleGradientFieldPass { Strength = -0.9f };
+        SetPrivate(sampleFlock, "velocityFieldName", "flockVel");
+        SetPrivate(sampleCohesion, "fieldName", "cohesionDensity");
+        SetPrivate(sampleSeparation, "fieldName", "separationDensity");
+
+        CreateEffect(
+            GrayScottBoidsPath,
+            cubeResolution: 25,
+            simulationSpeed: 20f,
+            fields: new[]
+            {
+                flockVel, cohesionDensity, separationDensity, agentPresence, fieldU, fieldV,
+            },
+            debugQuads: new[]
+            {
+                DebugFieldQuadSlot.Density("U"),
+                DebugFieldQuadSlot.Density("V"),
+                DebugFieldQuadSlot.Density("agentPresence"),
+            },
+            new CurlNoisePass { Frequency = 0.8f, Amplitude = 0.04f, Speed = 0.3f },
+            new DragPass { Drag = 1.75f },
+            new SpeedLimitPass { MaxSpeed = 4f },
+            new IntegratePass(),
+            new BoxBoundsPass
+            {
+                Extents = new Vector3(50f, 50f, 50f),
+                Behaviour = BoundsBehaviour.Bounce,
+                Bounce = 0.6f,
+            },
+            clearFlockAccum,
+            scatterFlock,
+            normalizeFlock,
+            new DecayFieldPass { FieldName = "flockVel", DecayRate = 2f },
+            clearCohesionAccum,
+            scatterCohesion,
+            normalizeCohesion,
+            new DecayFieldScalarPass { FieldName = "cohesionDensity", DecayRate = 2f },
+            new DiffuseFieldPass { FieldName = "cohesionDensity", DiffusionRate = 0.18f },
+            new DiffuseFieldPass { FieldName = "cohesionDensity", DiffusionRate = 0.18f },
+            new DiffuseFieldPass { FieldName = "cohesionDensity", DiffusionRate = 0.18f },
+            new DiffuseFieldPass { FieldName = "cohesionDensity", DiffusionRate = 0.18f },
+            new DiffuseFieldPass { FieldName = "cohesionDensity", DiffusionRate = 0.18f },
+            new DiffuseFieldPass { FieldName = "cohesionDensity", DiffusionRate = 0.18f },
+            clearSepAccum,
+            scatterSep,
+            normalizeSep,
+            new DecayFieldScalarPass { FieldName = "separationDensity", DecayRate = 2f },
+            sampleFlock,
+            sampleCohesion,
+            sampleSeparation,
+            clearPresence,
+            clearPresenceAccum,
+            scatterPresence,
+            normalizePresence,
+            new SeedScalarDiskPass
+            {
+                FieldName = "V",
+                CenterUV = new Vector2(0.5f, 0.5f),
+                RadiusUV = 0.06f,
+                Value = 1f,
+            },
+            new GrayScottPass(),
+            new GrayScottPass(),
+            new AgentBoostFieldPass(),
+            new AgentErodeFieldPass(),
+            new TouchInjectGrayScottPass());
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(GrayScottBoidsPath);
+        SerializedObject so = new SerializedObject(asset);
+        SerializedProperty fieldsProp = so.FindProperty("fields");
+        for (int i = 0; i < fieldsProp.arraySize; i++)
+        {
+            SerializedProperty f = fieldsProp.GetArrayElementAtIndex(i);
+            string name = f.FindPropertyRelative("id.name").stringValue;
+            SerializedProperty res = f.FindPropertyRelative("resolution");
+            SerializedProperty size = f.FindPropertyRelative("size");
+            SerializedProperty clear = f.FindPropertyRelative("clearValue");
+            size.vector2Value = planeSize;
+            f.FindPropertyRelative("origin").vector3Value = Vector3.zero;
+            f.FindPropertyRelative("axisU").vector3Value = Vector3.right;
+            f.FindPropertyRelative("axisV").vector3Value = Vector3.forward;
+
+            if (name == "cohesionDensity")
+            {
+                res.vector2IntValue = res32;
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16_SFloat;
+            }
+            else if (name == "flockVel")
+            {
+                res.vector2IntValue = res128;
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16G16_SFloat;
+            }
+            else
+            {
+                res.vector2IntValue = res128;
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16_SFloat;
+            }
+
+            if (name == "U")
+            {
+                clear.colorValue = Color.white;
+            }
+            else
+            {
+                clear.colorValue = Color.clear;
+            }
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created Gray-Scott-Boids (boids + agentPresence → GS feedback).");
+    }
+
+    /// <summary>
+    /// One-way agents → Gray-Scott: particles move (curl/drag) and paint U/V via presence.
+    /// No flock fields, no SampleVelocity/Gradient (field does not steer particles).
+    /// </summary>
+    [MenuItem("Tools/M3D/Create Gray-Scott-Agents Effect")]
+    public static void CreateGrayScottAgentsEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        const string path = EffectsFolder + "/Gray-Scott-Agents.asset";
+        Vector2 planeSize = new Vector2(50f, 50f);
+        Vector2Int res128 = new Vector2Int(128, 128);
+
+        FieldDescriptor agentPresence = FieldDescriptor.CreateDefault("agentPresence", FieldSemantic.Scalar);
+        FieldDescriptor fieldU = FieldDescriptor.CreateDefault("U", FieldSemantic.Scalar);
+        FieldDescriptor fieldV = FieldDescriptor.CreateDefault("V", FieldSemantic.Scalar);
+
+        ClearFieldPass clearPresence = new ClearFieldPass();
+        ClearFieldAccumPass clearPresenceAccum = new ClearFieldAccumPass();
+        ScatterDensityToFieldPass scatterPresence = new ScatterDensityToFieldPass();
+        NormalizeDensityAccumPass normalizePresence = new NormalizeDensityAccumPass();
+        SetPrivate(clearPresence, "fieldName", "agentPresence");
+        SetPrivate(clearPresence, "requiredSemantic", FieldSemantic.Scalar);
+        SetPrivate(clearPresence, "channels", 1);
+        SetPrivate(clearPresenceAccum, "fieldName", "agentPresence");
+        SetPrivate(clearPresenceAccum, "channels", 1);
+        SetPrivate(scatterPresence, "targetFieldName", "agentPresence");
+        SetPrivate(normalizePresence, "fieldName", "agentPresence");
+
+        CreateEffect(
+            path,
+            cubeResolution: 25,
+            simulationSpeed: 20f,
+            fields: new[] { agentPresence, fieldU, fieldV },
+            debugQuads: new[]
+            {
+                DebugFieldQuadSlot.Density("U"),
+                DebugFieldQuadSlot.Density("V"),
+                DebugFieldQuadSlot.Density("agentPresence"),
+            },
+            new CurlNoisePass { Frequency = 0.8f, Amplitude = 0.04f, Speed = 0.3f },
+            new DragPass { Drag = 1.75f },
+            new SpeedLimitPass { MaxSpeed = 4f },
+            new IntegratePass(),
+            new BoxBoundsPass
+            {
+                Extents = new Vector3(50f, 50f, 50f),
+                Behaviour = BoundsBehaviour.Bounce,
+                Bounce = 0.6f,
+            },
+            clearPresence,
+            clearPresenceAccum,
+            scatterPresence,
+            normalizePresence,
+            new SeedScalarDiskPass
+            {
+                FieldName = "V",
+                CenterUV = new Vector2(0.5f, 0.5f),
+                RadiusUV = 0.06f,
+                Value = 1f,
+            },
+            new GrayScottPass(),
+            new GrayScottPass(),
+            new AgentBoostFieldPass(),
+            new AgentErodeFieldPass(),
+            new TouchInjectGrayScottPass());
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        SerializedObject so = new SerializedObject(asset);
+        SerializedProperty fieldsProp = so.FindProperty("fields");
+        for (int i = 0; i < fieldsProp.arraySize; i++)
+        {
+            SerializedProperty f = fieldsProp.GetArrayElementAtIndex(i);
+            string name = f.FindPropertyRelative("id.name").stringValue;
+            f.FindPropertyRelative("resolution").vector2IntValue = res128;
+            f.FindPropertyRelative("size").vector2Value = planeSize;
+            f.FindPropertyRelative("origin").vector3Value = Vector3.zero;
+            f.FindPropertyRelative("axisU").vector3Value = Vector3.right;
+            f.FindPropertyRelative("axisV").vector3Value = Vector3.forward;
+            f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16_SFloat;
+            f.FindPropertyRelative("clearValue").colorValue =
+                name == "U" ? Color.white : Color.clear;
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created Gray-Scott-Agents (one-way agents → GS, no field→particle feedback).");
+    }
+
+    private static void SetPrivate(object target, string fieldName, object value)
+    {
+        FieldInfo field = target.GetType().GetField(
+            fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        if (field == null)
+        {
+            throw new System.InvalidOperationException(
+                $"M3D: field '{fieldName}' not found on {target.GetType().Name}.");
+        }
+
+        field.SetValue(target, value);
     }
 
     [MenuItem("Tools/M3D/Setup Open Scene")]
