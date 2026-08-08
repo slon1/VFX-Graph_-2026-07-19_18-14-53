@@ -46,7 +46,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - `GrayScottPass` — dual Scalar U/V, WritePingPong; `GrayScottPasses.compute`.
 - `SeedScalarDiskPass` — one-shot disk (ShouldDispatch / hasFired, reset на Initialize).
 - Рекомендация: N=1–4 GrayScottPass за кадр при Speed=1 (калибровать эмпирически). ADR-009.
-- Пресет: **`Assets/Effects/Gray-Scott.asset`** — `Source Kind = None`, debug quads U/V.
+- Пресет: **`Assets/Effects/Gray-Scott.asset`** — `Source Kind = None`, поля **XZ**, `TouchInjectGrayScott` после React, debug quads U/V.
 
 ### P2G (M2b.1)
 
@@ -91,7 +91,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | GalaxySwirl / ReactiveDust | dynamics + touch на частицах |
 | **HybridTouchField** | touch → velocity field → particles |
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
-| **Gray-Scott** | field-only RD (`Source Kind = None`) |
+| **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
 
 ---
 

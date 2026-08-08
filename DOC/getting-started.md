@@ -35,19 +35,19 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **GalaxySwirl** / **ReactiveDust** — dynamics + touch.
    - **HybridTouchField** — Touch → velocity field → particles (+ velocity quad).
    - **AgentFieldEcho** — CurlNoise → P2G scatter velocity → field quad (без тача).
-   - **Gray-Scott** — field-only RD (`Source Kind = None`, quads U/V).
-3. Play. Для hybrid: InputRouter = **GroundXZ**.
+   - **Gray-Scott** — field-only RD (`Source Kind = None`, поля на **XZ**, quads U/V; тач после React).
+3. Play. Для hybrid / Gray-Scott: InputRouter = **GroundXZ**.
 
 Меню: `Tools/M3D/Create Demo Effects`, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`.  
 После смены пассов/полей в Play — **Rebuild** на SimulationWorld.  
-Pass Library должен включать нужные `.compute` (для GS — `GrayScottPasses.compute`).
+Pass Library: для GS — `GrayScottPasses.compute` + `TouchGrayScottPasses.compute`.
 
 ### Field-only (без частиц)
 
 1. `Source Kind = None` на EffectAsset (не Cube с малым resolution).
-2. Дескрипторы полей + field-пассы; particle-пассы можно не добавлять.
-3. Пример: `SeedScalarDisk(V)` → `GrayScottPass` × N; U clear=1, V clear=0; debug quads на U и V.
-4. Пресет: `Assets/Effects/Gray-Scott.asset`. Каталог: [`pass-catalog.md`](pass-catalog.md).
+2. Дескрипторы полей на **XZ** (`axisV = Z`), как Hybrid — чтобы совпасть с GroundXZ.
+3. Цепочка: `SeedScalarDisk(V)` → `GrayScottPass` × N → **`TouchInjectGrayScott`**; U clear=1, V clear=0; debug quads на U и V.
+4. Пресет: `Assets/Effects/Gray-Scott.asset`. Для мягкой кисти: `InputRouter.touchStrength ≈ 1` (дефолт 10 ≈ жёсткий диск). Каталог: [`pass-catalog.md`](pass-catalog.md).
 
 ### Свой эффект с полями
 
@@ -112,7 +112,7 @@ Hybrid (field + particles):
 - градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`;
 - сглаживание: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
-- Gray-Scott: `GrayScottPass` (U+V) + `SeedScalarDiskPass` (one-shot); N=1–4 React за кадр при Speed=1; ADR-009;
+- Gray-Scott: `GrayScottPass` (U+V) + `SeedScalarDiskPass` (one-shot) + `TouchInjectGrayScottPass` (после React); N=1–4 React за кадр при Speed=1; поля XZ; ADR-009;
 - cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;
 - cohesion Accumulate: ClearAccum → Scatter → Normalize → **DecayFieldScalar** → [Diffuse…] → SampleGradient;
 - дальнодействие: вялое притяжение далёких кластеров — ожидаемо (скорость сходимости Diffuse); лечится числом Diffuse за кадр, грубее resolution или rate≲0.25 — не «просто больше кадров». См. [`status.md`](status.md).

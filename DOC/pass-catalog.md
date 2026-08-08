@@ -47,6 +47,7 @@
 | `DecayPasses.compute` | DecayFieldScalar |
 | `MultiFieldTestPasses.compute` | SwapFields (тест M2c) |
 | `GrayScottPasses.compute` | GrayScottReact, SeedScalarDisk |
+| `TouchGrayScottPasses.compute` | TouchInjectGrayScott |
 
 `ClearFieldPass` и `ClearFieldAccumPass` — **без** своих `.compute` (Clear RT / ClearUintBuffer из P2G).
 
@@ -286,6 +287,17 @@
 | **dt** | Да; CFL как Diffuse для Du и Dv; выход `saturate` |
 | **Хорошо для** | Узоры RD; **N=1–4** пассов/кадр при Speed≈1…40; F/k шагать по ±0.001 |
 
+### TouchInjectGrayScott
+| | |
+|--|--|
+| **Назначение** | Тач → поднять V≈1 и погасить U в радиусе (инъекция катализатора) |
+| **Библиотека / kernel** | `TouchGrayScottPasses` / `TouchInjectGrayScott` |
+| **Fields** | WriteInPlace Pair: U RoleA, V RoleB, Scalar |
+| **Параметры** | имена U/V; радиус/сила — из `TouchForce` (InputRouter), не с пасса |
+| **dt** | Нет; `max` по тачам (не `+=`); `delta` не используется |
+| **Хорошо для** | Интерактивный Gray-Scott; **после** последнего `GrayScottPass` в кадре |
+| **Кисть** | `touchStrength≈1` — мягкий falloff; дефолт роутера 10 ≈ жёсткий диск |
+
 ---
 
 ## P2G (частица → поле)
@@ -342,7 +354,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 
 **Boids-field:** Curl/Drag/Limit/Integrate/Bounds → alignment P2G+Decay → cohesion density+Diffuse → separation density → SampleVel / SampleGrad±  
 
-**Gray-Scott:** `Source Kind = None` → `SeedScalarDisk(V)` → `GrayScott×N` (U clear=1, V clear=0)
+**Gray-Scott:** `Source Kind = None` → `SeedScalarDisk(V)` → `GrayScott×N` → `TouchInjectGrayScott` (поля на **XZ**, как Hybrid; U clear=1, V clear=0)
 
 ---
 
@@ -373,7 +385,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 | `Assets/Scripts/Passes/ShapePasses.cs` | `ShapePasses.compute` |
 | `ForcePasses.cs` | `ForcePasses.compute` |
 | `DynamicsPasses.cs` | `DynamicsPasses.compute` |
-| `FieldPasses.cs` | `FieldPasses`, `Diffuse`, `Decay`, `MultiFieldTest`, `GrayScott` |
+| `FieldPasses.cs` | `FieldPasses`, `Diffuse`, `Decay`, `MultiFieldTest`, `GrayScott`, `TouchGrayScott` |
 | `P2GPasses.cs` | `P2GPasses`, `DensityPasses` |
 | G2P gradient | `GradientPasses.compute` |
 

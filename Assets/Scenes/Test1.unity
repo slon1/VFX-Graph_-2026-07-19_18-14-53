@@ -681,6 +681,7 @@ MonoBehaviour:
   - {fileID: 7200000, guid: a8c3e1f0b4d27e9c5a1f8b0d3e4c5a6b, type: 3}
   - {fileID: 7200000, guid: d2f6b0a4e5c27b9d3a4f8e0c1b2d3e4f, type: 3}
   - {fileID: 7200000, guid: 9ab85ac9b40bc2c40984dd61637621b3, type: 3}
+  - {fileID: 7200000, guid: a7c4e2f19b8d4e6a9f0c3d5e7b1a8246, type: 3}
   visualEffect: {fileID: 1583680167}
   inputRouter: {fileID: 1583680169}
 --- !u!1660057539 &9223372036854775807

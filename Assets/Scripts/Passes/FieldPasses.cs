@@ -486,3 +486,45 @@ public sealed class SeedScalarDiskPass : FieldKernelPass
     }
 }
 
+/// <summary>
+/// Touch/cursor paints Gray-Scott catalyst: raise V and erode U in the touch radius
+/// (WriteInPlace Role A/B). Uses InputRouter TouchForce radius/strength; no pass-local brush params.
+/// Place after GrayScottPass in the pipeline so touch overrides this frame's reaction.
+/// </summary>
+[Serializable]
+public sealed class TouchInjectGrayScottPass : FieldKernelPass
+{
+    [SerializeField] private string fieldNameU = "U";
+    [SerializeField] private string fieldNameV = "V";
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string FieldNameU
+    {
+        get => fieldNameU;
+        set => fieldNameU = value;
+    }
+
+    public string FieldNameV
+    {
+        get => fieldNameV;
+        set => fieldNameV = value;
+    }
+
+    public override string DisplayName => "Touch Inject Gray-Scott";
+    public override PassCategory Category => PassCategory.Emit;
+    protected override string KernelName => "TouchInjectGrayScott";
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Pair(
+            ref fieldWritesCache,
+            fieldNameU, FieldSlotRole.A, FieldAccess.WriteInPlace, FieldSemantic.Scalar, 1,
+            fieldNameV, FieldSlotRole.B, FieldAccess.WriteInPlace, FieldSemantic.Scalar, 1);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        BindBuffer(context, SimShaderIds.Touches, context.TouchBuffer);
+        SetInt(context, SimShaderIds.TouchCount, context.TouchCount);
+    }
+}
+

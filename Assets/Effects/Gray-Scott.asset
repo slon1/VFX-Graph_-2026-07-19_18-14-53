@@ -35,7 +35,7 @@ MonoBehaviour:
     clearValue: {r: 1, g: 1, b: 1, a: 0}
     origin: {x: 0, y: 0, z: 0}
     axisU: {x: 1, y: 0, z: 0}
-    axisV: {x: 0, y: 1, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
     size: {x: 10, y: 10}
   - id:
       name: V
@@ -45,7 +45,7 @@ MonoBehaviour:
     clearValue: {r: 0, g: 0, b: 0, a: 0}
     origin: {x: 0, y: 0, z: 0}
     axisU: {x: 1, y: 0, z: 0}
-    axisV: {x: 0, y: 1, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
     size: {x: 10, y: 10}
   passes:
   - rid: 7167045775393554493
@@ -53,6 +53,7 @@ MonoBehaviour:
   - rid: 7167045775393554494
   - rid: 7167045775393554494
   - rid: 7167045775393554494
+  - rid: 7167045775393554502
   debugFieldQuads:
   - fieldName: U
     mode: 1
@@ -91,3 +92,9 @@ MonoBehaviour:
         centerUV: {x: 0.3, y: 0.3}
         radiusUV: 0.06
         value: 1
+    - rid: 7167045775393554502
+      type: {class: TouchInjectGrayScottPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldNameU: U
+        fieldNameV: V

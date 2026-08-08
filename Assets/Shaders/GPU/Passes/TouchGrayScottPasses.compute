@@ -1,0 +1,44 @@
+// Touch inject into Gray-Scott U/V (WriteInPlace multi-field Role A/B).
+// Loads/stores own texel only; max over touches (no accumulate).
+// Load without .r (RWTexture2D<float>).
+
+#pragma kernel TouchInjectGrayScott
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+#include "Assets/Shaders/GPU/Includes/Touch.hlsl"
+
+#define FIELD_THREADS 8
+
+RWTexture2D<float> FieldWriteA; // U
+RWTexture2D<float> FieldWriteB; // V
+
+StructuredBuffer<TouchForce> Touches;
+uint TouchCount;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void TouchInjectGrayScott(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    float2 uv = (float2(id.xy) + 0.5) * FieldTexelSize;
+    float3 worldPos = FieldOrigin
+        + FieldAxisU * ((uv.x - 0.5) * FieldSize.x)
+        + FieldAxisV * ((uv.y - 0.5) * FieldSize.y);
+
+    float boostB = 0.0;
+    float erodeA = 0.0;
+    for (uint t = 0; t < TouchCount; t++)
+    {
+        TouchForce touch = Touches[t];
+        float dist = length(worldPos - touch.pos);
+        float f = TouchFalloff(dist, touch.radius) * touch.strength;
+        boostB = max(boostB, f);
+        erodeA = max(erodeA, f);
+    }
+
+    FieldWriteB[id.xy] = max(FieldWriteB[id.xy], saturate(boostB));
+    FieldWriteA[id.xy] = FieldWriteA[id.xy] * (1.0 - saturate(erodeA));
+}
