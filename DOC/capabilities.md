@@ -34,7 +34,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
 - Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SampleGradientField**, **DiffuseField**.
 - Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
-- Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — список слотов на EffectAsset (`VectorRg` / `ScalarHeatmap`), layout по AxisU.
+- Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — слоты (`VectorRg` / `ScalarHeatmap` + Gradient LUT + hdrIntensity), layout по AxisU.
 
 ### Multi-field kernel (M2c)
 

@@ -6,7 +6,7 @@ public enum FieldQuadVisualMode
 {
     /// <summary>2ch RG → chroma; |v| → alpha. Shader mode 0.</summary>
     VectorRg = 0,
-    /// <summary>1ch R → warm heatmap. Shader mode 1.</summary>
+    /// <summary>1ch R → LUT heatmap. Shader mode 1.</summary>
     ScalarHeatmap = 1,
 }
 
@@ -20,6 +20,10 @@ public struct DebugFieldQuadSlot
     public string fieldName;
     public FieldQuadVisualMode mode;
     [Min(0f)] public float colorScale;
+    /// <summary>ScalarHeatmap palette (LDR stops). Null on old assets → runtime DefaultFireGradient.</summary>
+    public Gradient lut;
+    /// <summary>HDR multiply after LUT sample; does not affect alpha. 1 = no extra boost.</summary>
+    [Min(0f)] public float hdrIntensity;
 
     public static float DefaultScale(FieldQuadVisualMode mode) =>
         mode == FieldQuadVisualMode.ScalarHeatmap ? 1f : 2f;
@@ -31,6 +35,29 @@ public struct DebugFieldQuadSlot
             : FieldQuadVisualMode.VectorRg;
     }
 
+    /// <summary>
+    /// Fire-like palette: black → dark red → orange → yellow-white.
+    /// Always returns a <b>new</b> Gradient (mutable; never cache a shared instance).
+    /// </summary>
+    public static Gradient DefaultFireGradient()
+    {
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new[]
+            {
+                new GradientColorKey(Color.black, 0f),
+                new GradientColorKey(new Color(0.45f, 0.02f, 0f), 0.3f),
+                new GradientColorKey(new Color(1f, 0.35f, 0f), 0.6f),
+                new GradientColorKey(new Color(1f, 0.95f, 0.55f), 1f),
+            },
+            new[]
+            {
+                new GradientAlphaKey(1f, 0f),
+                new GradientAlphaKey(1f, 1f),
+            });
+        return gradient;
+    }
+
     public static DebugFieldQuadSlot Create(string fieldName, FieldQuadVisualMode mode)
     {
         return new DebugFieldQuadSlot
@@ -38,6 +65,8 @@ public struct DebugFieldQuadSlot
             fieldName = fieldName,
             mode = mode,
             colorScale = DefaultScale(mode),
+            lut = DefaultFireGradient(),
+            hdrIntensity = 1f,
         };
     }
 

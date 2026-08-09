@@ -8,9 +8,12 @@ using UnityEngine;
 public sealed class FieldDebugQuadsBinder : IRenderBinder
 {
     private const float GapFactor = 0.15f;
+    private const int LutWidth = 256;
 
     private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
+    private static readonly int LutTexId = Shader.PropertyToID("_LutTex");
     private static readonly int ScaleId = Shader.PropertyToID("_Scale");
+    private static readonly int HdrIntensityId = Shader.PropertyToID("_HdrIntensity");
     private static readonly int VisualModeId = Shader.PropertyToID("_VisualMode");
 
     private readonly IReadOnlyList<DebugFieldQuadSlot> slots;
@@ -22,6 +25,7 @@ public sealed class FieldDebugQuadsBinder : IRenderBinder
     {
         public SimField Field;
         public Material Material;
+        public Texture2D LutTexture;
         public GameObject QuadObject;
     }
 
@@ -114,8 +118,13 @@ public sealed class FieldDebugQuadsBinder : IRenderBinder
 
             Material material = new Material(shader) { name = $"M3D_FieldDebug_{slot.fieldName}" };
             float scale = slot.colorScale > 0f ? slot.colorScale : DebugFieldQuadSlot.DefaultScale(slot.mode);
+            float hdr = slot.hdrIntensity > 0f ? slot.hdrIntensity : 1f;
+            Texture2D lutTexture = BakeLutTexture(slot.lut ?? DebugFieldQuadSlot.DefaultFireGradient());
+
             material.SetTexture(MainTexId, field.Current);
+            material.SetTexture(LutTexId, lutTexture);
             material.SetFloat(ScaleId, scale);
+            material.SetFloat(HdrIntensityId, hdr);
             material.SetFloat(VisualModeId, (float)slot.mode);
 
             GameObject quadObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -142,6 +151,7 @@ public sealed class FieldDebugQuadsBinder : IRenderBinder
             {
                 Field = field,
                 Material = material,
+                LutTexture = lutTexture,
                 QuadObject = quadObject,
             });
         }
@@ -165,6 +175,11 @@ public sealed class FieldDebugQuadsBinder : IRenderBinder
     {
         for (int i = 0; i < quads.Count; i++)
         {
+            if (quads[i].LutTexture != null)
+            {
+                Object.Destroy(quads[i].LutTexture);
+            }
+
             if (quads[i].Material != null)
             {
                 Object.Destroy(quads[i].Material);
@@ -178,6 +193,32 @@ public sealed class FieldDebugQuadsBinder : IRenderBinder
             Object.Destroy(root);
             root = null;
         }
+    }
+
+    /// <summary>
+    /// Bake Gradient to a 256×1 LUT. Caller owns the texture (Destroy with Material).
+    /// Wrap Clamp + Bilinear — avoids edge seams and banding.
+    /// </summary>
+    private static Texture2D BakeLutTexture(Gradient gradient)
+    {
+        Texture2D texture = new Texture2D(LutWidth, 1, TextureFormat.RGBA32, false, true)
+        {
+            name = "M3D_FieldDebug_LUT",
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear,
+            hideFlags = HideFlags.HideAndDontSave,
+        };
+
+        Color[] pixels = new Color[LutWidth];
+        float inv = 1f / (LutWidth - 1);
+        for (int i = 0; i < LutWidth; i++)
+        {
+            pixels[i] = gradient.Evaluate(i * inv);
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply(false, true);
+        return texture;
     }
 
     private static void CreateLabel(Transform quad, string fieldName, Vector2 fieldSize)

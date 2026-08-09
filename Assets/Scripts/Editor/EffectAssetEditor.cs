@@ -53,7 +53,7 @@ public sealed class EffectAssetEditor : Editor
         debugQuadList = new ReorderableList(serializedObject, debugFieldQuadsProperty, true, true, true, true)
         {
             drawHeaderCallback = rect => EditorGUI.LabelField(rect, "Debug Field Quads"),
-            elementHeight = EditorGUIUtility.singleLineHeight * 3f + 10f,
+            elementHeight = EditorGUIUtility.singleLineHeight * 5f + 14f,
             drawElementCallback = DrawDebugQuadElement,
             onAddCallback = AddDebugQuad,
         };
@@ -132,7 +132,9 @@ public sealed class EffectAssetEditor : Editor
         debugQuadList.DoLayoutList();
         EditorGUILayout.HelpBox(
             "Each list entry = one visible debug quad. Remove the entry to hide. " +
-            "Mode defaults from channel count; colorScale is per-slot.",
+            "Mode defaults from channel count; colorScale normalizes field→LUT UV + alpha. " +
+            "LUT (ScalarHeatmap) + hdrIntensity bake on Rebuild — palette edits need Rebuild. " +
+            "Gradient stops are LDR [0,1]; HDR bloom boost is hdrIntensity.",
             MessageType.None);
     }
 
@@ -164,16 +166,22 @@ public sealed class EffectAssetEditor : Editor
         SerializedProperty nameProp = element.FindPropertyRelative("fieldName");
         SerializedProperty modeProp = element.FindPropertyRelative("mode");
         SerializedProperty scaleProp = element.FindPropertyRelative("colorScale");
+        SerializedProperty lutProp = element.FindPropertyRelative("lut");
+        SerializedProperty hdrProp = element.FindPropertyRelative("hdrIntensity");
 
         float line = EditorGUIUtility.singleLineHeight;
         float pad = 2f;
         Rect row1 = new Rect(rect.x, rect.y + pad, rect.width, line);
         Rect row2 = new Rect(rect.x, row1.yMax + pad, rect.width, line);
         Rect row3 = new Rect(rect.x, row2.yMax + pad, rect.width, line);
+        Rect row4 = new Rect(rect.x, row3.yMax + pad, rect.width, line);
+        Rect row5 = new Rect(rect.x, row4.yMax + pad, rect.width, line);
 
         DrawFieldNameDropdown(row1, nameProp);
         EditorGUI.PropertyField(row2, modeProp);
-        EditorGUI.PropertyField(row3, scaleProp);
+        EditorGUI.PropertyField(row3, scaleProp, new GUIContent("Color Scale"));
+        EditorGUI.PropertyField(row4, lutProp, new GUIContent("LUT"));
+        EditorGUI.PropertyField(row5, hdrProp, new GUIContent("HDR Intensity"));
     }
 
     private void DrawFieldNameDropdown(Rect rect, SerializedProperty nameProp)
@@ -239,6 +247,8 @@ public sealed class EffectAssetEditor : Editor
         FieldQuadVisualMode mode = DebugFieldQuadSlot.DefaultModeForChannelCount(descriptor.ChannelCount);
         element.FindPropertyRelative("mode").enumValueIndex = (int)mode;
         element.FindPropertyRelative("colorScale").floatValue = DebugFieldQuadSlot.DefaultScale(mode);
+        element.FindPropertyRelative("hdrIntensity").floatValue = 1f;
+        element.FindPropertyRelative("lut").gradientValue = DebugFieldQuadSlot.DefaultFireGradient();
     }
 
     private static FieldDescriptor FindDescriptor(EffectAsset asset, string name)
@@ -269,6 +279,8 @@ public sealed class EffectAssetEditor : Editor
         SerializedProperty nameProp = element.FindPropertyRelative("fieldName");
         SerializedProperty modeProp = element.FindPropertyRelative("mode");
         SerializedProperty scaleProp = element.FindPropertyRelative("colorScale");
+        SerializedProperty lutProp = element.FindPropertyRelative("lut");
+        SerializedProperty hdrProp = element.FindPropertyRelative("hdrIntensity");
 
         string name = fieldNameOptions.Length > 0 ? fieldNameOptions[0] : string.Empty;
         nameProp.stringValue = name;
@@ -279,6 +291,8 @@ public sealed class EffectAssetEditor : Editor
             : FieldQuadVisualMode.VectorRg;
         modeProp.enumValueIndex = (int)mode;
         scaleProp.floatValue = DebugFieldQuadSlot.DefaultScale(mode);
+        hdrProp.floatValue = 1f;
+        lutProp.gradientValue = DebugFieldQuadSlot.DefaultFireGradient();
     }
 
     private float GetPassElementHeight(int index)

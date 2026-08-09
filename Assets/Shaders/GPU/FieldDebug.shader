@@ -3,7 +3,9 @@ Shader "M3D/FieldDebug"
     Properties
     {
         _MainTex ("Field", 2D) = "black" {}
+        _LutTex ("LUT", 2D) = "white" {}
         _Scale ("Color Scale", Float) = 2
+        _HdrIntensity ("HDR Intensity", Float) = 1
         // 0 = VectorRg, 1 = ScalarHeatmap (FieldQuadVisualMode)
         _VisualMode ("Visual Mode", Float) = 0
     }
@@ -24,7 +26,10 @@ Shader "M3D/FieldDebug"
 
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);
+            TEXTURE2D(_LutTex);
+            SAMPLER(sampler_LutTex);
             float _Scale;
+            float _HdrIntensity;
             float _VisualMode;
 
             struct Attributes
@@ -53,10 +58,11 @@ Shader "M3D/FieldDebug"
 
                 if (_VisualMode > 0.5)
                 {
-                    // ScalarHeatmap: R channel as warm heat map.
-                    float d = max(s.r, 0.0);
-                    float3 color = float3(d, d * 0.4, d * 0.08) * _Scale;
-                    float alpha = saturate(d * _Scale);
+                    // ScalarHeatmap: normalize → LUT (LDR stops) → optional HDR boost.
+                    float d = saturate(max(s.r, 0.0) * _Scale);
+                    float3 lutColor = SAMPLE_TEXTURE2D(_LutTex, sampler_LutTex, float2(d, 0.5)).rgb;
+                    float3 color = lutColor * _HdrIntensity;
+                    float alpha = saturate(d);
                     return half4(color, alpha * 0.7);
                 }
 

@@ -21,7 +21,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
 Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse**, **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь.  
-Пока нет: LUT/trail render, Stable Fluids, spatial hash / boids, particle emitters с lifetime.
+Пока нет: trail/persistence buffer, Stable Fluids, spatial hash / boids emitters с lifetime.
 
 ---
 
@@ -63,7 +63,9 @@ Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFee
 2. Добавить пассы (Emit/Transport для полей).
 3. **Materialize missing fields from passes** — или вручную заполнить Fields.
 4. Runtime **не** создаст поле сам: опечатка в имени → ошибка Build с именем пасса и поля.
-5. Debug-quadы: список **Debug Field Quads** на EffectAsset (имя поля из dropdown + mode + colorScale). Убрать = скрыть. Несколько слотов → quads рядом по AxisU с подписью имени.
+5. Debug-quadы: список **Debug Field Quads** (имя, mode, colorScale, **LUT** Gradient, **hdrIntensity**). Убрать слот = скрыть. Несколько слотов → quads рядом по AxisU.
+   - ScalarHeatmap: `colorScale` нормализует значение→UV LUT + альфу; `hdrIntensity` — множитель цвета после LUT (для Bloom, не влияет на альфу). Stops градиента — LDR `[0,1]`.
+   - Правка LUT/hdrIntensity применяется на **Rebuild** (печётся в Setup биндера, не live в Play).
 
 Типичный hybrid:
 
