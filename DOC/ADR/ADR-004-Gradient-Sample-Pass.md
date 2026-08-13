@@ -26,3 +26,14 @@ G2P сейчас покрывает только "значение поля в �
 ### Последствия
 
 Переиспользует инфраструктуру M2b.1.1 без нового ресурса. Pass Library обязан включать `GradientPasses.compute`.
+
+### Сноска (ADR-011)
+
+С ADR-011 в фреймворке **два** G2P-инструмента для velocity-поля — не путать:
+
+| Пасс | Категория | Формула | dt | Потребители |
+| --- | --- | --- | --- | --- |
+| `SampleVelocityFieldPass` | Transport | `v += fieldVel * strength` | нет | Hybrid / Echo |
+| `SteerToVelocityFieldPass` | Force | `v += (fieldVel − v) * strength * dt` (`saturate`) | да | Boids alignment |
+
+Blur velocity-поля: `DiffuseVelocityFieldPass` (аналог `DiffuseFieldPass` на `float2`).

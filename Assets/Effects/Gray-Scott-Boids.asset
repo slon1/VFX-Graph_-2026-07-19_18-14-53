@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
   sourceKind: 0
   cubeSource:
-    resolution: 25
-    cubeSize: 2
+    resolution: 10
+    cubeSize: 1
   meshSource:
     mesh: {fileID: 0}
     centerPivot: 1
@@ -25,13 +25,13 @@ MonoBehaviour:
     texture: {fileID: 0}
     targetWidth: 2
     heightScale: 1
-  simulationSpeed: 20
+  simulationSpeed: 50
   fields:
   - id:
       name: flockVel
       semantic: 0
     format: 46
-    resolution: {x: 128, y: 128}
+    resolution: {x: 64, y: 64}
     clearValue: {r: 0, g: 0, b: 0, a: 0}
     origin: {x: 0, y: 0, z: 0}
     axisU: {x: 1, y: 0, z: 0}
@@ -97,6 +97,12 @@ MonoBehaviour:
   - rid: 8100000000000000007
   - rid: 8100000000000000008
   - rid: 8100000000000000009
+  - rid: 7627695083649237061
+  - rid: 7627695083649237062
+  - rid: 7627695083649237063
+  - rid: 7627695083649237064
+  - rid: 7627695083649237065
+  - rid: 7627695083649237066
   - rid: 8100000000000000010
   - rid: 8100000000000000011
   - rid: 8100000000000000012
@@ -111,7 +117,7 @@ MonoBehaviour:
   - rid: 8100000000000000016
   - rid: 8100000000000000017
   - rid: 8100000000000000018
-  - rid: 8100000000000000019
+  - rid: 7627695083649237067
   - rid: 8100000000000000020
   - rid: 8100000000000000021
   - rid: 8100000000000000022
@@ -128,24 +134,159 @@ MonoBehaviour:
   - fieldName: U
     mode: 1
     colorScale: 1
+    lut:
+      serializedVersion: 2
+      key0: {r: 1, g: 1, b: 1, a: 1}
+      key1: {r: 1, g: 1, b: 1, a: 1}
+      key2: {r: 0, g: 0, b: 0, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 65535
+      ctime2: 0
+      ctime3: 0
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 2
+      m_NumAlphaKeys: 2
+    hdrIntensity: 0
   - fieldName: V
     mode: 1
     colorScale: 1
+    lut:
+      serializedVersion: 2
+      key0: {r: 1, g: 1, b: 1, a: 1}
+      key1: {r: 1, g: 1, b: 1, a: 1}
+      key2: {r: 0, g: 0, b: 0, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 65535
+      ctime2: 0
+      ctime3: 0
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 2
+      m_NumAlphaKeys: 2
+    hdrIntensity: 0
   - fieldName: agentPresence
     mode: 1
     colorScale: 0.2
+    lut:
+      serializedVersion: 2
+      key0: {r: 1, g: 1, b: 1, a: 1}
+      key1: {r: 1, g: 1, b: 1, a: 1}
+      key2: {r: 0, g: 0, b: 0, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 65535
+      ctime2: 0
+      ctime3: 0
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 2
+      m_NumAlphaKeys: 2
+    hdrIntensity: 0
   showVelocityFieldQuad: 0
   showDensityFieldQuad: 0
   references:
     version: 2
     RefIds:
+    - rid: 7627695083649237061
+      type: {class: DiffuseVelocityFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        diffusionRate: 0.15
+    - rid: 7627695083649237062
+      type: {class: DiffuseVelocityFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        diffusionRate: 0.15
+    - rid: 7627695083649237063
+      type: {class: DiffuseVelocityFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        diffusionRate: 0.15
+    - rid: 7627695083649237064
+      type: {class: DiffuseVelocityFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        diffusionRate: 0.15
+    - rid: 7627695083649237065
+      type: {class: DiffuseVelocityFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        diffusionRate: 0.15
+    - rid: 7627695083649237066
+      type: {class: DiffuseVelocityFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: flockVel
+        diffusionRate: 0.15
+    - rid: 7627695083649237067
+      type: {class: SteerToVelocityFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        velocityFieldName: flockVel
+        strength: 1
     - rid: 8100000000000000001
       type: {class: CurlNoisePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-        frequency: 0.8
-        amplitude: 0.04
-        speed: 0.3
+        frequency: 1
+        amplitude: 1
+        speed: 1
     - rid: 8100000000000000002
       type: {class: DragPass, ns: , asm: Assembly-CSharp}
       data:
@@ -252,12 +393,6 @@ MonoBehaviour:
         enabled: 1
         fieldName: separationDensity
         decayRate: 2
-    - rid: 8100000000000000019
-      type: {class: SampleVelocityFieldPass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1
-        velocityFieldName: flockVel
-        strength: 0.6
     - rid: 8100000000000000020
       type: {class: SampleGradientFieldPass, ns: , asm: Assembly-CSharp}
       data:

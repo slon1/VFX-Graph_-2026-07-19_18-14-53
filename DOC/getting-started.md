@@ -20,7 +20,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse**, **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь.  
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **SteerToVelocityField** (alignment), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь.  
 Пока нет: trail/persistence buffer, Stable Fluids, spatial hash / boids emitters с lifetime.
 
 ---
@@ -36,7 +36,8 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **HybridTouchField** — Touch → velocity field → particles (+ velocity quad).
    - **AgentFieldEcho** — CurlNoise → P2G scatter velocity → field quad (без тача).
    - **Gray-Scott** — field-only RD (`Source Kind = None`, поля на **XZ**, quads U/V; тач после React).
-   - **Gray-Scott-Boids** — boids + `agentPresence` P2G → Boost/Erode в U/V (plane 50×50 / res 128).
+   - **Gray-Scott-Boids** — boids + `agentPresence` P2G → Boost/Erode в U/V (plane 50×50; `flockVel` 64 + Steer/DiffuseVelocity).
+   - **Boids_mk1** — чистый field-flocking (Steer + DiffuseVelocity + cohesion/separation).
    - **Gray-Scott-Agents** — то же one-way: частицы красят GS, поле их не рулит.
 3. Play. Для hybrid / Gray-Scott: InputRouter = **GroundXZ**.
 
@@ -54,9 +55,11 @@ Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFee
 ### Boids → Gray-Scott
 
 1. Пресет: `Assets/Effects/Gray-Scott-Boids.asset` (меню `Tools/M3D/Create Gray-Scott-Boids Effect`).
-2. Presence Replace: `ClearField(agentPresence)` → ClearAccum → ScatterDensity → Normalize → … → React → `AgentBoost` / `AgentErode` (`gain`≈0.3).
-3. U/V/`agentPresence` обязаны совпасть по Resolution+plane (M2c); Size 50 как boids, res 128.
-4. One-way без обратной связи: `Assets/Effects/Gray-Scott-Agents.asset` — только Curl/Drag/… + presence→GS (нет flockVel / Sample*).
+2. Alignment: `ClearAccum → ScatterVelocity → Normalize → Decay → DiffuseVelocity×6 → … → SteerToVelocityField` (`flockVel` 64×64); не `SampleVelocityField` (тот — Hybrid/Echo).
+3. Presence Replace: `ClearField(agentPresence)` → ClearAccum → ScatterDensity → Normalize → … → React → `AgentBoost` / `AgentErode` (`gain`≈0.3).
+4. U/V/`agentPresence` обязаны совпасть по Resolution+plane (M2c); Size 50 как boids, presence/U/V res 128.
+5. One-way без обратной связи: `Assets/Effects/Gray-Scott-Agents.asset` — только Curl/Drag/… + presence→GS (нет flockVel / Sample*/Steer).
+6. Чистые boids: `Assets/Effects/Boids_mk1.asset` (Speed≈20).
 ### Свой эффект с полями
 
 1. `Create → M3D → Effect Asset`.
@@ -118,9 +121,11 @@ Per-frame обнуление **текстуры** поля: `ClearFieldPass` —
 8. Sampling/plane: `FieldSampling.hlsl` + `FieldShaderParams.Push`.
 
 Hybrid (field + particles):
-- значение: `SampleVelocityFieldPass` — Transport, `ParticleKernelPass` + `FieldReads`;
+- значение: `SampleVelocityFieldPass` — Transport, `ParticleKernelPass` + `FieldReads` (Hybrid/Echo; **без** dt);
+- alignment: `SteerToVelocityFieldPass` — Force, `v += (fieldVel−v)*strength*dt` (`saturate`), ADR-011; не мержить с SampleVelocity;
 - градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`;
-- сглаживание: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
+- сглаживание scalar: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
+- сглаживание velocity: `DiffuseVelocityFieldPass` — тот же Laplacian на `float2` (`FieldPasses.compute`); 6× на `flockVel` 64×64;
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
 - Gray-Scott: `GrayScottPass` + Seed + TouchInject; boids-гибрид: presence P2G → `AgentBoost`/`AgentErode` (`gain`); N=1–4 React; ADR-009;
 - cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;

@@ -39,7 +39,7 @@
 | `ShapePasses.compute` | CopyRest, Twist, SpringToRest |
 | `ForcePasses.compute` | Gravity, Drag, Vortex, Attractor/Repulsor, Noise, CurlNoise, Turbulence, TouchForce |
 | `DynamicsPasses.compute` | Integrate, SpeedLimit, Plane/Sphere/BoxBounds |
-| `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField |
+| `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField, **SteerToVelocityField**, **DiffuseVelocityField** |
 | `P2GPasses.compute` | ClearUintBuffer, ScatterVelocity, NormalizeVelocityAccum |
 | `DensityPasses.compute` | ScatterDensity, NormalizeDensityAccum |
 | `GradientPasses.compute` | SampleGradient |
@@ -240,13 +240,34 @@
 ### SampleVelocityField (G2P)
 | | |
 |--|--|
-| **Назначение** | `v += sample(velocityField) * strength` |
+| **Назначение** | `v += sample(velocityField) * strength` — Transport (без dt). Hybrid/Echo «ехать по полю»; **не** alignment |
 | **Библиотека / kernel** | `FieldPasses` / `SampleVelocityField` |
 | **Particles** | R: `position` → W: `velocity` |
 | **Fields** | Read Velocity ×2 |
 | **Параметры** | `velocityFieldName`, `strength` (1) |
 | **dt** | **Нет** (раз за кадр) — баланс с силами `*dt` плывёт от FPS/Speed |
-| **Хорошо для** | Alignment / hybrid field→particles |
+| **Хорошо для** | Hybrid field→particles (`HybridTouchField`); не путать со `SteerToVelocityField` (ADR-011) |
+
+### SteerToVelocityField (G2P alignment)
+| | |
+|--|--|
+| **Назначение** | Reynolds steering: `v += (fieldVel − v) * strength * dt`, `k = saturate(strength·dt)`. Force, не Transport |
+| **Библиотека / kernel** | `FieldPasses` / `SteerToVelocityField` |
+| **Particles** | R: `position` → W: `velocity` |
+| **Fields** | Read Velocity ×2 |
+| **Параметры** | `velocityFieldName` (default `flockVel`), `strength` (1) |
+| **dt** | Да; UV вне поля → early-out (не target=0) |
+| **Хорошо для** | Boids alignment; **отдельно** от `SampleVelocityField` (Hybrid/Echo) — ADR-011 |
+
+### DiffuseVelocityField
+| | |
+|--|--|
+| **Назначение** | Explicit 5-point Laplacian на Velocity `float2` (per-component) |
+| **Библиотека / kernel** | `FieldPasses` / `DiffuseVelocityField` |
+| **Fields** | WritePingPong Velocity ×2 |
+| **Параметры** | `fieldName` (`flockVel`), `diffusionRate` (0.15) |
+| **dt** | Да; держи **rate·dt ≲ 0.2–0.25**; несколько мягких пассов/кадр |
+| **Хорошо для** | Радиус усреднения `flockVel` перед Steer (alignment blur) |
 
 ### SampleGradientField (G2P)
 | | |
@@ -397,7 +418,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 1. Нет compute в Pass Library → kernel not found / silent skip.  
 2. Имя поля в пассе ≠ `FieldDescriptor` → ошибка Build.  
 3. Multi-field: разный Resolution/plane → hard error (M2c).  
-4. `SimulationSpeed` меняет «громкость» у пассов с dt; P2G и SampleVelocity **без** dt — баланс плывёт.  
+4. `SimulationSpeed` меняет «громкость» у пассов с dt; P2G и SampleVelocity **без** dt — баланс плывёт. Alignment — через `SteerToVelocityField` (с dt), не SampleVelocity.  
 5. Seed срабатывает **один раз** до Rebuild.  
 6. Diffuse/GrayScott: превышение CFL → каша (saturate маскирует NaN у GS, не чинит схему).
 

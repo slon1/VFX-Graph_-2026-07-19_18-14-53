@@ -7,6 +7,8 @@
 #pragma kernel TouchInjectVelocity
 #pragma kernel DecayField
 #pragma kernel SampleVelocityField
+#pragma kernel SteerToVelocityField
+#pragma kernel DiffuseVelocityField
 
 #include "Assets/Shaders/GPU/Includes/Touch.hlsl"
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
@@ -17,6 +19,9 @@
 Texture2D<float2> FieldRead;
 RWTexture2D<float2> FieldWrite;
 SamplerState sampler_linear_clamp;
+
+float DeltaTime;
+float DiffusionRate;
 
 // --- TouchInjectVelocity (WriteInPlace) ---
 StructuredBuffer<TouchForce> Touches;
@@ -99,4 +104,55 @@ void SampleVelocityField(uint3 id : SV_DispatchThreadID)
     }
 
     velocity[id.x] += FieldUVToWorldVelocity(fieldVel) * SampleStrength;
+}
+
+// --- SteerToVelocityField (Reynolds-style alignment: steer toward field velocity, not accumulate) ---
+// Separate from SampleVelocityField (Transport, used by Hybrid/Echo) — do not merge, different contract.
+float SteerStrength;
+
+[numthreads(PARTICLE_THREADS, 1, 1)]
+void SteerToVelocityField(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float2 uv = WorldToFieldUV(position[id.x]);
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
+    {
+        return; // outside field plane — no alignment force, NOT target=0 (that would brake to a stop)
+    }
+
+    float2 fieldVel = FieldRead.SampleLevel(sampler_linear_clamp, uv, 0);
+    float3 target = FieldUVToWorldVelocity(fieldVel);
+    float k = saturate(SteerStrength * DeltaTime); // clamp — explicit Euler overshoots target past k>1
+    velocity[id.x] += (target - velocity[id.x]) * k;
+}
+
+// --- DiffuseVelocityField (WritePingPong, 5-point Laplacian per-component) ---
+float2 LoadVelocityClamped(int2 q)
+{
+    int2 maxP = FieldResolution - 1;
+    q = clamp(q, int2(0, 0), maxP);
+    return FieldRead.Load(int3(q, 0));
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void DiffuseVelocityField(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float2 c = LoadVelocityClamped(p);
+    float2 n = LoadVelocityClamped(p + int2(0, 1));
+    float2 s = LoadVelocityClamped(p + int2(0, -1));
+    float2 e = LoadVelocityClamped(p + int2(1, 0));
+    float2 w = LoadVelocityClamped(p + int2(-1, 0));
+
+    float2 laplacian = n + s + e + w - 4.0 * c;
+    FieldWrite[p] = c + DiffusionRate * DeltaTime * laplacian;
 }

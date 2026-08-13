@@ -669,7 +669,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40024deb4f1f31e45bc61e845729cb9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationWorld
-  effect: {fileID: 11400000, guid: 312c04f65b391c24bb53d40a2d611ab7, type: 2}
+  effect: {fileID: 11400000, guid: b87bc6b0bfe10934fb29d2f5b5545cec, type: 2}
   passLibrary:
   - {fileID: 7200000, guid: a60dea895cfede043bc140022ff70824, type: 3}
   - {fileID: 7200000, guid: d11bdaf5caad3f14aba4b9f99bf511b7, type: 3}

@@ -25,13 +25,13 @@ MonoBehaviour:
     texture: {fileID: 0}
     targetWidth: 2
     heightScale: 1
-  simulationSpeed: 60
+  simulationSpeed: 100
   fields:
   - id:
       name: U
       semantic: 2
-    format: 45
-    resolution: {x: 128, y: 128}
+    format: 49
+    resolution: {x: 256, y: 256}
     clearValue: {r: 1, g: 1, b: 1, a: 0}
     origin: {x: 0, y: 0, z: 0}
     axisU: {x: 1, y: 0, z: 0}
@@ -40,8 +40,8 @@ MonoBehaviour:
   - id:
       name: V
       semantic: 2
-    format: 45
-    resolution: {x: 128, y: 128}
+    format: 49
+    resolution: {x: 256, y: 256}
     clearValue: {r: 0, g: 0, b: 0, a: 0}
     origin: {x: 0, y: 0, z: 0}
     axisU: {x: 1, y: 0, z: 0}
@@ -52,15 +52,14 @@ MonoBehaviour:
   - rid: 7167045775393554501
   - rid: 7167045775393554494
   - rid: 7167045775393554494
-  - rid: 7167045775393554494
   - rid: 7167045775393554502
   debugFieldQuads:
   - fieldName: U
     mode: 1
-    colorScale: 1
+    colorScale: 2
   - fieldName: V
     mode: 1
-    colorScale: 1
+    colorScale: 2
   showVelocityFieldQuad: 0
   showDensityFieldQuad: 0
   references:
@@ -69,7 +68,7 @@ MonoBehaviour:
     - rid: 7167045775393554493
       type: {class: SeedScalarDiskPass, ns: , asm: Assembly-CSharp}
       data:
-        enabled: 1
+        enabled: 0
         fieldName: V
         centerUV: {x: 0.7, y: 0.7}
         radiusUV: 0.09
@@ -83,11 +82,11 @@ MonoBehaviour:
         diffusionRateU: 0.16
         diffusionRateV: 0.08
         feedRate: 0.035
-        killRate: 0.06
+        killRate: 0.059
     - rid: 7167045775393554501
       type: {class: SeedScalarDiskPass, ns: , asm: Assembly-CSharp}
       data:
-        enabled: 1
+        enabled: 0
         fieldName: V
         centerUV: {x: 0.3, y: 0.3}
         radiusUV: 0.06

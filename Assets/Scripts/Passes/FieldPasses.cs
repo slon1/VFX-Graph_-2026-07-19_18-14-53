@@ -253,6 +253,109 @@ public sealed class SampleVelocityFieldPass : ParticleKernelPass
 }
 
 /// <summary>
+/// Reynolds-style alignment: steer particle velocity toward the locally sampled field
+/// velocity (v += (fieldVel - v) * strength * dt), not accumulate onto it. Self-limiting —
+/// unlike SampleVelocityFieldPass (Transport, no dt, used by Hybrid/Echo demos), this pass
+/// is Force/dt-scaled by design and must not be merged with SampleVelocityFieldPass:
+/// different contract, different consumers.
+/// </summary>
+[Serializable]
+public sealed class SteerToVelocityFieldPass : ParticleKernelPass
+{
+    private static readonly int SteerStrengthId = Shader.PropertyToID("SteerStrength");
+
+    [SerializeField] private string velocityFieldName = "flockVel";
+    [SerializeField] private float strength = 1f;
+
+    private FieldDescriptor fieldDescriptor;
+    private int velocityReadId;
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+
+    public string VelocityFieldName
+    {
+        get => velocityFieldName;
+        set => velocityFieldName = value;
+    }
+
+    public float Strength
+    {
+        get => strength;
+        set => strength = value;
+    }
+
+    public override string DisplayName => "Steer To Velocity Field";
+    public override PassCategory Category => PassCategory.Force;
+    protected override string KernelName => "SteerToVelocityField";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Position;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, velocityFieldName,
+            FieldAccess.Read, FieldSemantic.Velocity, 2);
+
+    public override void Initialize(SimContext context)
+    {
+        base.Initialize(context);
+        fieldDescriptor = context.Fields.Get(velocityFieldName).Descriptor;
+        velocityReadId = SimShaderIds.FieldRead;
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SimField field = context.Fields.Get(velocityFieldName);
+        context.Cmd.SetComputeTextureParam(Kernel.Shader, Kernel.Index, velocityReadId, field.Current);
+        FieldShaderParams.Push(context.Cmd, Kernel.Shader, fieldDescriptor);
+        SetFloat(context, SteerStrengthId, strength);
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+    }
+}
+
+/// <summary>
+/// Explicit 5-point Laplacian diffusion on a 2-channel velocity field (WritePingPong).
+/// Same CFL rule as DiffuseFieldPass (rate * dt ≲ 0.2-0.25), applied per-component —
+/// Laplacian is separable, no cross-channel coupling. Default matches cohesionDensity's
+/// diffusionRate (0.15) — a lower rate does not accumulate a real averaging radius over
+/// a realistic pass count at moderate SimulationSpeed (ADR-011 Дефект 3 diffusion-length math).
+/// </summary>
+[Serializable]
+public sealed class DiffuseVelocityFieldPass : FieldKernelPass
+{
+    [SerializeField] private string fieldName = "flockVel";
+    [SerializeField, Min(0f)] private float diffusionRate = 0.15f;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string FieldName
+    {
+        get => fieldName;
+        set => fieldName = value;
+    }
+
+    public float DiffusionRate
+    {
+        get => diffusionRate;
+        set => diffusionRate = value;
+    }
+
+    public override string DisplayName => "Diffuse Velocity Field";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "DiffuseVelocityField";
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, fieldName,
+            FieldAccess.WritePingPong, FieldSemantic.Velocity, 2);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+        SetFloat(context, SimShaderIds.DiffusionRate, diffusionRate);
+    }
+}
+
+/// <summary>
 /// Hybrid G2P force: central-difference gradient of a scalar field at each particle,
 /// added as acceleration (direction * Strength * dt). Raw finite differences — does not
 /// require or assume prior Diffuse; noisy on sharp/raw fields by design.

@@ -167,17 +167,17 @@ public static class M3DDemoTools
         SetPrivate(scatterSep, "targetFieldName", "separationDensity");
         SetPrivate(normalizeSep, "fieldName", "separationDensity");
 
-        SampleVelocityFieldPass sampleFlock = new SampleVelocityFieldPass { Strength = 0.6f };
+        SteerToVelocityFieldPass sampleFlock = new SteerToVelocityFieldPass { Strength = 1f };
         SampleGradientFieldPass sampleCohesion = new SampleGradientFieldPass { Strength = 1f };
         SampleGradientFieldPass sampleSeparation = new SampleGradientFieldPass { Strength = -0.9f };
-        SetPrivate(sampleFlock, "velocityFieldName", "flockVel");
+        sampleFlock.VelocityFieldName = "flockVel";
         SetPrivate(sampleCohesion, "fieldName", "cohesionDensity");
         SetPrivate(sampleSeparation, "fieldName", "separationDensity");
 
         CreateEffect(
             GrayScottBoidsPath,
             cubeResolution: 25,
-            simulationSpeed: 20f,
+            simulationSpeed: 50f,
             fields: new[]
             {
                 flockVel, cohesionDensity, separationDensity, agentPresence, fieldU, fieldV,
@@ -202,6 +202,12 @@ public static class M3DDemoTools
             scatterFlock,
             normalizeFlock,
             new DecayFieldPass { FieldName = "flockVel", DecayRate = 2f },
+            new DiffuseVelocityFieldPass { FieldName = "flockVel", DiffusionRate = 0.15f },
+            new DiffuseVelocityFieldPass { FieldName = "flockVel", DiffusionRate = 0.15f },
+            new DiffuseVelocityFieldPass { FieldName = "flockVel", DiffusionRate = 0.15f },
+            new DiffuseVelocityFieldPass { FieldName = "flockVel", DiffusionRate = 0.15f },
+            new DiffuseVelocityFieldPass { FieldName = "flockVel", DiffusionRate = 0.15f },
+            new DiffuseVelocityFieldPass { FieldName = "flockVel", DiffusionRate = 0.15f },
             clearCohesionAccum,
             scatterCohesion,
             normalizeCohesion,
@@ -258,7 +264,7 @@ public static class M3DDemoTools
             }
             else if (name == "flockVel")
             {
-                res.vector2IntValue = res128;
+                res.vector2IntValue = new Vector2Int(64, 64);
                 f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16G16_SFloat;
             }
             else

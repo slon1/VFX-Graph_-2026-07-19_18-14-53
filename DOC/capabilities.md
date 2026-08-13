@@ -32,7 +32,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SampleGradientField**, **DiffuseField**.
+- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**.
 - Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
 - Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — слоты (`VectorRg` / `ScalarHeatmap` + Gradient LUT + hdrIntensity), layout по AxisU.
 
@@ -68,10 +68,16 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - `SampleGradientFieldPass` — Force: `velocity += ∇φ * Strength * dt` (Scalar field, ADR-004).
 - Kernel в `GradientPasses.compute` (`Texture2D<float> FieldRead`).
 
-### Diffuse (M2b.3)
+### Diffuse (M2b.3) + velocity blur (ADR-011)
 
 - `DiffuseFieldPass` — 5-point explicit Laplacian, WritePingPong, Scalar; `DiffusePasses.compute`.
+- `DiffuseVelocityFieldPass` — тот же Laplacian на `float2` Velocity (`FieldPasses.compute`); для blur `flockVel` перед alignment.
 - Рекомендация: `NormalizeDensity → несколько мягких Diffuse подряд в кадре → SampleGradient` (не «больше кадров ожидания»). Дальнодействие = rate × число Diffuse/кадр × размер текселя; вялость между далёкими кластерами — ожидаемая сходимость, не баг. ADR-006 / [`status.md`](status.md).
+
+### Alignment G2P (ADR-011)
+
+- `SteerToVelocityFieldPass` — Force: `v += (fieldVel − v) * strength * dt` с `saturate(k)`. Не путать с `SampleVelocityFieldPass` (Transport, без dt — Hybrid/Echo).
+- Boids: `flockVel` 64×64 + 6× DiffuseVelocity + Steer; cohesion/separation через SampleGradient.
 
 ### Scalar Decay (M2b.3.1)
 
@@ -82,8 +88,8 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 | Категория | Примеры |
 | --- | --- |
-| Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, Integrate, Bounds, … |
-| Emit / Transport | ClearField, **SeedScalarDisk**, TouchInject, Decay / **DecayScalar**, **Diffuse**, **SwapFields**, **GrayScott**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
+| Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, **SteerToVelocityField**, Integrate, Bounds, … |
+| Emit / Transport | ClearField, **SeedScalarDisk**, TouchInject, Decay / **DecayScalar**, **Diffuse** / **DiffuseVelocity**, **SwapFields**, **GrayScott**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
 
@@ -94,6 +100,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | **HybridTouchField** | touch → velocity field → particles |
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
+| **Boids_mk1** | field flocking: Steer + DiffuseVelocity + cohesion/separation |
 | **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |
 | **Gray-Scott-Agents** | agents → GS only (no field feedback) |
 
