@@ -2,6 +2,8 @@
 // Buffer names match attribute names — bound automatically by ParticleKernelPass.
 
 #pragma kernel Integrate
+#pragma kernel ClearVelocity
+#pragma kernel HeadingSteer
 #pragma kernel SpeedLimit
 #pragma kernel PlaneCollider
 #pragma kernel SphereCollider
@@ -11,8 +13,12 @@
 
 RWStructuredBuffer<float3> position;
 RWStructuredBuffer<float3> velocity;
+RWStructuredBuffer<float3> heading;
 uint ParticleCount;
 float DeltaTime;
+
+float TurnSpeed;
+float CruiseSpeed;
 
 float MaxSpeed;
 
@@ -47,6 +53,60 @@ void Integrate(uint3 id : SV_DispatchThreadID)
     }
 
     position[id.x] += velocity[id.x] * DeltaTime;
+}
+
+[numthreads(THREADS, 1, 1)]
+void ClearVelocity(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    velocity[id.x] = 0;
+}
+
+[numthreads(THREADS, 1, 1)]
+void HeadingSteer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 force = velocity[id.x];
+    float3 h = heading[id.x];
+    float forceLen = length(force);
+    float hLen = length(h);
+
+    float3 desired = (forceLen > 1e-6)
+        ? (force / forceLen)
+        : ((hLen > 1e-6) ? (h / hLen) : float3(1, 0, 0));
+
+    if (hLen < 1e-6)
+    {
+        h = desired;
+    }
+    else
+    {
+        h = h / hLen;
+    }
+
+    float k = saturate(TurnSpeed * DeltaTime);
+    h = normalize(lerp(h, desired, k));
+    h.y = 0.0;
+    float flat = length(h);
+    if (flat < 1e-6)
+    {
+        h = float3(1, 0, 0);
+    }
+    else
+    {
+        h = h / flat;
+    }
+
+    heading[id.x] = h;
+    velocity[id.x] = h * CruiseSpeed;
 }
 
 [numthreads(THREADS, 1, 1)]

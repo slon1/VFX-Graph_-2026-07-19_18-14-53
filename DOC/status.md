@@ -1,11 +1,11 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-08-13  
-**Итерация:** 5.9 — ADR-011 boids alignment (`SteerToVelocityField` + `DiffuseVelocityField`)  
+**Дата:** 2026-08-14  
+**Итерация:** 5.10 — ADR-012 kinematic heading boids (`Boids_mk1`)  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -98,21 +98,31 @@ Proof: `SwapFieldsPass` + `MultiFieldTestPasses.compute`. ADR-008.
 
 ---
 
+## ADR-012 — Kinematic heading boids (готово)
+
+`ClearVelocityPass`, `AddNormalizedVelocityFieldPass`, `AddNormalizedGradientFieldPass`, `HeadingSteerPass` + атрибут `heading`.  
+Kinematic integrator (Rivalry modern): force accumulator без dt → nlerp heading → **snap** `velocity = heading * CruiseSpeed`.  
+`Boids_mk1`: P2G (cruise v) → Clear → AddNormalized (align 0.8 / coh +0.6 / sep −1.2) → HeadingSteer (turn 0.15, cruise 4) → Integrate → Wrap. Speed=20, `flockVel` 64×64, 6× DiffuseVelocity. **Без** Curl/Drag/Limit/Steer/SampleGradient.  
+Пресет: `Tools/M3D/ADR-012 Reconfigure Boids_mk1`. Тесты: `ClearVelocityPassTests`, `AddNormalizedVelocityFieldPassTests`, `AddNormalizedGradientFieldPassTests`, `HeadingSteerPassTests`.
+
+---
+
 ## ADR-011 — Boids alignment Steer + DiffuseVelocity (готово)
 
-`SteerToVelocityFieldPass` (Force, `v += (fieldVel−v)*k`, `k=saturate(strength·dt)`) — alignment; **не** меняет `SampleVelocityFieldPass` (Transport Hybrid/Echo).  
-`DiffuseVelocityFieldPass` — Laplacian на Velocity `float2` (`FieldPasses.compute`).  
-Пресеты: `Boids_mk1` (Speed≈20, `flockVel` 64×64, 6× DiffuseVelocity); `Gray-Scott-Boids` (Speed=50, тот же blur+Steer). Тесты: `SteerToVelocityFieldPassTests`, `DiffuseVelocityFieldPassTests`.
+`SteerToVelocityFieldPass` (Force, Reynolds) — **остаётся в каталоге**; на `Boids_mk1` заменён ADR-012 AddNormalized*.  
+`DiffuseVelocityFieldPass` — Laplacian на Velocity `float2` (`FieldPasses.compute`); по-прежнему на `Boids_mk1` перед G2P.  
+Gray-Scott-Boids: Speed=50, blur+Steer. Тесты: `SteerToVelocityFieldPassTests`, `DiffuseVelocityFieldPassTests`.
 
 ---
 
 ## Файлы (ключевые)
 
 ```
-Assets/Scripts/Passes/     FieldPasses.cs (Steer, DiffuseVelocity, GrayScott, Seed, Swap, …), P2GPasses.cs
-Assets/Scripts/Runtime/    SimPass.cs (ShouldDispatch, roles), SimulationWorld.cs
-Assets/Shaders/GPU/Passes/ FieldPasses (Steer/DiffuseVelocity), GrayScottPasses, DiffusePasses, …
-Assets/Tests/Editor/       SteerToVelocityFieldPassTests, DiffuseVelocityFieldPassTests, …
+Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, …), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
+Assets/Scripts/Runtime/    SimPass.cs (AttrSets.Heading), SimulationWorld.cs
+Assets/Shaders/GPU/Passes/ DynamicsPasses, FieldPasses, GradientPasses (AddNormalizedGradient)
+Assets/Tests/Editor/       ClearVelocityPassTests, AddNormalized*PassTests, HeadingSteerPassTests, …
+Assets/Scripts/Editor/     Adr012BoidsMk1Setup.cs
 ```
 
 ---

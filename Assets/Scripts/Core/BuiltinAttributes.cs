@@ -10,5 +10,8 @@ public static class BuiltinAttributes
     /// <summary>Particle velocity, integrated into Position by IntegratePass.</summary>
     public static readonly AttributeId Velocity = new AttributeId("velocity", AttributeType.Float3, true);
 
+    /// <summary>Persistent unit heading for kinematic boids (ADR-012). Written by HeadingSteerPass.</summary>
+    public static readonly AttributeId Heading = new AttributeId("heading", AttributeType.Float3, true);
+
     public static readonly AttributeId Value = new AttributeId("value", AttributeType.Float1, true);
 }

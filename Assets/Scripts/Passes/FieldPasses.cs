@@ -313,6 +313,62 @@ public sealed class SteerToVelocityFieldPass : ParticleKernelPass
 }
 
 /// <summary>
+/// Alignment as unit field velocity direction * weight (no dt). ADR-012 kinematic boids —
+/// not SteerToVelocityField (Reynolds) or SampleVelocityField (Transport).
+/// </summary>
+[Serializable]
+public sealed class AddNormalizedVelocityFieldPass : ParticleKernelPass
+{
+    private static readonly int AddWeightId = Shader.PropertyToID("AddWeight");
+
+    [SerializeField] private string velocityFieldName = "flockVel";
+    [SerializeField] private float weight = 0.8f;
+
+    private FieldDescriptor fieldDescriptor;
+    private int velocityReadId;
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+
+    public string VelocityFieldName
+    {
+        get => velocityFieldName;
+        set => velocityFieldName = value;
+    }
+
+    public float Weight
+    {
+        get => weight;
+        set => weight = value;
+    }
+
+    public override string DisplayName => "Add Normalized Velocity Field";
+    public override PassCategory Category => PassCategory.Force;
+    protected override string KernelName => "AddNormalizedVelocityField";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Position;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, velocityFieldName,
+            FieldAccess.Read, FieldSemantic.Velocity, 2);
+
+    public override void Initialize(SimContext context)
+    {
+        base.Initialize(context);
+        fieldDescriptor = context.Fields.Get(velocityFieldName).Descriptor;
+        velocityReadId = SimShaderIds.FieldRead;
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SimField field = context.Fields.Get(velocityFieldName);
+        context.Cmd.SetComputeTextureParam(Kernel.Shader, Kernel.Index, velocityReadId, field.Current);
+        FieldShaderParams.Push(context.Cmd, Kernel.Shader, fieldDescriptor);
+        SetFloat(context, AddWeightId, weight);
+    }
+}
+
+/// <summary>
 /// Explicit 5-point Laplacian diffusion on a 2-channel velocity field (WritePingPong).
 /// Same CFL rule as DiffuseFieldPass (rate * dt ≲ 0.2-0.25), applied per-component —
 /// Laplacian is separable, no cross-channel coupling. Default matches cohesionDensity's
@@ -405,6 +461,62 @@ public sealed class SampleGradientFieldPass : ParticleKernelPass
         FieldShaderParams.Push(context.Cmd, Kernel.Shader, fieldDescriptor);
         SetFloat(context, SampleStrengthId, strength);
         SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+    }
+}
+
+/// <summary>
+/// Cohesion/separation as unit gradient direction * weight (no dt). ADR-012 kinematic boids —
+/// not SampleGradientField (raw ∇ * strength * dt).
+/// </summary>
+[Serializable]
+public sealed class AddNormalizedGradientFieldPass : ParticleKernelPass
+{
+    private static readonly int AddWeightId = Shader.PropertyToID("AddWeight");
+
+    [SerializeField] private string fieldName = "density";
+    [SerializeField] private float weight = 0.6f;
+
+    private FieldDescriptor fieldDescriptor;
+    private int fieldReadId;
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+
+    public string FieldName
+    {
+        get => fieldName;
+        set => fieldName = value;
+    }
+
+    public float Weight
+    {
+        get => weight;
+        set => weight = value;
+    }
+
+    public override string DisplayName => "Add Normalized Gradient Field";
+    public override PassCategory Category => PassCategory.Force;
+    protected override string KernelName => "AddNormalizedGradient";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Position;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, fieldName,
+            FieldAccess.Read, FieldSemantic.Scalar, 1);
+
+    public override void Initialize(SimContext context)
+    {
+        base.Initialize(context);
+        fieldDescriptor = context.Fields.Get(fieldName).Descriptor;
+        fieldReadId = SimShaderIds.FieldRead;
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SimField field = context.Fields.Get(fieldName);
+        context.Cmd.SetComputeTextureParam(Kernel.Shader, Kernel.Index, fieldReadId, field.Current);
+        FieldShaderParams.Push(context.Cmd, Kernel.Shader, fieldDescriptor);
+        SetFloat(context, AddWeightId, weight);
     }
 }
 

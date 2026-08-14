@@ -37,3 +37,7 @@ G2P сейчас покрывает только "значение поля в �
 | `SteerToVelocityFieldPass` | Force | `v += (fieldVel − v) * strength * dt` (`saturate`) | да | Boids alignment |
 
 Blur velocity-поля: `DiffuseVelocityFieldPass` (аналог `DiffuseFieldPass` на `float2`).
+
+### Сноска (ADR-012)
+
+На kinematic-пресете `Boids_mk1` cohesion/alignment/separation — **AddNormalizedVelocityField** / **AddNormalizedGradientField** (unit direction, без dt), не `SampleGradientFieldPass` / `SteerToVelocityFieldPass`. В окно `ClearVelocity → HeadingSteer` не класть dt-scaled Force (CurlNoise и т.п.).

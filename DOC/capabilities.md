@@ -25,14 +25,14 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 | Cube / Mesh / Bitmap | Заполняют `restPosition`, задают `ParticleSet` capacity |
 | **None** | 0 частиц (`NoneSource`); field-only эффекты; particle-пассы no-op; VFX `SpawnCount=0` |
 
-Builtins: `restPosition`, `position`, `velocity`, `value`.  
+Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.  
 Авторегистрация атрибутов по Reads/Writes — **пропускается** при Capacity=0 (None).
 
 ### Fields (M2a)
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**.
+- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **AddNormalizedGradientField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**, **ClearVelocity**, **HeadingSteer**.
 - Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
 - Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — слоты (`VectorRg` / `ScalarHeatmap` + Gradient LUT + hdrIntensity), layout по AxisU.
 
@@ -74,10 +74,17 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 - `DiffuseVelocityFieldPass` — тот же Laplacian на `float2` Velocity (`FieldPasses.compute`); для blur `flockVel` перед alignment.
 - Рекомендация: `NormalizeDensity → несколько мягких Diffuse подряд в кадре → SampleGradient` (не «больше кадров ожидания»). Дальнодействие = rate × число Diffuse/кадр × размер текселя; вялость между далёкими кластерами — ожидаемая сходимость, не баг. ADR-006 / [`status.md`](status.md).
 
+### Kinematic heading boids (ADR-012)
+
+- `ClearVelocityPass` — GPU zero `velocity` (force accumulator reset).
+- `AddNormalizedVelocityFieldPass` / `AddNormalizedGradientFieldPass` — unit direction × weight, **без dt**.
+- `HeadingSteerPass` — nlerp `heading`, flatten Y, snap `velocity = heading * CruiseSpeed`.
+- `Boids_mk1`: P2G → Clear → AddNormalized* → HeadingSteer → Integrate → Wrap (Speed=20). **Не** Newton (Curl/Drag/Limit/Steer/SampleGradient).
+
 ### Alignment G2P (ADR-011)
 
-- `SteerToVelocityFieldPass` — Force: `v += (fieldVel − v) * strength * dt` с `saturate(k)`. Не путать с `SampleVelocityFieldPass` (Transport, без dt — Hybrid/Echo).
-- Boids: `flockVel` 64×64 + 6× DiffuseVelocity + Steer; cohesion/separation через SampleGradient.
+- `SteerToVelocityFieldPass` — Force: Reynolds `v += (fieldVel − v) * strength * dt`. Gray-Scott-Boids / legacy.
+- `DiffuseVelocityFieldPass` — blur `flockVel` перед G2P.
 
 ### Scalar Decay (M2b.3.1)
 
@@ -88,7 +95,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 
 | Категория | Примеры |
 | --- | --- |
-| Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, **SteerToVelocityField**, Integrate, Bounds, … |
+| Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, **AddNormalizedGradient**, **SteerToVelocityField**, **ClearVelocity**, **HeadingSteer**, Integrate, Bounds, … |
 | Emit / Transport | ClearField, **SeedScalarDisk**, TouchInject, Decay / **DecayScalar**, **Diffuse** / **DiffuseVelocity**, **SwapFields**, **GrayScott**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
@@ -100,7 +107,7 @@ Builtins: `restPosition`, `position`, `velocity`, `value`.
 | **HybridTouchField** | touch → velocity field → particles |
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
-| **Boids_mk1** | field flocking: Steer + DiffuseVelocity + cohesion/separation |
+| **Boids_mk1** | kinematic heading + fields (ADR-012): AddNormalized* + HeadingSteer, DiffuseVelocity |
 | **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |
 | **Gray-Scott-Agents** | agents → GS only (no field feedback) |
 

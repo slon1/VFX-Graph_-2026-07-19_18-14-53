@@ -8,6 +8,7 @@
 #pragma kernel DecayField
 #pragma kernel SampleVelocityField
 #pragma kernel SteerToVelocityField
+#pragma kernel AddNormalizedVelocityField
 #pragma kernel DiffuseVelocityField
 
 #include "Assets/Shaders/GPU/Includes/Touch.hlsl"
@@ -128,6 +129,33 @@ void SteerToVelocityField(uint3 id : SV_DispatchThreadID)
     float3 target = FieldUVToWorldVelocity(fieldVel);
     float k = saturate(SteerStrength * DeltaTime); // clamp — explicit Euler overshoots target past k>1
     velocity[id.x] += (target - velocity[id.x]) * k;
+}
+
+// --- AddNormalizedVelocityField (alignment: unit direction * weight, no dt) ---
+float AddWeight;
+
+[numthreads(PARTICLE_THREADS, 1, 1)]
+void AddNormalizedVelocityField(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float2 uv = WorldToFieldUV(position[id.x]);
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
+    {
+        return;
+    }
+
+    float3 fieldVel = FieldUVToWorldVelocity(FieldRead.SampleLevel(sampler_linear_clamp, uv, 0));
+    float len = length(fieldVel);
+    if (len < 1e-6)
+    {
+        return;
+    }
+
+    velocity[id.x] += (fieldVel / len) * AddWeight;
 }
 
 // --- DiffuseVelocityField (WritePingPong, 5-point Laplacian per-component) ---

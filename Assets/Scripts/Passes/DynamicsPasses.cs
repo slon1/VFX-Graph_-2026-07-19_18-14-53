@@ -18,6 +18,56 @@ public sealed class IntegratePass : ParticleKernelPass
     }
 }
 
+/// <summary>GPU zero of particle velocity — force accumulator reset before kinematic heading (ADR-012).</summary>
+[Serializable]
+public sealed class ClearVelocityPass : ParticleKernelPass
+{
+    public override string DisplayName => "Clear Velocity";
+    public override PassCategory Category => PassCategory.Dynamics;
+    protected override string KernelName => "ClearVelocity";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.None;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+}
+
+/// <summary>
+/// Kinematic heading steer (Rivalry modern): nlerp heading toward normalized force sum,
+/// flatten Y, snap velocity to heading * CruiseSpeed. ADR-012.
+/// </summary>
+[Serializable]
+public sealed class HeadingSteerPass : ParticleKernelPass
+{
+    private static readonly int TurnSpeedId = Shader.PropertyToID("TurnSpeed");
+    private static readonly int CruiseSpeedId = Shader.PropertyToID("CruiseSpeed");
+
+    [SerializeField, Min(0f)] private float turnSpeed = 0.15f;
+    [SerializeField, Min(0f)] private float cruiseSpeed = 4f;
+
+    public float TurnSpeed
+    {
+        get => turnSpeed;
+        set => turnSpeed = value;
+    }
+
+    public float CruiseSpeed
+    {
+        get => cruiseSpeed;
+        set => cruiseSpeed = value;
+    }
+
+    public override string DisplayName => "Heading Steer";
+    public override PassCategory Category => PassCategory.Dynamics;
+    protected override string KernelName => "HeadingSteer";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.HeadingVelocity;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.HeadingVelocity;
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, TurnSpeedId, turnSpeed);
+        SetFloat(context, CruiseSpeedId, cruiseSpeed);
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+    }
+}
+
 [Serializable]
 public sealed class SpeedLimitPass : ParticleKernelPass
 {

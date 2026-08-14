@@ -2,7 +2,7 @@
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
 **Каталог пассов** (назначение, dt, Pass Library): [`pass-catalog.md`](pass-catalog.md).  
-Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md), [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md), [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 
@@ -20,7 +20,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **SteerToVelocityField** (alignment), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь.  
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **SteerToVelocityField** (Reynolds alignment), **AddNormalized*** + **HeadingSteer** (kinematic boids), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь.  
 Пока нет: trail/persistence buffer, Stable Fluids, spatial hash / boids emitters с lifetime.
 
 ---
@@ -37,11 +37,11 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **AgentFieldEcho** — CurlNoise → P2G scatter velocity → field quad (без тача).
    - **Gray-Scott** — field-only RD (`Source Kind = None`, поля на **XZ**, quads U/V; тач после React).
    - **Gray-Scott-Boids** — boids + `agentPresence` P2G → Boost/Erode в U/V (plane 50×50; `flockVel` 64 + Steer/DiffuseVelocity).
-   - **Boids_mk1** — чистый field-flocking (Steer + DiffuseVelocity + cohesion/separation).
+   - **Boids_mk1** — kinematic field-flocking (ADR-012: AddNormalized* + HeadingSteer; Speed≈20).
    - **Gray-Scott-Agents** — то же one-way: частицы красят GS, поле их не рулит.
 3. Play. Для hybrid / Gray-Scott: InputRouter = **GroundXZ**.
 
-Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`.  
+Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, **`ADR-012 Reconfigure Boids_mk1`**, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`.  
 После смены пассов/полей в Play — **Rebuild** на SimulationWorld.  
 Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFeedbackPasses`.
 
@@ -59,7 +59,7 @@ Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFee
 3. Presence Replace: `ClearField(agentPresence)` → ClearAccum → ScatterDensity → Normalize → … → React → `AgentBoost` / `AgentErode` (`gain`≈0.3).
 4. U/V/`agentPresence` обязаны совпасть по Resolution+plane (M2c); Size 50 как boids, presence/U/V res 128.
 5. One-way без обратной связи: `Assets/Effects/Gray-Scott-Agents.asset` — только Curl/Drag/… + presence→GS (нет flockVel / Sample*/Steer).
-6. Чистые boids: `Assets/Effects/Boids_mk1.asset` (Speed≈20).
+6. Чистые boids: `Assets/Effects/Boids_mk1.asset` (Speed≈20). Порядок: P2G → ClearVelocity → AddNormalized* → HeadingSteer → Integrate → Wrap. Reconfigure: `Tools/M3D/ADR-012 Reconfigure Boids_mk1`.
 ### Свой эффект с полями
 
 1. `Create → M3D → Effect Asset`.
@@ -122,8 +122,11 @@ Per-frame обнуление **текстуры** поля: `ClearFieldPass` —
 
 Hybrid (field + particles):
 - значение: `SampleVelocityFieldPass` — Transport, `ParticleKernelPass` + `FieldReads` (Hybrid/Echo; **без** dt);
-- alignment: `SteerToVelocityFieldPass` — Force, `v += (fieldVel−v)*strength*dt` (`saturate`), ADR-011; не мержить с SampleVelocity;
-- градиент: `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`;
+- alignment (Reynolds): `SteerToVelocityFieldPass` — Force, `v += (fieldVel−v)*strength*dt` (`saturate`), ADR-011; Gray-Scott-Boids;
+- alignment (kinematic): `AddNormalizedVelocityFieldPass` — unit dir × weight, **без dt**, ADR-012 `Boids_mk1`;
+- градиент (Newton): `SampleGradientFieldPass` — Force, `∇ * Strength * dt`, kernel в `GradientPasses.compute`;
+- cohesion/separation (kinematic): `AddNormalizedGradientFieldPass` — unit ∇ × weight, **без dt**, ADR-012;
+- kinematic integrate: `ClearVelocityPass` → AddNormalized* → `HeadingSteerPass` (snap cruise speed) → Integrate;
 - сглаживание scalar: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
 - сглаживание velocity: `DiffuseVelocityFieldPass` — тот же Laplacian на `float2` (`FieldPasses.compute`); 6× на `flockVel` 64×64;
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;

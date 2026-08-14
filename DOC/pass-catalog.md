@@ -26,7 +26,7 @@
 
 **Слоты текстур:** single-field → `FieldRead`/`FieldWrite`; multi-field (Role A/B) → `FieldReadA/B`/`FieldWriteA/B`.
 
-**Порядок кадра (типично):** Shape → Force → Dynamics (Integrate → Bounds) → Emit/Transport (fields, P2G, G2P). G2P после Integrate = лаг силы на 1 кадр (осознанно в boids-пресетах).
+**Порядок кадра (типично):** Shape → Force → Dynamics (Integrate → Bounds) → Emit/Transport (fields, P2G, G2P). **Kinematic boids (`Boids_mk1`, ADR-012):** P2G → ClearVelocity → AddNormalized* → HeadingSteer → Integrate → Bounds — G2P **до** Integrate, cruise `velocity` для P2G следующего кадра.
 
 ---
 
@@ -38,11 +38,11 @@
 |------|--------|
 | `ShapePasses.compute` | CopyRest, Twist, SpringToRest |
 | `ForcePasses.compute` | Gravity, Drag, Vortex, Attractor/Repulsor, Noise, CurlNoise, Turbulence, TouchForce |
-| `DynamicsPasses.compute` | Integrate, SpeedLimit, Plane/Sphere/BoxBounds |
-| `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField, **SteerToVelocityField**, **DiffuseVelocityField** |
+| `DynamicsPasses.compute` | Integrate, **ClearVelocity**, **HeadingSteer**, SpeedLimit, Plane/Sphere/BoxBounds |
+| `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **DiffuseVelocityField** |
 | `P2GPasses.compute` | ClearUintBuffer, ScatterVelocity, NormalizeVelocityAccum |
 | `DensityPasses.compute` | ScatterDensity, NormalizeDensityAccum |
-| `GradientPasses.compute` | SampleGradient |
+| `GradientPasses.compute` | SampleGradient, **AddNormalizedGradient** |
 | `DiffusePasses.compute` | DiffuseField |
 | `DecayPasses.compute` | DecayFieldScalar |
 | `MultiFieldTestPasses.compute` | SwapFields (тест M2c) |
@@ -155,6 +155,25 @@
 
 ## Dynamics
 
+### ClearVelocity
+| | |
+|--|--|
+| **Назначение** | GPU `velocity = 0` — сброс force-аккумулятора перед kinematic heading (ADR-012) |
+| **Библиотека / kernel** | `DynamicsPasses` / `ClearVelocity` |
+| **Particles** | W: `velocity` |
+| **dt** | Нет |
+| **Хорошо для** | Окно `ClearVelocity → AddNormalized* → HeadingSteer` на `Boids_mk1` |
+
+### HeadingSteer
+| | |
+|--|--|
+| **Назначение** | Kinematic heading (Rivalry modern): nlerp `heading` к `normalize(force)`; flatten Y; **snap** `velocity = heading * CruiseSpeed` |
+| **Библиотека / kernel** | `DynamicsPasses` / `HeadingSteer` |
+| **Particles** | R/W: `heading`, `velocity` |
+| **Параметры** | `turnSpeed` (0.15), `cruiseSpeed` (4); калибровать `Speed * turnSpeed ≈ 3` |
+| **dt** | Да (только поворот; скорость — snap, не spring) |
+| **Хорошо для** | `Boids_mk1` после AddNormalized*; не SpeedLimit |
+
 ### Integrate
 | | |
 |--|--|
@@ -257,7 +276,18 @@
 | **Fields** | Read Velocity ×2 |
 | **Параметры** | `velocityFieldName` (default `flockVel`), `strength` (1) |
 | **dt** | Да; UV вне поля → early-out (не target=0) |
-| **Хорошо для** | Boids alignment; **отдельно** от `SampleVelocityField` (Hybrid/Echo) — ADR-011 |
+| **Хорошо для** | Boids alignment (Newton/Reynolds); **не** `Boids_mk1` после ADR-012 — там `AddNormalizedVelocityField` |
+
+### AddNormalizedVelocityField (G2P alignment, kinematic)
+| | |
+|--|--|
+| **Назначение** | `v += normalize(fieldVel) * weight` — unit direction, **без dt** (force accumulator) |
+| **Библиотека / kernel** | `FieldPasses` / `AddNormalizedVelocityField` |
+| **Particles** | R: `position` → W: `velocity` |
+| **Fields** | Read Velocity ×2 |
+| **Параметры** | `velocityFieldName` (`flockVel`), `weight` (0.8) |
+| **dt** | **Нет** |
+| **Хорошо для** | ADR-012 `Boids_mk1`; после `ClearVelocity`, до `HeadingSteer` |
 
 ### DiffuseVelocityField
 | | |
@@ -278,7 +308,18 @@
 | **Fields** | Read Scalar ×1 |
 | **Параметры** | `fieldName`, `strength` |
 | **dt** | Да |
-| **Хорошо для** | Cohesion (+) / separation (−) через density |
+| **Хорошо для** | Cohesion (+) / separation (−) через density (Newton); **не** ADR-012 kinematic — там `AddNormalizedGradientField` |
+
+### AddNormalizedGradientField (G2P cohesion/separation, kinematic)
+| | |
+|--|--|
+| **Назначение** | `v += normalize(∇φ) * weight` — unit direction, **без dt**; signed weight |
+| **Библиотека / kernel** | `GradientPasses` / `AddNormalizedGradient` |
+| **Particles** | R: `position` → W: `velocity` |
+| **Fields** | Read Scalar ×1 |
+| **Параметры** | `fieldName`, `weight` (±; default 0.6) |
+| **dt** | **Нет** |
+| **Хорошо для** | ADR-012 `Boids_mk1`; cohesion +0.6 / separation −1.2 |
 
 ### SwapFields
 | | |

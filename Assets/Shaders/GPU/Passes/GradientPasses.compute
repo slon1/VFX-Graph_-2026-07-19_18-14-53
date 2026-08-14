@@ -3,6 +3,7 @@
 // Separate from FieldPasses.compute (float2 FieldRead) to avoid typed-bind UB.
 
 #pragma kernel SampleGradient
+#pragma kernel AddNormalizedGradient
 
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
 
@@ -15,6 +16,7 @@ StructuredBuffer<float3> position;
 RWStructuredBuffer<float3> velocity;
 uint ParticleCount;
 float SampleStrength;
+float AddWeight;
 float DeltaTime;
 
 [numthreads(PARTICLE_THREADS, 1, 1)]
@@ -45,4 +47,40 @@ void SampleGradient(uint3 id : SV_DispatchThreadID)
 
     float3 direction = FieldUvGradientToWorld(gradUv);
     velocity[id.x] += direction * SampleStrength * DeltaTime;
+}
+
+[numthreads(PARTICLE_THREADS, 1, 1)]
+void AddNormalizedGradient(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float2 uv = WorldToFieldUV(position[id.x]);
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
+    {
+        return;
+    }
+
+    float2 dx = float2(FieldTexelSize.x, 0.0);
+    float2 dy = float2(0.0, FieldTexelSize.y);
+
+    float right = FieldRead.SampleLevel(sampler_linear_clamp, saturate(uv + dx), 0);
+    float left = FieldRead.SampleLevel(sampler_linear_clamp, saturate(uv - dx), 0);
+    float up = FieldRead.SampleLevel(sampler_linear_clamp, saturate(uv + dy), 0);
+    float down = FieldRead.SampleLevel(sampler_linear_clamp, saturate(uv - dy), 0);
+
+    float2 gradUv = float2(
+        (right - left) / max(2.0 * FieldTexelSize.x, 1e-5),
+        (up - down) / max(2.0 * FieldTexelSize.y, 1e-5));
+
+    float3 direction = FieldUvGradientToWorld(gradUv);
+    float len = length(direction);
+    if (len < 1e-6)
+    {
+        return;
+    }
+
+    velocity[id.x] += (direction / len) * AddWeight;
 }
