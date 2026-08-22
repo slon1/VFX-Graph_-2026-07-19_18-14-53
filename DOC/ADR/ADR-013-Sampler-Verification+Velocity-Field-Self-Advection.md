@@ -30,4 +30,4 @@ Dye/tracer advection (multi-field, `Role A`/`B` — отдельный, след
 
 Закрывает старейший открытый пункт техдолга (сэмплер) как часть работы, не откладывая в третий раз. Даёт первый работающий кирпич Stable Fluids, готовый к добавлению force/dye поверх в последующих шагах.
 
-`dissipationRate` масштабируется как Decay: CPU `exp(-rate·dt)`, не per-step множитель. Semi-Lagrangian bilinear диссипативен на off-grid backtrace (зафиксировано MCP, Gaussian extra −39% за 8 шагов при carrier=1.7) — свойство метода, не баг; MacCormack/BFECC вне скоупа.
+`dissipationRate` масштабируется как Decay: CPU `exp(-rate·dt)`, не per-step множитель. Semi-Lagrangian bilinear диссипативен на off-grid backtrace (Gaussian extra −39% за 8 шагов при carrier=1.7) — свойство метода. Позиция COM `+14.94` при passive-baseline `13.6` — self-advection лишней скорости, не ошибка `uv - vel*dt/Size`; при amp=0.05 overshoot ~1%. MacCormack/BFECC вне скоупа.

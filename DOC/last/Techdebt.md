@@ -65,7 +65,7 @@
 
 4. **Нет `ClampFieldPass`.** Аналог `SpeedLimitPass` для частиц, но для полей. Сейчас есть только частичный inline-clamp (`MaxFieldSpeed`) внутри `TouchInjectVelocityFieldPass`, не переиспользуемый отдельный пасс, применимый после любых операций с любым полем.
 
-5. **Численная диссипация semi-Lagrangian Advect** (ADR-013, не баг реализации). `SampleLevel` bilinear на off-grid backtrace размазывает пики; целочисленный backtrace (vel·dt/texel ∈ ℤ) маскирует эффект — peak Δ=0, как nearest. MCP: Gaussian extra (amp=1, σ=1.5) на carrier `vx=1.7`, dt=1, Size=64, 8 шагов → extra `0.999→0.605` (−39%), COM `16.0→31.1`. MacCormack/BFECC — отдельный тикет, не чинить точечно.
+5. **Численная диссипация semi-Lagrangian Advect** (ADR-013, не баг реализации). `SampleLevel` bilinear на off-grid backtrace размазывает пики; целочисленный backtrace (vel·dt/texel ∈ ℤ) маскирует эффект — peak val Δ=0, как nearest. MCP Gaussian extra на carrier `1.7`, 8 шагов: extra `0.999→0.605` (−39%). **Позиционный overshoot COM +15 vs 13.6** — не ошибка формулы: 13.6 = пассивный tracer на однородном carrier; bump добавляет +u в ту же сторону, self-advection обгоняет. Контроль amp=0.05: dCom=+13.75 (overshoot +0.15). MacCormack/BFECC — отдельный тикет, не чинить точечно.
 
 6. **Reflection Probe периодические спайки в Profiler.** `Environment Reflections → Source: Custom` снизил среднюю стоимость (с ~62 мс до ~0.1 мс на кадр), но пики в таймлайне всё ещё видны через равные интервалы, источник до конца не подтверждён. Вероятная причина — Lit-материал debug-quad'а сэмплирует environment reflections. Рекомендованный фикс: перевести материал quad'а на Unlit-шейдер.
 

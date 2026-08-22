@@ -119,7 +119,7 @@ Gray-Scott-Boids: Speed=50, blur+Steer. Тесты: `SteerToVelocityFieldPassTes
 
 `sampler_linear_clamp` подтверждён численно (Scalar 64×64, SampleLevel между текселями: obtained = bilinear, Δ=0; |Δ| to nearest = ¼–½ текселя). Переименование не требуется.  
 `AdvectVelocityFieldPass` — semi-Lagrangian self-advection, WritePingPong Velocity ×2, `FieldPasses.compute`. `dissipationRate` как Decay: CPU `exp(-rate·dt)`, 0=выкл.  
-MCP: uniform `(1,0)` max|Δ|=0; integer bump `vx=2` на фоне `(1,0)` за 8 шагов пик `x: 20→28`, val Δ=0 (backtrace по сетке). Fractional: Gaussian extra на carrier `1.7` за 8 шагов extra `0.999→0.605` (−39%), COM `+15.1` texel — ожидаемая диссипация метода. Dye/pressure/vorticity и wiring в пресет — вне скоупа. Тест: `AdvectVelocityFieldPassTests`.
+MCP: uniform `(1,0)` max|Δ|=0; integer bump `vx=2` на фоне `(1,0)` за 8 шагов пик `x: 20→28`, val Δ=0 (backtrace по сетке). Fractional Gaussian extra на carrier `1.7`: амплитуда extra `0.999→0.605` (−39%) — диссипация bilinear. Позиция COM при amp=1 `+14.94` vs passive `13.6` — не ошибка backtrace, а self-advection лишней скорости (контроль amp=0.05: dCom=+13.75, overshoot ~1%). Dye/pressure/vorticity и wiring в пресет — вне скоупа. Тест: `AdvectVelocityFieldPassTests`.
 
 ---
 

@@ -308,7 +308,7 @@
 | **Параметры** | `fieldName` (`flockVel`), `dissipationRate` (0 = выкл; CPU `exp(-rate·dt)`, как Decay) |
 | **dt** | Да (backtrace и dissipation); UV clamp `saturate` (Neumann-подобная граница, не wrap) |
 | **Хорошо для** | Первый кирпич Stable Fluids. Компактный сгусток в **нулевом** фоне съедает себя с тыла — для переноса пика нужен несущий поток (фон + bump). Dye/pressure — отдельные пассы |
-| **Ограничение** | Semi-Lagrangian bilinear **диссипативен** на off-grid backtrace (не баг). Целочисленный прогон (bump `vx=2` на фоне `1`, dt=1, texel=1) даёт peak Δ=0 — интерполяция вырождается в nearest. Дробный carrier `1.7` + Gaussian extra (σ=1.5): за 8 шагов extra `0.999→0.605` (−39%), COM `+15.1` texel (ожидание ~13.6), dY=0 |
+| **Ограничение** | Semi-Lagrangian bilinear **диссипативен** на off-grid backtrace (не баг). Целочисленный прогон (bump `vx=2` на фоне `1`) peak val Δ=0 — интерполяция вырождается в nearest. **Позиция:** `1.7×8=13.6` — это смещение **пассивного** tracer-а на однородном carrier; bump — лишняя скорость в ту же сторону, поэтому self-advection (Burgers) систематически обгоняет carrier. MCP Gaussian σ=1.5, 8 шагов: amp=0.05 → dCom=+13.75 (overshoot +0.15, ~1%); amp=1 → dCom=+14.94 / dPeak=+16 (overshoot +1.3). Пик на широком профиле скачет по целым текселям; COM надёжнее. MacCormack/BFECC — отдельный тикет |
 
 ### SampleGradientField (G2P)
 | | |
