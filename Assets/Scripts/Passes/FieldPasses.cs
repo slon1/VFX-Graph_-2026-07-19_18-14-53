@@ -412,6 +412,47 @@ public sealed class DiffuseVelocityFieldPass : FieldKernelPass
 }
 
 /// <summary>
+/// Semi-Lagrangian self-advection of a 2-channel velocity field (WritePingPong).
+/// Backtrace: sample at uv - vel*dt/FieldSize, clamp UV (Neumann-like border).
+/// Dissipation is a per-step factor: result *= (1 - Dissipation); 0 = off.
+/// </summary>
+[Serializable]
+public sealed class AdvectVelocityFieldPass : FieldKernelPass
+{
+    [SerializeField] private string fieldName = "flockVel";
+    [SerializeField, Min(0f)] private float dissipation = 0f;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string FieldName
+    {
+        get => fieldName;
+        set => fieldName = value;
+    }
+
+    public float Dissipation
+    {
+        get => dissipation;
+        set => dissipation = value;
+    }
+
+    public override string DisplayName => "Advect Velocity Field";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "AdvectVelocityField";
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, fieldName,
+            FieldAccess.WritePingPong, FieldSemantic.Velocity, 2);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+        SetFloat(context, SimShaderIds.Dissipation, dissipation);
+    }
+}
+
+/// <summary>
 /// Hybrid G2P force: central-difference gradient of a scalar field at each particle,
 /// added as acceleration (direction * Strength * dt). Raw finite differences — does not
 /// require or assume prior Diffuse; noisy on sharp/raw fields by design.

@@ -1,11 +1,11 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-08-14  
-**Итерация:** 5.10 — ADR-012 kinematic heading boids (`Boids_mk1`)  
+**Дата:** 2026-08-22  
+**Итерация:** 5.11 — ADR-013 sampler verification + velocity self-advection  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -115,13 +115,21 @@ Gray-Scott-Boids: Speed=50, blur+Steer. Тесты: `SteerToVelocityFieldPassTes
 
 ---
 
+## ADR-013 — Sampler + Advect Velocity (готово)
+
+`sampler_linear_clamp` подтверждён численно (Scalar 64×64, SampleLevel между текселями: obtained = bilinear, Δ=0; |Δ| to nearest = ¼–½ текселя). Переименование не требуется.  
+`AdvectVelocityFieldPass` — semi-Lagrangian self-advection, WritePingPong Velocity ×2, `FieldPasses.compute`. Dissipation per-step `*(1−Dissipation)`, 0=выкл.  
+MCP: uniform `(1,0)` max|Δ|=0; bump `vx=2` на фоне `(1,0)` за 8 шагов (dt=1, Size=64) пик `x: 20→28`. Dye/pressure/vorticity и wiring в пресет — вне скоупа. Тест: `AdvectVelocityFieldPassTests`.
+
+---
+
 ## Файлы (ключевые)
 
 ```
-Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, …), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
-Assets/Scripts/Runtime/    SimPass.cs (AttrSets.Heading), SimulationWorld.cs
+Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, AdvectVelocity, …), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
+Assets/Scripts/Runtime/    SimPass.cs (AttrSets.Heading, SimShaderIds.Dissipation), SimulationWorld.cs
 Assets/Shaders/GPU/Passes/ DynamicsPasses, FieldPasses, GradientPasses (AddNormalizedGradient)
-Assets/Tests/Editor/       ClearVelocityPassTests, AddNormalized*PassTests, HeadingSteerPassTests, …
+Assets/Tests/Editor/       AdvectVelocityFieldPassTests, ClearVelocityPassTests, AddNormalized*PassTests, HeadingSteerPassTests, …
 Assets/Scripts/Editor/     Adr012BoidsMk1Setup.cs
 ```
 
@@ -129,4 +137,4 @@ Assets/Scripts/Editor/     Adr012BoidsMk1Setup.cs
 
 ## Вне скоупа (далее)
 
-Trail/persistence · Stable Fluids · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)
+Trail/persistence · dye/tracer advection · pressure projection · vorticity confinement · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)

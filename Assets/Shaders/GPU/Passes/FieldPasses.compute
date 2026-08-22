@@ -10,6 +10,7 @@
 #pragma kernel SteerToVelocityField
 #pragma kernel AddNormalizedVelocityField
 #pragma kernel DiffuseVelocityField
+#pragma kernel AdvectVelocityField
 
 #include "Assets/Shaders/GPU/Includes/Touch.hlsl"
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
@@ -23,6 +24,7 @@ SamplerState sampler_linear_clamp;
 
 float DeltaTime;
 float DiffusionRate;
+float Dissipation;
 
 // --- TouchInjectVelocity (WriteInPlace) ---
 StructuredBuffer<TouchForce> Touches;
@@ -183,4 +185,24 @@ void DiffuseVelocityField(uint3 id : SV_DispatchThreadID)
 
     float2 laplacian = n + s + e + w - 4.0 * c;
     FieldWrite[p] = c + DiffusionRate * DeltaTime * laplacian;
+}
+
+// --- AdvectVelocityField (WritePingPong, semi-Lagrangian self-advection) ---
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void AdvectVelocityField(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    float2 uv = (float2(id.xy) + 0.5) * FieldTexelSize;
+    float2 selfVel = FieldRead.SampleLevel(sampler_linear_clamp, uv, 0);
+
+    // Backtrace: where this fluid parcel was one dt ago.
+    float2 backUv = uv - (selfVel * DeltaTime) / FieldSize;
+    backUv = saturate(backUv);
+
+    float2 advected = FieldRead.SampleLevel(sampler_linear_clamp, backUv, 0);
+    FieldWrite[id.xy] = advected * (1.0 - Dissipation);
 }

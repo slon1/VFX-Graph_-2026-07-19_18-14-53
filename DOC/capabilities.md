@@ -32,7 +32,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **AddNormalizedGradientField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**, **ClearVelocity**, **HeadingSteer**.
+- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **AddNormalizedGradientField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**, **AdvectVelocityField**, **ClearVelocity**, **HeadingSteer**.
 - Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
 - Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — слоты (`VectorRg` / `ScalarHeatmap` + Gradient LUT + hdrIntensity), layout по AxisU.
 
@@ -96,7 +96,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 | Категория | Примеры |
 | --- | --- |
 | Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, **AddNormalizedGradient**, **SteerToVelocityField**, **ClearVelocity**, **HeadingSteer**, Integrate, Bounds, … |
-| Emit / Transport | ClearField, **SeedScalarDisk**, TouchInject, Decay / **DecayScalar**, **Diffuse** / **DiffuseVelocity**, **SwapFields**, **GrayScott**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
+| Emit / Transport | ClearField, **SeedScalarDisk**, TouchInject, Decay / **DecayScalar**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocity**, **SwapFields**, **GrayScott**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
 
@@ -117,7 +117,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 | Тема | Сейчас |
 | --- | --- |
-| Нет Stable Fluids | advect/pressure — позже |
+| Stable Fluids неполный | velocity self-advection есть (ADR-013); dye/pressure/vorticity — позже |
 | Нет emitters | lifetime/compaction позже |
 | Нет SpatialHash | boids/sand позже |
 | Fields только 2D | R16 / RG16 |

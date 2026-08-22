@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-08-08 (M2c.1 Gray-Scott + `DataSourceKind.None`)
+**Снимок:** 2026-08-22 (ADR-013 Advect Velocity)
 
 ---
 
@@ -39,7 +39,7 @@
 | `ShapePasses.compute` | CopyRest, Twist, SpringToRest |
 | `ForcePasses.compute` | Gravity, Drag, Vortex, Attractor/Repulsor, Noise, CurlNoise, Turbulence, TouchForce |
 | `DynamicsPasses.compute` | Integrate, **ClearVelocity**, **HeadingSteer**, SpeedLimit, Plane/Sphere/BoxBounds |
-| `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **DiffuseVelocityField** |
+| `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **DiffuseVelocityField**, **AdvectVelocityField** |
 | `P2GPasses.compute` | ClearUintBuffer, ScatterVelocity, NormalizeVelocityAccum |
 | `DensityPasses.compute` | ScatterDensity, NormalizeDensityAccum |
 | `GradientPasses.compute` | SampleGradient, **AddNormalizedGradient** |
@@ -298,6 +298,16 @@
 | **Параметры** | `fieldName` (`flockVel`), `diffusionRate` (0.15) |
 | **dt** | Да; держи **rate·dt ≲ 0.2–0.25**; несколько мягких пассов/кадр |
 | **Хорошо для** | Радиус усреднения `flockVel` перед Steer (alignment blur) |
+
+### AdvectVelocityField
+| | |
+|--|--|
+| **Назначение** | Semi-Lagrangian self-advection velocity-поля: `sample(uv − vel·dt/Size)` |
+| **Библиотека / kernel** | `FieldPasses` / `AdvectVelocityField` |
+| **Fields** | WritePingPong Velocity ×2 |
+| **Параметры** | `fieldName` (`flockVel`), `dissipation` (0 = выкл; per-step `*(1−Dissipation)`, не `rate·dt`) |
+| **dt** | Да; UV clamp `saturate` (Neumann-подобная граница, не wrap) |
+| **Хорошо для** | Первый кирпич Stable Fluids. Компактный сгусток в **нулевом** фоне съедает себя с тыла — для переноса пика нужен несущий поток (фон + bump). Dye/pressure — отдельные пассы |
 
 ### SampleGradientField (G2P)
 | | |

@@ -2,7 +2,7 @@
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
 **Каталог пассов** (назначение, dt, Pass Library): [`pass-catalog.md`](pass-catalog.md).  
-Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md), [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md), [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md), [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md), [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md), [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 
@@ -20,8 +20,8 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **SteerToVelocityField** (Reynolds alignment), **AddNormalized*** + **HeadingSteer** (kinematic boids), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь.  
-Пока нет: trail/persistence buffer, Stable Fluids, spatial hash / boids emitters с lifetime.
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocityField** (self-advection, ADR-013), **SteerToVelocityField** (Reynolds alignment), **AddNormalized*** + **HeadingSteer** (kinematic boids), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь.  
+Пока нет: dye/tracer advection, pressure projection, trail/persistence buffer, spatial hash / emitters с lifetime.
 
 ---
 
@@ -129,6 +129,7 @@ Hybrid (field + particles):
 - kinematic integrate: `ClearVelocityPass` → AddNormalized* → `HeadingSteerPass` (snap cruise speed) → Integrate;
 - сглаживание scalar: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
 - сглаживание velocity: `DiffuseVelocityFieldPass` — тот же Laplacian на `float2` (`FieldPasses.compute`); 6× на `flockVel` 64×64;
+- self-advection velocity: `AdvectVelocityFieldPass` — Transport, WritePingPong, semi-Lagrangian; `dissipation` per-step, 0=выкл; ADR-013;
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
 - Gray-Scott: `GrayScottPass` + Seed + TouchInject; boids-гибрид: presence P2G → `AgentBoost`/`AgentErode` (`gain`); N=1–4 React; ADR-009;
 - cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;
