@@ -24,7 +24,7 @@ SamplerState sampler_linear_clamp;
 
 float DeltaTime;
 float DiffusionRate;
-float Dissipation;
+float Dissipation; // precomputed exp(-rate * dt) on CPU; 1 = off
 
 // --- TouchInjectVelocity (WriteInPlace) ---
 StructuredBuffer<TouchForce> Touches;
@@ -204,5 +204,5 @@ void AdvectVelocityField(uint3 id : SV_DispatchThreadID)
     backUv = saturate(backUv);
 
     float2 advected = FieldRead.SampleLevel(sampler_linear_clamp, backUv, 0);
-    FieldWrite[id.xy] = advected * (1.0 - Dissipation);
+    FieldWrite[id.xy] = advected * Dissipation;
 }

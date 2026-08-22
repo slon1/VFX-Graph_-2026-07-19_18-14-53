@@ -414,13 +414,13 @@ public sealed class DiffuseVelocityFieldPass : FieldKernelPass
 /// <summary>
 /// Semi-Lagrangian self-advection of a 2-channel velocity field (WritePingPong).
 /// Backtrace: sample at uv - vel*dt/FieldSize, clamp UV (Neumann-like border).
-/// Dissipation is a per-step factor: result *= (1 - Dissipation); 0 = off.
+/// DissipationRate follows Decay: GPU multiplies by exp(-rate * dt) computed on CPU; 0 = off.
 /// </summary>
 [Serializable]
 public sealed class AdvectVelocityFieldPass : FieldKernelPass
 {
     [SerializeField] private string fieldName = "flockVel";
-    [SerializeField, Min(0f)] private float dissipation = 0f;
+    [SerializeField, Min(0f)] private float dissipationRate = 0f;
 
     [NonSerialized] private FieldRequest[] fieldWritesCache;
 
@@ -430,10 +430,10 @@ public sealed class AdvectVelocityFieldPass : FieldKernelPass
         set => fieldName = value;
     }
 
-    public float Dissipation
+    public float DissipationRate
     {
-        get => dissipation;
-        set => dissipation = value;
+        get => dissipationRate;
+        set => dissipationRate = value;
     }
 
     public override string DisplayName => "Advect Velocity Field";
@@ -448,7 +448,7 @@ public sealed class AdvectVelocityFieldPass : FieldKernelPass
     protected override void SetParams(SimContext context, float deltaTime)
     {
         SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
-        SetFloat(context, SimShaderIds.Dissipation, dissipation);
+        SetFloat(context, SimShaderIds.Dissipation, Mathf.Exp(-dissipationRate * deltaTime));
     }
 }
 

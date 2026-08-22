@@ -43,6 +43,7 @@ internal static class SimShaderIds
     public static readonly int FieldWriteB = Shader.PropertyToID("FieldWriteB");
 
     public static readonly int DiffusionRate = Shader.PropertyToID("DiffusionRate");
+    /// <summary>Precomputed exp(-dissipationRate * dt) for AdvectVelocityField. 1 = off.</summary>
     public static readonly int Dissipation = Shader.PropertyToID("Dissipation");
     public static readonly int DecayFactor = Shader.PropertyToID("DecayFactor");
 }

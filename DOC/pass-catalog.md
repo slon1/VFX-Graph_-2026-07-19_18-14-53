@@ -305,9 +305,10 @@
 | **Назначение** | Semi-Lagrangian self-advection velocity-поля: `sample(uv − vel·dt/Size)` |
 | **Библиотека / kernel** | `FieldPasses` / `AdvectVelocityField` |
 | **Fields** | WritePingPong Velocity ×2 |
-| **Параметры** | `fieldName` (`flockVel`), `dissipation` (0 = выкл; per-step `*(1−Dissipation)`, не `rate·dt`) |
-| **dt** | Да; UV clamp `saturate` (Neumann-подобная граница, не wrap) |
+| **Параметры** | `fieldName` (`flockVel`), `dissipationRate` (0 = выкл; CPU `exp(-rate·dt)`, как Decay) |
+| **dt** | Да (backtrace и dissipation); UV clamp `saturate` (Neumann-подобная граница, не wrap) |
 | **Хорошо для** | Первый кирпич Stable Fluids. Компактный сгусток в **нулевом** фоне съедает себя с тыла — для переноса пика нужен несущий поток (фон + bump). Dye/pressure — отдельные пассы |
+| **Ограничение** | Semi-Lagrangian bilinear **диссипативен** на off-grid backtrace (не баг). Целочисленный прогон (bump `vx=2` на фоне `1`, dt=1, texel=1) даёт peak Δ=0 — интерполяция вырождается в nearest. Дробный carrier `1.7` + Gaussian extra (σ=1.5): за 8 шагов extra `0.999→0.605` (−39%), COM `+15.1` texel (ожидание ~13.6), dY=0 |
 
 ### SampleGradientField (G2P)
 | | |

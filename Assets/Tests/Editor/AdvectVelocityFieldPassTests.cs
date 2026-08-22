@@ -11,7 +11,7 @@ public class AdvectVelocityFieldPassTests
 
         Assert.AreEqual("Advect Velocity Field", pass.DisplayName);
         Assert.AreEqual(PassCategory.Transport, pass.Category);
-        Assert.AreEqual(0f, pass.Dissipation);
+        Assert.AreEqual(0f, pass.DissipationRate);
         Assert.AreEqual("flockVel", pass.FieldName);
 
         PropertyInfo kernelName = typeof(FieldKernelPass).GetProperty(

@@ -129,7 +129,7 @@ Hybrid (field + particles):
 - kinematic integrate: `ClearVelocityPass` → AddNormalized* → `HeadingSteerPass` (snap cruise speed) → Integrate;
 - сглаживание scalar: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
 - сглаживание velocity: `DiffuseVelocityFieldPass` — тот же Laplacian на `float2` (`FieldPasses.compute`); 6× на `flockVel` 64×64;
-- self-advection velocity: `AdvectVelocityFieldPass` — Transport, WritePingPong, semi-Lagrangian; `dissipation` per-step, 0=выкл; ADR-013;
+- self-advection velocity: `AdvectVelocityFieldPass` — Transport, WritePingPong, semi-Lagrangian; `dissipationRate` → `exp(-rate·dt)` на CPU, 0=выкл; ADR-013;
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
 - Gray-Scott: `GrayScottPass` + Seed + TouchInject; boids-гибрид: presence P2G → `AgentBoost`/`AgentErode` (`gain`); N=1–4 React; ADR-009;
 - cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;
