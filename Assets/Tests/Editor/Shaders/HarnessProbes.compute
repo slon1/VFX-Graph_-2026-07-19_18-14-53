@@ -1,0 +1,92 @@
+// Test-only GPU probes for FieldTestHarness (ADR-014).
+// Do NOT add to M3DDemoTools.PassLibraryPaths or the pass-catalog library checklist.
+// Channels are split across resource names: typed UAV/SRV must match the kernel declaration.
+
+#pragma kernel FillScalarFromBuffer
+#pragma kernel FillVelocityFromBuffer
+#pragma kernel ReadScalarToBuffer
+#pragma kernel ReadVelocityToBuffer
+#pragma kernel ProbeSampleLevelScalar
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+#define PROBE_THREADS 64
+
+StructuredBuffer<float> FillScalarValues;
+RWTexture2D<float> ScalarWrite;
+
+StructuredBuffer<float2> FillVelocityValues;
+RWTexture2D<float2> VelocityWrite;
+
+Texture2D<float> ScalarRead;
+RWStructuredBuffer<float> ReadScalarValues;
+
+Texture2D<float2> VelocityRead;
+RWStructuredBuffer<float2> ReadVelocityValues;
+
+Texture2D<float> ProbeSrc;
+StructuredBuffer<float2> ProbeUVs;
+RWStructuredBuffer<float> ProbeValues;
+uint ProbeCount;
+SamplerState sampler_linear_clamp;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void FillScalarFromBuffer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    uint index = id.y * (uint)FieldResolution.x + id.x;
+    ScalarWrite[id.xy] = FillScalarValues[index];
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void FillVelocityFromBuffer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    uint index = id.y * (uint)FieldResolution.x + id.x;
+    VelocityWrite[id.xy] = FillVelocityValues[index];
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void ReadScalarToBuffer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    uint index = id.y * (uint)FieldResolution.x + id.x;
+    ReadScalarValues[index] = ScalarRead.Load(int3(id.xy, 0));
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void ReadVelocityToBuffer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    uint index = id.y * (uint)FieldResolution.x + id.x;
+    ReadVelocityValues[index] = VelocityRead.Load(int3(id.xy, 0));
+}
+
+[numthreads(PROBE_THREADS, 1, 1)]
+void ProbeSampleLevelScalar(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ProbeCount)
+    {
+        return;
+    }
+
+    float2 uv = ProbeUVs[id.x];
+    ProbeValues[id.x] = ProbeSrc.SampleLevel(sampler_linear_clamp, uv, 0);
+}

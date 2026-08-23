@@ -96,6 +96,11 @@ public sealed class SimField : IDisposable
             return;
         }
 
+        if (RenderTexture.active == rt)
+        {
+            RenderTexture.active = null;
+        }
+
         rt.Release();
         if (Application.isPlaying)
         {

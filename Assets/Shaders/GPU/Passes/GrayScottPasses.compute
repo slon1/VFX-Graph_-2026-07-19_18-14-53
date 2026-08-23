@@ -1,4 +1,5 @@
 // Gray-Scott reaction-diffusion + one-shot scalar disk seed (ADR-009 / M2c.1).
+// Texel Laplacian (no /h²) — ADR-016 §1; not a fluid operator.
 // Texture slots: multi-field FieldReadA/B + FieldWriteA/B (React); WriteInPlace FieldWrite (Seed).
 // Load without .r (Texture2D<float> / RWTexture2D<float>).
 

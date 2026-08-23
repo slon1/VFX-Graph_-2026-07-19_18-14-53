@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-08-22 (ADR-013 Advect Velocity)
+**Снимок:** 2026-08-23 (ADR-016 единицы по семействам)
 
 ---
 
@@ -23,6 +23,20 @@
 - `Read` — SRV Current  
 - `WriteInPlace` — UAV Current (без swap)  
 - `WritePingPong` — SRV Current + UAV Next → World делает `Swap` после dispatch  
+
+**`RepeatCount` (ADR-015):** World повторяет `Execute + Swap` N раз за кадр. Это **итерации решателя на одном временном слое**, не субшаги по времени: в каждую итерацию идёт один и тот же `deltaTime`. У Jacobi N итераций уточняют одно решение, эффективный шаг остаётся `dt`. У Gray-Scott / Diffuse N повторов продвигают время N раз, эффективный шаг становится `N·dt`, и граница CFL ужимается в N раз (шахматная мода Gray-Scott уже зафиксирована в Techdebt именно от большого `dt`). Поэтому текущая рекомендация «несколько копий `GrayScottPass` / `DiffuseFieldPass` в списке» **не** мигрируется на `RepeatCount` — слайдер «качества» молча ломал бы устойчивость. Субшаги по времени — отдельный механизм, его нет. Пока ни один существующий пасс `RepeatCount` не переопределяет (default 1).
+
+## Единицы (ADR-016)
+
+Во фреймворке три соглашения. Существующее поведение texel- и UV-семейств **не меняется** (калибровка пресетов). Fluid-контур — только world.
+
+| Семейство | Соглашение | Пассы |
+| --- | --- | --- |
+| Reaction-diffusion, boids-диффузия | **texel**: лапласиан `N+S+E+W−4C` без `/h²` | `DiffuseField`, `DiffuseVelocityField`, `GrayScott` |
+| G2P-градиент | **UV**: центральные разности в UV, без деления на `Size` | `SampleGradientField`, `AddNormalizedGradientField` |
+| Fluid | **world**: `vel·dt/Size` в адвекции; проекция F1 без `h` при квадратном текселе | `AdvectVelocityField` + все пассы F1 |
+
+`DiffuseVelocityField` — не вязкость. Поля проекции F1: `fluidD`, `fluidPhi` (Scalar, world/s); Φ не называть давлением. `RequiresSquareTexel` — F1.1.
 
 **Слоты текстур:** single-field → `FieldRead`/`FieldWrite`; multi-field (Role A/B) → `FieldReadA/B`/`FieldWriteA/B`.
 
@@ -51,6 +65,8 @@
 | `AgentFieldFeedbackPasses.compute` | AgentBoostField, AgentErodeField |
 
 `ClearFieldPass` и `ClearFieldAccumPass` — **без** своих `.compute` (Clear RT / ClearUintBuffer из P2G).
+
+`HarnessProbes.compute` (`Assets/Tests/Editor/Shaders/`) — test-only GPU numeric harness (ADR-014). **Не** добавлять в `PassLibraryPaths` и не в таблицу выше.
 
 ---
 
@@ -254,6 +270,7 @@
 | **Fields** | WritePingPong Scalar ×1 |
 | **Параметры** | `fieldName`, `diffusionRate` (0.15) |
 | **dt** | Да; держи **rate·dt ≲ 0.2–0.25** |
+| **Единицы** | **texel** (ADR-016 §1): лапласиан без `/h²`. `diffusionRate` зависит от разрешения и `Size`; это не fluid-оператор |
 | **Хорошо для** | Cohesion blur, анти-«снежинка»; лучше **несколько мягких** пассов/кадр |
 
 ### SampleVelocityField (G2P)
@@ -297,6 +314,7 @@
 | **Fields** | WritePingPong Velocity ×2 |
 | **Параметры** | `fieldName` (`flockVel`), `diffusionRate` (0.15) |
 | **dt** | Да; держи **rate·dt ≲ 0.2–0.25**; несколько мягких пассов/кадр |
+| **Единицы** | **texel** (ADR-016 §1): лапласиан без `/h²`, зависит от разрешения/`Size`. **Не вязкость**, не член fluid-контура |
 | **Хорошо для** | Радиус усреднения `flockVel` перед Steer (alignment blur) |
 
 ### AdvectVelocityField
@@ -307,8 +325,9 @@
 | **Fields** | WritePingPong Velocity ×2 |
 | **Параметры** | `fieldName` (`flockVel`), `dissipationRate` (0 = выкл; CPU `exp(-rate·dt)`, как Decay) |
 | **dt** | Да (backtrace и dissipation); UV clamp `saturate` (Neumann-подобная граница, не wrap) |
+| **Единицы** | **world** (ADR-016 §1): `backUv = uv − velocity · dt / Size` |
 | **Хорошо для** | Первый кирпич Stable Fluids. Компактный сгусток в **нулевом** фоне съедает себя с тыла — для переноса пика нужен несущий поток (фон + bump). Dye/pressure — отдельные пассы |
-| **Ограничение** | Semi-Lagrangian bilinear **диссипативен** на off-grid backtrace (не баг). Целочисленный прогон (bump `vx=2` на фоне `1`) peak val Δ=0 — интерполяция вырождается в nearest. **Позиция:** `1.7×8=13.6` — это смещение **пассивного** tracer-а на однородном carrier; bump — лишняя скорость в ту же сторону, поэтому self-advection (Burgers) систематически обгоняет carrier. MCP Gaussian σ=1.5, 8 шагов: amp=0.05 → dCom=+13.75 (overshoot +0.15, ~1%); amp=1 → dCom=+14.94 / dPeak=+16 (overshoot +1.3). Пик на широком профиле скачет по целым текселям; COM надёжнее. MacCormack/BFECC — отдельный тикет |
+| **Ограничение** | Semi-Lagrangian bilinear **диссипативен** на off-grid backtrace (не баг). Целочисленный прогон (bump `vx=2` на фоне `1`) peak val Δ=0 — интерполяция вырождается в nearest. **Позиция:** `1.7×8=13.6` — это смещение **пассивного** tracer-а на однородном carrier; bump — лишняя скорость в ту же сторону, поэтому self-advection (Burgers) систематически обгоняет carrier. Бездиссипативный потолок overshoot для 2D-гауссиана: `N·A/2` (amp=0.05, 8 шагов → **0.200**); диссипация может только уменьшать. Геометрия автотеста: `64²`, `Size=64`, `dt=1`, центр `(20.5, 32.5)`, Gaussian `σ=1.5`, 8 шагов. amp=0.05 → overshoot **0.100** на `R32G32F` (внутри (0, 0.200)); на боевом `R16G16F` overshoot **0.26 > 0.200** — half непригоден для этого измерения, жёстче оценки шума `±0.1`. MCP `13.75` не подтверждён. amp=1 → dCom=+14.94 / dPeak=+16 (overshoot +1.3). Пик на широком профиле скачет по целым текселям; COM надёжнее. MacCormack/BFECC — отдельный тикет |
 
 ### SampleGradientField (G2P)
 | | |
@@ -319,6 +338,7 @@
 | **Fields** | Read Scalar ×1 |
 | **Параметры** | `fieldName`, `strength` |
 | **dt** | Да |
+| **Единицы** | **UV** (ADR-016 §1): `FieldUvGradientToWorld` не делит на `Size`; сила зависит от `Size` |
 | **Хорошо для** | Cohesion (+) / separation (−) через density (Newton); **не** ADR-012 kinematic — там `AddNormalizedGradientField` |
 
 ### AddNormalizedGradientField (G2P cohesion/separation, kinematic)
@@ -330,6 +350,7 @@
 | **Fields** | Read Scalar ×1 |
 | **Параметры** | `fieldName`, `weight` (±; default 0.6) |
 | **dt** | **Нет** |
+| **Единицы** | **UV** (ADR-016 §1): тот же градиент без `/Size` |
 | **Хорошо для** | ADR-012 `Boids_mk1`; cohesion +0.6 / separation −1.2 |
 
 ### SwapFields
@@ -359,6 +380,7 @@
 | **Fields** | WritePingPong Pair: U RoleA, V RoleB, Scalar; одинаковые res+plane |
 | **Параметры** | `Du` 0.16, `Dv` 0.08, `F` 0.035, `k` 0.06 (калибровать) |
 | **dt** | Да; CFL как Diffuse для Du и Dv; выход `saturate` |
+| **Единицы** | **texel** (ADR-016 §1): Du/Dv — коэффициенты texel-лапласиана; зависят от разрешения и `Size` |
 | **Хорошо для** | Узоры RD; **N=1–4** пассов/кадр при Speed≈1…40; F/k шагать по ±0.001 |
 
 ### TouchInjectGrayScott

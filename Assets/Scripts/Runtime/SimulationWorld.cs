@@ -94,15 +94,15 @@ public sealed class SimulationWorld : MonoBehaviour
 
             using (new ProfilingScope(commandBuffer, sampler))
             {
-                pass.Execute(context, deltaTime);
-            }
-
-            // Data-driven swap from FieldWrites declarations — not a domain branch.
-            // Skipped when the pass early-outed without recording a dispatch,
-            // otherwise Current would flip to a stale texture.
-            if (pass.LastExecuteDispatched)
-            {
-                SwapPingPongFields(pass);
+                int repeat = pass.RepeatCount;
+                for (int r = 0; r < repeat; r++)
+                {
+                    pass.Execute(context, deltaTime);
+                    if (pass.LastExecuteDispatched)
+                    {
+                        SwapPingPongFields(pass);
+                    }
+                }
             }
         }
 
@@ -171,6 +171,18 @@ public sealed class SimulationWorld : MonoBehaviour
 
         if (!ValidateFieldRequests())
         {
+            Teardown();
+            enabled = false;
+            return;
+        }
+
+        try
+        {
+            RepeatCountValidator.Validate(effect.Passes);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError(exception.Message, this);
             Teardown();
             enabled = false;
             return;

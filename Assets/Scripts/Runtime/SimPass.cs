@@ -286,6 +286,13 @@ public abstract class SimPass
     /// </summary>
     public bool LastExecuteDispatched { get; protected set; } = true;
 
+    /// <summary>
+    /// How many times World re-runs this pass per frame. Iterative solvers override it.
+    /// Not a serialized base field — subclasses that need a counter declare their own
+    /// named parameter (ADR-015 §1).
+    /// </summary>
+    public virtual int RepeatCount => 1;
+
     public abstract void Initialize(SimContext context);
     public abstract void Execute(SimContext context, float deltaTime);
 }

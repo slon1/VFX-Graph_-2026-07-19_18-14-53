@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -119,7 +120,9 @@ public class SimulationWorldDisabledPassInitializeTests
         SimulationWorld world = host.GetComponent<SimulationWorld>();
         Assert.IsNotNull(world);
 
-        LogAssert.NoUnexpectedReceived();
+        LogAssert.Expect(
+            LogType.Warning,
+            new Regex("PositionBuffer"));
         Assert.DoesNotThrow(() => world.Rebuild());
         Assert.IsTrue(world.enabled, "Build failure disables SimulationWorld.");
     }

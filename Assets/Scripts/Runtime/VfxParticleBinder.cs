@@ -21,7 +21,20 @@ public sealed class VfxParticleBinder : IRenderBinder
     public void Initialize(SimContext context)
     {
         GraphicsBuffer positions = context.Particles.Get(BuiltinAttributes.Position);
-        visualEffect.SetGraphicsBuffer(PositionBufferPropertyName, positions);
+
+        if (!visualEffect.HasGraphicsBuffer(PositionBufferPropertyName))
+        {
+            string assetName = visualEffect.visualEffectAsset != null
+                ? visualEffect.visualEffectAsset.name
+                : "<none>";
+            Debug.LogWarning(
+                $"VfxParticleBinder: VisualEffect '{visualEffect.name}' (asset '{assetName}') " +
+                $"has no '{PositionBufferPropertyName}' property; particle positions will not render.");
+        }
+        else
+        {
+            visualEffect.SetGraphicsBuffer(PositionBufferPropertyName, positions);
+        }
 
         if (visualEffect.HasFloat(SpawnCountPropertyName))
         {

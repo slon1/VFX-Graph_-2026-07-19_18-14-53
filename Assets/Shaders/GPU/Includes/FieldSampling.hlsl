@@ -24,7 +24,8 @@ float3 FieldUVToWorldVelocity(float2 fieldVel)
     return FieldAxisU * fieldVel.x + FieldAxisV * fieldVel.y;
 }
 
-// UV-space gradient → world direction along field plane axes (no /FieldSize).
+// UV-space gradient → world direction along field plane axes.
+// No /FieldSize: G2P-family convention (ADR-016 §1), not an omitted scale.
 float3 FieldUvGradientToWorld(float2 gradUv)
 {
     return FieldAxisU * gradUv.x + FieldAxisV * gradUv.y;

@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-08-08  
+**Снимок:** 2026-08-23  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
@@ -34,6 +34,8 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
 - Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **AddNormalizedGradientField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**, **AdvectVelocityField**, **ClearVelocity**, **HeadingSteer**.
 - Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
+- `RepeatCount` (ADR-015): World повторяет `Execute + Swap` N раз за кадр (итерации решателя, не субшаги `dt`). Default 1; пока ни один пасс не переопределяет.
+- Единицы по семействам (ADR-016): RD/boids-диффузия — **texel** Laplacian без `/h²`; G2P-градиент — **UV** без `/Size`; fluid — **world**. Существующие texel/UV не меняются. `RequiresSquareTexel` — F1.1.
 - Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — слоты (`VectorRg` / `ScalarHeatmap` + Gradient LUT + hdrIntensity), layout по AxisU.
 
 ### Multi-field kernel (M2c)
@@ -117,7 +119,8 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 | Тема | Сейчас |
 | --- | --- |
-| Stable Fluids неполный | velocity self-advection есть (ADR-013); dye/pressure/vorticity — позже |
+| Stable Fluids неполный | velocity self-advection есть (ADR-013); dye/pressure/vorticity — позже; единицы fluid — ADR-016 |
+| Texel / UV Laplacian и градиент | Параметры Diffuse / GrayScott / SampleGradient зависят от разрешения и `Size` (ADR-016); не «исправлять» `/h²` |
 | Нет emitters | lifetime/compaction позже |
 | Нет SpatialHash | boids/sand позже |
 | Fields только 2D | R16 / RG16 |

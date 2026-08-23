@@ -161,6 +161,7 @@ void AddNormalizedVelocityField(uint3 id : SV_DispatchThreadID)
 }
 
 // --- DiffuseVelocityField (WritePingPong, 5-point Laplacian per-component) ---
+// Texel Laplacian (no /h²) — ADR-016 §1; not viscosity, not a fluid operator.
 float2 LoadVelocityClamped(int2 q)
 {
     int2 maxP = FieldResolution - 1;

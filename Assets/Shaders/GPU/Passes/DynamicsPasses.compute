@@ -44,6 +44,11 @@ float3 ReflectVelocity(float3 v, float3 n, float bounce, float friction)
     return tangential * (1.0 - friction) - n * (vn * bounce);
 }
 
+bool TinyOrNan(float len)
+{
+    return isnan(len) || !(len > 1e-6);
+}
+
 [numthreads(THREADS, 1, 1)]
 void Integrate(uint3 id : SV_DispatchThreadID)
 {
@@ -79,31 +84,23 @@ void HeadingSteer(uint3 id : SV_DispatchThreadID)
     float forceLen = length(force);
     float hLen = length(h);
 
-    float3 desired = (forceLen > 1e-6)
-        ? (force / forceLen)
-        : ((hLen > 1e-6) ? (h / hLen) : float3(1, 0, 0));
+    // TinyOrNan: !(len > eps) so IEEE NaN takes the safe branch, plus isnan
+    // because compute fast-math can make NaN > x true. Heading lives across
+    // frames — must recover from an already-infected buffer, not only avoid
+    // creating NaN on this dispatch.
+    float3 desired = TinyOrNan(forceLen)
+        ? (TinyOrNan(hLen) ? float3(1, 0, 0) : h / hLen)
+        : (force / forceLen);
 
-    if (hLen < 1e-6)
-    {
-        h = desired;
-    }
-    else
-    {
-        h = h / hLen;
-    }
+    h = TinyOrNan(hLen) ? desired : (h / hLen);
 
     float k = saturate(TurnSpeed * DeltaTime);
-    h = normalize(lerp(h, desired, k));
+    float3 blended = lerp(h, desired, k);
+    float blendedLen = length(blended);
+    h = TinyOrNan(blendedLen) ? desired : (blended / blendedLen);
     h.y = 0.0;
     float flat = length(h);
-    if (flat < 1e-6)
-    {
-        h = float3(1, 0, 0);
-    }
-    else
-    {
-        h = h / flat;
-    }
+    h = TinyOrNan(flat) ? float3(1, 0, 0) : (h / flat);
 
     heading[id.x] = h;
     velocity[id.x] = h * CruiseSpeed;
@@ -191,7 +188,11 @@ void BoxBounds(uint3 id : SV_DispatchThreadID)
         // Wrap: torus topology.
         float3 size = BoundsExtents * 2.0;
         float3 local = p - minCorner;
-        local -= size * floor(local / size);
+        float3 wrapped = local - size * floor(local / size);
+        // Per-axis select: a zero extent (2D plane, extents.y = 0) must not wrap.
+        // max(size, eps) would wrap into an infinitely thin cell. Bounce with
+        // extents.y = 0 still clamps p.y to center — out of scope (F0.4).
+        local = (size > 1e-6) ? wrapped : local;
         position[id.x] = local + minCorner;
         return;
     }

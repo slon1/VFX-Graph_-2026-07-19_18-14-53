@@ -1,6 +1,6 @@
 # TechDebt.md — накопленный технический бэклог
 
-**Дата создания:** 2026-08-03 · **Обновлено:** 2026-08-22 (ADR-013: `dissipationRate` = `exp(-rate·dt)`; численная диссипация semi-Lagrangian)  
+**Дата создания:** 2026-08-03 · **Обновлено:** 2026-08-23 (F0.4 + ADR-016)  
 **Контекст:** накоплено за M2a … M2c.1 + мобильный прогон Gray-Scott (Samsung и др.), зафиксировано после первого мобильного теста (Samsung S10, Vulkan)
 
 Этот документ — рабочий список отложенных задач: реальных багов, известных ограничений и roadmap-пунктов, приоритет которых изменился по итогам тестирования. Не всё здесь срочно — приоритет и группа явно указаны при каждом пункте.
@@ -10,15 +10,16 @@
 ## Закрыто
 
 - ~~**Multi-field-per-kernel биндинг**~~ — сделано в **M2c** (ADR-008: Role A/B, `FieldReadA/B`…); применено в **M2c.1** Gray-Scott (ADR-009).
-- ~~**Имя сэмплера `sampler_linear_clamp`**~~ — ADR-013 MCP, Scalar `64×64` R16F, RT.filter=Point, `SampleLevel` между текселями. Quarter (`u=16.75/64`): obtained = bilinear = `0.26171880`, |Δ| to nearest = `3.9063e-3` (¼ текселя). Boundary (`u=17/64`): obtained = bilinear = `0.26562500`, |Δ| to either nearest = `7.8125e-3` (½ текселя). Имя корректно, переименование не требуется.
+- ~~**Имя сэмплера `sampler_linear_clamp`**~~ — ADR-013 MCP, Scalar `64×64` R16F, RT.filter=Point, `SampleLevel` между текселями. Quarter (`u=16.75/64`): obtained = bilinear = `0.26171880`, |Δ| to nearest = `3.9063e-3` (¼ текселя). Boundary (`u=17/64`): obtained = bilinear = `0.26562500`, |Δ| to either nearest = `7.8125e-3` (½ текселя). Имя корректно, переименование не требуется. **Автотест:** `HarnessSamplerTests` (ADR-014).
+- ~~**Численная проверка `DiffuseField` (ручной MCP)**~~ — сохранение суммы, максимум-принцип, CFL при `r=0.5`, сверка с CPU 5-point. **Автотест:** `HarnessDiffuseTests` (ADR-014).
+- ~~**Мёртвый null-coalescing `fields ?? new FieldSet()`**~~ — в `SimContext` уже `?? throw new ArgumentNullException` (`SimContext.cs:58`). F0.4.
+- ~~**`Releasing render texture that is set to be RenderTexture.active!` (Editor play in/out)**~~ — `FieldSet.Release` снимает `RenderTexture.active` перед `rt.Release()`. Compute-очистка полей вместо `SetRenderTarget` — отдельное направление, см. C ниже. Android pause/resume после фикса стоит перепроверить, но тот же путь Release.
 
 ---
 
 ## Группа A — стабильность мобильного тестирования
 
 Стоит закрыть раньше остального: мешает надёжности дальнейших прогонов на устройстве.
-
-1. **`Releasing render texture that is set to be RenderTexture.active!`** — предупреждение на Android при pause/resume (сворачивание приложения). Вероятно, неполная обработка потери/восстановления surface в `FieldSet`/`SimulationWorld`. Не блокировало текущий тест, но стоит проверить перед тем, как полагаться на длинные мобильные сессии в будущем.
 
 1b. **`deltaTime` clamp в `SimulationWorld` (CFL / Gray-Scott «шахматы» на мобиле).**  
    **Приоритет:** низкий — отдельная маленькая задача, не срочная; зафиксировать, чтобы не потерять разбор.  
@@ -65,13 +66,17 @@
 
 4. **Нет `ClampFieldPass`.** Аналог `SpeedLimitPass` для частиц, но для полей. Сейчас есть только частичный inline-clamp (`MaxFieldSpeed`) внутри `TouchInjectVelocityFieldPass`, не переиспользуемый отдельный пасс, применимый после любых операций с любым полем.
 
-5. **Численная диссипация semi-Lagrangian Advect** (ADR-013, не баг реализации). `SampleLevel` bilinear на off-grid backtrace размазывает пики; целочисленный backtrace (vel·dt/texel ∈ ℤ) маскирует эффект — peak val Δ=0, как nearest. MCP Gaussian extra на carrier `1.7`, 8 шагов: extra `0.999→0.605` (−39%). **Позиционный overshoot COM +15 vs 13.6** — не ошибка формулы: 13.6 = пассивный tracer на однородном carrier; bump добавляет +u в ту же сторону, self-advection обгоняет. Контроль amp=0.05: dCom=+13.75 (overshoot +0.15). MacCormack/BFECC — отдельный тикет, не чинить точечно.
+5. **Численная диссипация semi-Lagrangian Advect** (ADR-013, не баг реализации). `SampleLevel` bilinear на off-grid backtrace размазывает пики; целочисленный backtrace (vel·dt/texel ∈ ℤ) маскирует эффект — peak val Δ=0, как nearest. MCP Gaussian extra на carrier `1.7`, 8 шагов: extra `0.999→0.605` (−39%). **Позиционный overshoot** — не ошибка формулы: 13.6 = пассивный tracer на однородном carrier; bump добавляет +u в ту же сторону, self-advection обгоняет. Бездиссипативный потолок 2D-гауссиана `N·A/2=0.200` (amp=0.05, 8 шагов). Автотест: overshoot **0.100** на `R32G32F` (внутри потолка); **0.26** на боевом `R16G16F` превышает потолок — half непригоден для измерения, жёстче `±0.1`. MCP `13.75` не подтверждён. `HarnessAdvectTests`: физическая вилка, не калиброванный центр. MacCormack/BFECC — отдельный тикет, не чинить точечно.
 
 6. **Reflection Probe периодические спайки в Profiler.** `Environment Reflections → Source: Custom` снизил среднюю стоимость (с ~62 мс до ~0.1 мс на кадр), но пики в таймлайне всё ещё видны через равные интервалы, источник до конца не подтверждён. Вероятная причина — Lit-материал debug-quad'а сэмплирует environment reflections. Рекомендованный фикс: перевести материал quad'а на Unlit-шейдер.
 
 7. **`CubeSource` — предположительно синхронная генерация частиц на CPU.** Вероятная причина фриза 2-3 сек на старте при большом `Resolution`. Не подтверждено профилированием, но станет блокером для M2f (reroll без рестарта), если подтвердится — стоит проверить перед тем, как браться за M2f.
 
-8. **Мёртвый null-coalescing branch** в конструкторе `SimContext` (`fields ?? new FieldSet()`). `SimulationWorld.Build` всегда передаёт non-null `FieldSet` — упростить до `ArgumentNullException`/убрать оператор, не маскировать потенциальную ошибку сборки.
+8. **Texel- и UV-соглашения** (ADR-016, осознанная задолженность). `DiffuseField` / `DiffuseVelocityField` / `GrayScott` считают лапласиан без `/h²`; G2P-градиент не делит на `Size`. Параметры зависят от разрешения и протяжённости поля. **Не** приводить к world — сломает калибровку пресетов. Fluid-контур — отдельное world-семейство.
+
+8b. **`BoxBounds` Bounce при `extents.y = 0`.** Wrap (F0.4) оставляет ось нетронутой. Bounce по-прежнему зажимает `p.y` в `BoundsCenter.y`, потому что `minCorner == maxCorner`. Для 2D-плоскости обычно безвредно; не считать фикс wrap полным решением.
+
+8c. **Compute-очистка полей** вместо `SetRenderTarget`+`ClearRenderTarget` в `FieldSet.ClearOne`. Сняла бы связь с `RenderTexture.active` целиком, но требует дать `Allocate` доступ к библиотеке кернелов — изменение дизайна, не точечный фикс F0.4.
 
 ---
 
