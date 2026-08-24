@@ -63,6 +63,7 @@
 | `GrayScottPasses.compute` | GrayScottReact, SeedScalarDisk |
 | `TouchGrayScottPasses.compute` | TouchInjectGrayScott |
 | `AgentFieldFeedbackPasses.compute` | AgentBoostField, AgentErodeField |
+| `FluidPasses.compute` | Divergence, Jacobi, **Subtract Phi Gradient** |
 
 `ClearFieldPass` и `ClearFieldAccumPass` — **без** своих `.compute` (Clear RT / ClearUintBuffer из P2G).
 
@@ -354,6 +355,19 @@
 | **Warm-start** | `fluidPhi` не очищается перед Jacobi, наследует результат предыдущего кадра; дрейф `mean(Φ)` при `ΣD ≠ 0` — Techdebt / **F1.2b** (блокер перед F1.6) |
 | **Граница** | clamp-продолжение Φ через `Load`; `D` читается без clamp |
 | **Хорошо для** | Poisson Φ в fluid-проекции; не подключён к demo-пресетам (Fluid2D — F1.6) |
+
+### Subtract Phi Gradient
+| | |
+|--|--|
+| **Назначение** | Коррекция `u ← u* − ((ΦE−ΦW)/4, (ΦN−ΦS)/4)` (ADR-016 §2, ADR-020) |
+| **Библиотека / kernel** | `FluidPasses` / `SubtractPhiGradient` (`#ifdef KERNEL_SUBTRACT`) |
+| **Fields** | WriteInPlace Velocity ×2 Role A (`velocity`); Read Scalar ×1 Role B (`fluidPhi`, **R32_SFloat**). Слоты `FieldWriteA` / `FieldReadB` — `u*` читается из `FieldWriteA`, `FieldReadA` нет |
+| **Параметры** | `velocityField` (default `velocity`, не `flockVel`), `phiField` (`fluidPhi`) |
+| **RepeatCount** | 1 (не переопределён) |
+| **dt** | Нет |
+| **Единицы** | **world** (ADR-016 §2); квадратный тексель обязателен (`RequiresSquareTexel`) |
+| **Граница** | clamp-продолжение Φ через `Load`; истинные непроницаемые BC — F1.4 |
+| **Хорошо для** | Замыкание Stam-проекции; не подключён к demo-пресетам (Fluid2D — F1.6). Zero-mean `fluidD` — **F1.2b**, блокер пресета, не этого пасса |
 
 ### SampleGradientField (G2P)
 | | |

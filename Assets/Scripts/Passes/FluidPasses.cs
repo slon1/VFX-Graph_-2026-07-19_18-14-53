@@ -93,3 +93,45 @@ public sealed class JacobiPhiPass : FieldKernelPass
             ref fieldWritesCache, phiField,
             FieldAccess.WritePingPong, FieldSemantic.Scalar, 1, FieldSlotRole.A);
 }
+
+/// <summary>
+/// Subtract Φ gradient: u ← u* − ((ΦE−ΦW)/4, (ΦN−ΦS)/4) (ADR-016 §2, ADR-020).
+/// WriteInPlace Role A on velocity; fluidPhi is Read Role B. Square texel required.
+/// Reads u* from FieldWriteA (WriteInPlace binds WriteId only).
+/// </summary>
+[Serializable]
+public sealed class SubtractPhiGradientPass : FieldKernelPass
+{
+    [SerializeField] private string velocityField = "velocity";
+    [SerializeField] private string phiField = "fluidPhi";
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string VelocityField
+    {
+        get => velocityField;
+        set => velocityField = value;
+    }
+
+    public string PhiField
+    {
+        get => phiField;
+        set => phiField = value;
+    }
+
+    public override string DisplayName => "Subtract Phi Gradient";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "SubtractPhiGradient";
+    public override bool RequiresSquareTexel => true;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, phiField,
+            FieldAccess.Read, FieldSemantic.Scalar, 1, FieldSlotRole.B);
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, velocityField,
+            FieldAccess.WriteInPlace, FieldSemantic.Velocity, 2, FieldSlotRole.A);
+}

@@ -1,11 +1,11 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-08-23  
-**Итерация:** 5.16 — F1.2 JacobiPhiPass  
+**Дата:** 2026-08-25  
+**Итерация:** 5.17 — F1.3 SubtractPhiGradientPass (готово, DoD k=8 ≥3×)  
 **Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -142,6 +142,12 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 
 ---
 
+## F1.3 — SubtractPhiGradientPass (готово)
+
+`SubtractPhiGradientPass` в `FluidPasses.compute` (`#ifdef KERNEL_SUBTRACT`): `u ← u* − ((ΦE−ΦW)/4, (ΦN−ΦS)/4)`, WriteInPlace Role A на `velocity`, Read Role B на `fluidPhi`, `u*` из `FieldWriteA`. Тесты 3.1–3.6 зелёные. Цепочка 3.6, k=8, Jacobi×40, 64² Size=32: meanD=−0.0478352606, |mean|/max=0.0183057487, maxBefore=2.61312771, maxAfter=0.58626616, **ratio=4.45723772** (≥3×). Исторически k=8 давал 4.46× на пороге 10× (красный), k=12 — 2.49×. Не подключён к demo-пресетам.
+
+---
+
 ## F1.2 — JacobiPhiPass (готово)
 
 `JacobiPhiPass` в `FluidPasses.compute` (`#ifdef KERNEL_JACOBI`): `ΦC ← (ΦN+ΦS+ΦE+ΦW − D)/4`, WritePingPong Role A на `fluidPhi`, Read Role B на `fluidD`. `RepeatCount = iterations` (дефолт 40). `fluidPhi` = `R32_SFloat`. Тесты: `JacobiPhiPassTests`. Не подключён к demo-пресетам.
@@ -167,10 +173,10 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 ## Файлы (ключевые)
 
 ```
-Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, AdvectVelocity, …), FluidPasses.cs (Divergence, Jacobi), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
+Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, AdvectVelocity, …), FluidPasses.cs (Divergence, Jacobi, SubtractPhiGradient), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
 Assets/Scripts/Runtime/    SimPass.cs (RepeatCount, RequiresSquareTexel, AttrSets.Heading, SimShaderIds.Dissipation), SimulationWorld.cs, RepeatCountValidator.cs, SquareTexelValidator.cs
 Assets/Shaders/GPU/Passes/ DynamicsPasses, FieldPasses, FluidPasses, GradientPasses (AddNormalizedGradient)
-Assets/Tests/Editor/       JacobiPhiPassTests, DivergenceFieldPassTests, RepeatCountTests, FieldTestHarness, HarnessClearTests, HarnessSamplerTests, HarnessDiffuseTests, HarnessAdvectTests, …
+Assets/Tests/Editor/       SubtractPhiGradientPassTests, JacobiPhiPassTests, DivergenceFieldPassTests, RepeatCountTests, FieldTestHarness, HarnessClearTests, HarnessSamplerTests, HarnessDiffuseTests, HarnessAdvectTests, …
 Assets/Scripts/Editor/     Adr012BoidsMk1Setup.cs
 ```
 
@@ -178,4 +184,4 @@ Assets/Scripts/Editor/     Adr012BoidsMk1Setup.cs
 
 ## Вне скоупа (далее)
 
-**F1.2b** zero-mean projection `fluidD` (блокер перед F1.6) · Trail/persistence · dye/tracer advection · SubtractPressureGradient · vorticity confinement · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)
+**F1.2b** zero-mean projection `fluidD` (блокер перед F1.6) · F1.4 BC · F1.6 Fluid2D · Trail/persistence · dye/tracer advection · vorticity confinement · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)

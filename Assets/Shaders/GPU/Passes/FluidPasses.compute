@@ -1,9 +1,10 @@
-// Fluid (world) operators — ADR-016 §2 / ADR-017 / ADR-018.
+// Fluid (world) operators — ADR-016 §2 / ADR-017 / ADR-018 / ADR-020.
 // Neighbors via Load + clamp (same form as DiffusePasses.LoadClamped).
-// KERNEL_* tokens isolate FieldReadA types: float2 (Divergence) vs float (Jacobi).
+// KERNEL_* tokens isolate FieldReadA (float2 vs float) and FieldWriteA (float vs float2).
 
 #pragma kernel Divergence KERNEL_DIVERGENCE
 #pragma kernel Jacobi KERNEL_JACOBI
+#pragma kernel SubtractPhiGradient KERNEL_SUBTRACT
 
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
 
@@ -67,5 +68,34 @@ void Jacobi(uint3 id : SV_DispatchThreadID)
     float d = FieldReadB.Load(int3(p, 0));
 
     FieldWriteA[p] = (n + s + e + w - d) * 0.25;
+}
+#endif
+
+#ifdef KERNEL_SUBTRACT
+RWTexture2D<float2> FieldWriteA;
+Texture2D<float> FieldReadB;
+
+float LoadClampedPhi(int2 q)
+{
+    int2 maxP = FieldResolution - 1;
+    q = clamp(q, int2(0, 0), maxP);
+    return FieldReadB.Load(int3(q, 0));
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void SubtractPhiGradient(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float n = LoadClampedPhi(p + int2( 0, 1));
+    float s = LoadClampedPhi(p + int2( 0,-1));
+    float e = LoadClampedPhi(p + int2( 1, 0));
+    float w = LoadClampedPhi(p + int2(-1, 0));
+    float2 u = FieldWriteA[p];
+    FieldWriteA[p] = u - float2((e - w) * 0.25, (n - s) * 0.25);
 }
 #endif

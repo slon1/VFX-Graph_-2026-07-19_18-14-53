@@ -11,7 +11,7 @@
 
 Вся физика проверена вручную через MCP и зафиксирована в markdown: bilinear-семплер (ADR-013 шаг 0, числа в `Techdebt.md`), сходимость `DiffuseField` (ADR-006), sum-декод density (ADR-005, `ratio=5.000`), COM адвекции (ADR-013). `ProjectSummary.md` урок 7 сам формулирует вывод: «численный MCP-readback тест ловит баги лучше визуальной проверки». Ручной прогон подтверждает факт **один раз**; регрессию в нём никто не заметит.
 
-Прямая мотивация закрыть это сейчас, а не «когда-нибудь»: единственный осмысленный критерий корректности проекции давления — **«`max|div|` упала на порядок за N итераций Jacobi»**. Это не проверяется глазами по debug-quad и не проверяется однократным ручным прогоном: и число итераций, и разрешение, и precision полей будут меняться при калибровке пресета, а вместе с ними — и результат. Без харнеса F1.3 (`SubtractPressureGradientPass`) — тикет без DoD.
+Прямая мотивация закрыть это сейчас, а не «когда-нибудь»: единственный осмысленный критерий корректности проекции — машинное сравнение `max|D|` до и после цепочки Divergence→Jacobi→Subtract. Исходная формулировка «на порядок» была стремлением F1; после замера калиброванный DoD — [ADR-020 §3](ADR-020-Subtract-Phi-Gradient-Pass.md) (k=8, ≥3×). Это не проверяется глазами по debug-quad и не проверяется однократным ручным прогоном: и число итераций, и разрешение, и precision полей будут меняться при калибровке пресета, а вместе с ними — и результат. Без харнеса F1.3 (`SubtractPhiGradientPass`) — тикет без DoD.
 
 Вторичная мотивация: DoD следующего тикета (ADR-015, World-owned repeat loop) сформулирован как «пасс с `RepeatCount=6` численно совпадает с 6 экземплярами в списке». Это тоже требует readback.
 
@@ -110,4 +110,5 @@ for i in 0 .. repeat-1:
 | ADR-015 | F0.1 | World-owned repeat loop: `SimPass.RepeatCount` (virtual, default 1), цикл `Execute + Swap` в World, `Execute` остаётся `sealed`. Дополнение к ADR-001 §3 |
 | ADR-016 | F0.3 | Единицы по семействам пассов: RD/boids — texel-Laplacian, Gradient — UV, fluid-контур — world; масштабирование `D = div·h`, `Q = q/h` |
 | ADR-018 | F1.2 | JacobiPhiPass: multi-role (fluidPhi/fluidD), RepeatCount-решатель, DoD на невязке |
+| ADR-020 | F1.3 | SubtractPhiGradientPass: WriteInPlace velocity − ∇Φ; цепочка Divergence→Jacobi→Subtract, DoD k=8 ≥3× |
 | ADR-019 | F1.7 | Fluid2D solver, постфактум: collocated cell-centered, итерации, precision, BC, шахматная мода как known limitation |
