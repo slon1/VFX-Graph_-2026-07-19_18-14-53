@@ -179,6 +179,7 @@ public sealed class SimulationWorld : MonoBehaviour
         try
         {
             RepeatCountValidator.Validate(effect.Passes);
+            SquareTexelValidator.Validate(effect.Passes, fields);
         }
         catch (Exception exception)
         {

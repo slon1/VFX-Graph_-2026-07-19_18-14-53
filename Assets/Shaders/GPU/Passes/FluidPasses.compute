@@ -1,0 +1,71 @@
+// Fluid (world) operators — ADR-016 §2 / ADR-017 / ADR-018.
+// Neighbors via Load + clamp (same form as DiffusePasses.LoadClamped).
+// KERNEL_* tokens isolate FieldReadA types: float2 (Divergence) vs float (Jacobi).
+
+#pragma kernel Divergence KERNEL_DIVERGENCE
+#pragma kernel Jacobi KERNEL_JACOBI
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define FIELD_THREADS 8
+
+#ifdef KERNEL_DIVERGENCE
+// Read=A / Write=B → FieldReadA / FieldWriteB (ADR-008).
+Texture2D<float2> FieldReadA;
+RWTexture2D<float> FieldWriteB;
+
+float2 LoadClampedVelocity(int2 q)
+{
+    int2 maxP = FieldResolution - 1;
+    q = clamp(q, int2(0, 0), maxP);
+    return FieldReadA.Load(int3(q, 0));
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void Divergence(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float2 uE = LoadClampedVelocity(p + int2( 1, 0));
+    float2 uW = LoadClampedVelocity(p + int2(-1, 0));
+    float2 uN = LoadClampedVelocity(p + int2( 0, 1));
+    float2 uS = LoadClampedVelocity(p + int2( 0,-1));
+
+    FieldWriteB[p] = uE.x - uW.x + uN.y - uS.y;
+}
+#endif
+
+#ifdef KERNEL_JACOBI
+Texture2D<float> FieldReadA;
+RWTexture2D<float> FieldWriteA;
+Texture2D<float> FieldReadB;
+
+float LoadClampedPhi(int2 q)
+{
+    int2 maxP = FieldResolution - 1;
+    q = clamp(q, int2(0, 0), maxP);
+    return FieldReadA.Load(int3(q, 0));
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void Jacobi(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float n = LoadClampedPhi(p + int2( 0, 1));
+    float s = LoadClampedPhi(p + int2( 0,-1));
+    float e = LoadClampedPhi(p + int2( 1, 0));
+    float w = LoadClampedPhi(p + int2(-1, 0));
+    float d = FieldReadB.Load(int3(p, 0));
+
+    FieldWriteA[p] = (n + s + e + w - d) * 0.25;
+}
+#endif

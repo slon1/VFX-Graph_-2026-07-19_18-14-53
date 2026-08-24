@@ -109,4 +109,5 @@ for i in 0 .. repeat-1:
 | --- | --- | --- |
 | ADR-015 | F0.1 | World-owned repeat loop: `SimPass.RepeatCount` (virtual, default 1), цикл `Execute + Swap` в World, `Execute` остаётся `sealed`. Дополнение к ADR-001 §3 |
 | ADR-016 | F0.3 | Единицы по семействам пассов: RD/boids — texel-Laplacian, Gradient — UV, fluid-контур — world; масштабирование `D = div·h`, `Q = q/h` |
-| ADR-017 | F1.7 | Fluid2D solver, постфактум: collocated cell-centered, итерации, precision, BC, шахматная мода как known limitation |
+| ADR-018 | F1.2 | JacobiPhiPass: multi-role (fluidPhi/fluidD), RepeatCount-решатель, DoD на невязке |
+| ADR-019 | F1.7 | Fluid2D solver, постфактум: collocated cell-centered, итерации, precision, BC, шахматная мода как known limitation |

@@ -31,6 +31,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/DecayPasses.compute",
         "Assets/Shaders/GPU/Passes/MultiFieldTestPasses.compute",
         "Assets/Shaders/GPU/Passes/GrayScottPasses.compute",
+        "Assets/Shaders/GPU/Passes/FluidPasses.compute",
         "Assets/Shaders/GPU/Passes/TouchGrayScottPasses.compute",
         "Assets/Shaders/GPU/Passes/AgentFieldFeedbackPasses.compute",
     };

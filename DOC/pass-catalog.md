@@ -24,7 +24,7 @@
 - `WriteInPlace` — UAV Current (без swap)  
 - `WritePingPong` — SRV Current + UAV Next → World делает `Swap` после dispatch  
 
-**`RepeatCount` (ADR-015):** World повторяет `Execute + Swap` N раз за кадр. Это **итерации решателя на одном временном слое**, не субшаги по времени: в каждую итерацию идёт один и тот же `deltaTime`. У Jacobi N итераций уточняют одно решение, эффективный шаг остаётся `dt`. У Gray-Scott / Diffuse N повторов продвигают время N раз, эффективный шаг становится `N·dt`, и граница CFL ужимается в N раз (шахматная мода Gray-Scott уже зафиксирована в Techdebt именно от большого `dt`). Поэтому текущая рекомендация «несколько копий `GrayScottPass` / `DiffuseFieldPass` в списке» **не** мигрируется на `RepeatCount` — слайдер «качества» молча ломал бы устойчивость. Субшаги по времени — отдельный механизм, его нет. Пока ни один существующий пасс `RepeatCount` не переопределяет (default 1).
+**`RepeatCount` (ADR-015):** World повторяет `Execute + Swap` N раз за кадр. Это **итерации решателя на одном временном слое**, не субшаги по времени: в каждую итерацию идёт один и тот же `deltaTime`. У Jacobi N итераций уточняют одно решение, эффективный шаг остаётся `dt`. У Gray-Scott / Diffuse N повторов продвигают время N раз, эффективный шаг становится `N·dt`, и граница CFL ужимается в N раз (шахматная мода Gray-Scott уже зафиксирована в Techdebt именно от большого `dt`). Поэтому текущая рекомендация «несколько копий `GrayScottPass` / `DiffuseFieldPass` в списке» **не** мигрируется на `RepeatCount` — слайдер «качества» молча ломал бы устойчивость. Субшаги по времени — отдельный механизм, его нет. `JacobiPhiPass` — первый пасс с `RepeatCount ≠ 1` (дефолт 40, `[Range(1,80)]`).
 
 ## Единицы (ADR-016)
 
@@ -36,7 +36,7 @@
 | G2P-градиент | **UV**: центральные разности в UV, без деления на `Size` | `SampleGradientField`, `AddNormalizedGradientField` |
 | Fluid | **world**: `vel·dt/Size` в адвекции; проекция F1 без `h` при квадратном текселе | `AdvectVelocityField` + все пассы F1 |
 
-`DiffuseVelocityField` — не вязкость. Поля проекции F1: `fluidD`, `fluidPhi` (Scalar, world/s); Φ не называть давлением. `RequiresSquareTexel` — F1.1.
+`DiffuseVelocityField` — не вязкость. Поля проекции F1: `fluidD`, `fluidPhi` (Scalar, world/s); Φ не называть давлением. `RequiresSquareTexel` реализован (F1.1 / ADR-017). `fluidD` и `fluidPhi` — `R32_SFloat`.
 
 **Слоты текстур:** single-field → `FieldRead`/`FieldWrite`; multi-field (Role A/B) → `FieldReadA/B`/`FieldWriteA/B`.
 
@@ -328,6 +328,32 @@
 | **Единицы** | **world** (ADR-016 §1): `backUv = uv − velocity · dt / Size` |
 | **Хорошо для** | Первый кирпич Stable Fluids. Компактный сгусток в **нулевом** фоне съедает себя с тыла — для переноса пика нужен несущий поток (фон + bump). Dye/pressure — отдельные пассы |
 | **Ограничение** | Semi-Lagrangian bilinear **диссипативен** на off-grid backtrace (не баг). Целочисленный прогон (bump `vx=2` на фоне `1`) peak val Δ=0 — интерполяция вырождается в nearest. **Позиция:** `1.7×8=13.6` — это смещение **пассивного** tracer-а на однородном carrier; bump — лишняя скорость в ту же сторону, поэтому self-advection (Burgers) систематически обгоняет carrier. Бездиссипативный потолок overshoot для 2D-гауссиана: `N·A/2` (amp=0.05, 8 шагов → **0.200**); диссипация может только уменьшать. Геометрия автотеста: `64²`, `Size=64`, `dt=1`, центр `(20.5, 32.5)`, Gaussian `σ=1.5`, 8 шагов. amp=0.05 → overshoot **0.100** на `R32G32F` (внутри (0, 0.200)); на боевом `R16G16F` overshoot **0.26 > 0.200** — half непригоден для этого измерения, жёстче оценки шума `±0.1`. MCP `13.75` не подтверждён. amp=1 → dCom=+14.94 / dPeak=+16 (overshoot +1.3). Пик на широком профиле скачет по целым текселям; COM надёжнее. MacCormack/BFECC — отдельный тикет |
+
+### Divergence
+| | |
+|--|--|
+| **Назначение** | Сырая центральная дивергенция `D = uE.x − uW.x + uN.y − uS.y` (не `div = D/(2h)`) |
+| **Библиотека / kernel** | `FluidPasses` / `Divergence` |
+| **Fields** | Read Velocity ×2 Role A (`velocity`); WriteInPlace Scalar ×1 Role B (`fluidD`, **R32_SFloat**). Слоты `FieldReadA`/`FieldWriteB` — два имени поля, ADR-008 |
+| **Параметры** | `velocityField` (default `velocity`, не `flockVel`), `divergenceField` (`fluidD`) |
+| **dt** | Нет |
+| **Единицы** | **world** (ADR-016 §2): `D = 2h·div`; квадратный тексель обязателен (`RequiresSquareTexel`) |
+| **Граница** | clamp-продолжение поля через `Load`, не истинная дивергенция; истинные граничные условия — F1.4 |
+| **Хорошо для** | Первый кернел fluid-проекции; не подключён к demo-пресетам (Fluid2D — F1.6) |
+
+### Jacobi
+| | |
+|--|--|
+| **Назначение** | Итерация Φ: `ΦC ← (ΦN+ΦS+ΦE+ΦW − D) / 4` (ADR-016 §2, ADR-018) |
+| **Библиотека / kernel** | `FluidPasses` / `Jacobi` (`#ifdef KERNEL_JACOBI`) |
+| **Fields** | WritePingPong Scalar ×1 Role A (`fluidPhi`, **R32_SFloat**); Read Scalar ×1 Role B (`fluidD`). Слоты `FieldReadA`/`FieldWriteA` + `FieldReadB` |
+| **Параметры** | `phiField` (default `fluidPhi`), `divergenceField` (`fluidD`), `iterations` (default 40, `[Range(1,80)]`) |
+| **RepeatCount** | `iterations` (дефолт 40). Первый пасс, переопределяющий ADR-015 |
+| **dt** | Нет (итерации решателя на одном временном слое, не субшаги) |
+| **Единицы** | **world** (ADR-016 §2); квадратный тексель обязателен (`RequiresSquareTexel`) |
+| **Warm-start** | `fluidPhi` не очищается перед Jacobi, наследует результат предыдущего кадра; дрейф `mean(Φ)` при `ΣD ≠ 0` — Techdebt / **F1.2b** (блокер перед F1.6) |
+| **Граница** | clamp-продолжение Φ через `Load`; `D` читается без clamp |
+| **Хорошо для** | Poisson Φ в fluid-проекции; не подключён к demo-пресетам (Fluid2D — F1.6) |
 
 ### SampleGradientField (G2P)
 | | |

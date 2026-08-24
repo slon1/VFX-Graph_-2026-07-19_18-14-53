@@ -1,8 +1,9 @@
 ## ADR-008: Multi-Field-Per-Kernel Binding
 
-**Статус:** Реализовано (M2c)  
+**Статус:** Реализовано (M2c); геометрия §4 уточнена 2026-08-23  
 **Дата:** 2026-08-07  
-**Контекст:** M3D Framework, Milestone 2c
+**Контекст:** M3D Framework, Milestone 2c  
+**Связано:** [ADR-001 §8](adr-001-field-resources-m2a.md) (UV-read может отличаться по Resolution); [ADR-017](ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) (`Load` + `RequiresSquareTexel` — matching Resolution обязателен)
 
 ### Контекст
 
@@ -30,7 +31,10 @@
 1. `FieldRequest` расширяется полем `FieldSlotRole Role` (`enum { A, B }`, дефолт `A` — существующие однопольные пассы не требуют изменений, `Role=A` для них не имеет наблюдаемого эффекта, потому что для них `unique(FieldName)==1` guard остаётся активным и достаточным).
 2. Новый guard в `FieldKernelPass.Initialize`, заменяющий текущий `unique(FieldName)==1`: **допускается ровно одно уникальное имя поля на роль** (то есть максимум 2 разных поля суммарно на пасс, каждое — под своей ролью `A`/`B`; если оба запроса случайно получат одну и ту же роль с разными именами — hard error). Однопольные пассы (единственный запрос, `Role=A` по умолчанию) продолжают работать без изменений — обратная совместимость полная. Роли среди binds должны быть ровно `{A}` или ровно `{A,B}`; `{B}` без `A` — hard error.
 3. `SimShaderIds.FieldReadA/FieldWriteA/FieldReadB/FieldWriteB` — новые фиксированные property ID. `FieldKernelPass` биндит по роли, не по позиции в списке. Single-role → legacy `FieldRead`/`FieldWrite`; multi-role → `*A`/`*B`.
-4. **Геометрия (roadmap M2c):** при multi-role — hard error, если `Resolution` или plane (`Origin`, `AxisU`, `AxisV`, `Size`) различаются между полями. Один `FieldShaderParams` + dispatch по Role=A.
+4. **Геометрия (roadmap M2c):** при multi-role — hard error, если **plane** (`Origin`, `AxisU`, `AxisV`, `Size`) различается между полями. Один `FieldShaderParams` + dispatch по Role=A (primary / write).  
+   **Resolution.** Совпадать обязаны поля в пространстве диспатча: все write и любой read через `Load(id.xy)` (индекс = поток write-поля).  
+   **Исключение (поправка 2026-08-23):** matching `Resolution` **не** распространяется на UV-read (`SampleLevel` / нормализованный UV). Сэмплер сам знает размер текстуры; канонический сценарий ADR-001 §8 — dye выше разрешением, чем velocity. Это не отмена §4 и не per-role `FieldParams` (их по-прежнему нет): чужой `Load(id)` с другой сеткой остаётся запрещён. Fluid-пассы с `RequiresSquareTexel` (ADR-017) переопределяют послабление и требуют одинаковый `Resolution` у всех дескрипторов пасса.  
+   *Код на дату поправки:* `FieldKernelPass.ValidateMatchingFieldGeometry` ещё сравнивает `Resolution` у всех ролей (поведение M2c до поправки). Снять проверку Resolution для UV-read — F0.5; до этого mismatch read падает на Initialize. `SquareTexelValidator` и после F0.5 остаётся запором для `Load`.
 5. **Отдельный demo-kernel, не сам Gray-Scott.** `SwapFieldsPass` + `MultiFieldTestPasses.compute`: `FieldWriteA = FieldReadB`, `FieldWriteB = FieldReadA`. Только `FieldWrites` ×2, `WritePingPong`, `FieldRequestSets.Pair`. Gray-Scott — следующий шаг, не в скоупе.
 
 ### Последствия
@@ -40,3 +44,9 @@
 **Однопольные пассы остаются на `FieldRead`/`FieldWrite`; `*A`/`*B` только multi-role.** Не мигрировать существующие кернелы на суффиксы ролей.
 
 **Известное ограничение v1:** потолок 2 поля на кернел. Систем, требующих 3+ полей одновременно в одном dispatch, в текущем roadmap не просматривается (Gray-Scott — 2, Lenia в базовой форме — 1 поле с self-convolution, не multi-field вообще) — не усложняем заранее. Multi-field G2P у `ParticleKernelPass` — вне скоупа.
+
+### Поправка 2026-08-23 — Resolution vs UV-read
+
+Первая редакция §4 требовала matching `Resolution` **у всех** ролей, включая read. Это закрывало M2c (один `FieldShaderParams`, `Load` не читает чужую сетку), но противоречило ADR-001 §8 (dye 512 + velocity 128, чтение по UV).
+
+Поправка не отменяет ADR-008: plane по-прежнему общий, dispatch и `FieldParams` по-прежнему от Role A / write, `Load` с чужого Resolution по-прежнему hard error. Меняется только область matching Resolution: она не покрывает UV-read. Per-role uniform-блоки по-прежнему отклонены, пока не появится кернел, которому нужен `Load` с чужой сетки (тогда — F0.6).

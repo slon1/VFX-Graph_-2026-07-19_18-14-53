@@ -32,16 +32,16 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **AddNormalizedGradientField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**, **AdvectVelocityField**, **ClearVelocity**, **HeadingSteer**.
+- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **AddNormalizedGradientField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**, **AdvectVelocityField**, **DivergenceFieldPass**, **JacobiPhiPass**, **ClearVelocity**, **HeadingSteer**.
 - Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
-- `RepeatCount` (ADR-015): World повторяет `Execute + Swap` N раз за кадр (итерации решателя, не субшаги `dt`). Default 1; пока ни один пасс не переопределяет.
-- Единицы по семействам (ADR-016): RD/boids-диффузия — **texel** Laplacian без `/h²`; G2P-градиент — **UV** без `/Size`; fluid — **world**. Существующие texel/UV не меняются. `RequiresSquareTexel` — F1.1.
+- `RepeatCount` (ADR-015): World повторяет `Execute + Swap` N раз за кадр (итерации решателя, не субшаги `dt`). Default 1; `JacobiPhiPass` переопределяет (дефолт 40).
+- Единицы по семействам (ADR-016): RD/boids-диффузия — **texel** Laplacian без `/h²`; G2P-градиент — **UV** без `/Size`; fluid — **world**. Существующие texel/UV не меняются. `RequiresSquareTexel` проверяется на Build (`SquareTexelValidator`, ADR-017).
 - Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — слоты (`VectorRg` / `ScalarHeatmap` + Gradient LUT + hdrIntensity), layout по AxisU.
 
 ### Multi-field kernel (M2c)
 
 - `FieldSlotRole` A/B на `FieldRequest`; `FieldRequestSets.Pair`.
-- Multi-role: matching Resolution + plane (hard error); proof `SwapFieldsPass`.
+- Multi-role: plane always matches (hard error). Resolution — у write и у `Load`; UV-read по контракту может отличаться (ADR-001 §8 / поправка ADR-008). Пока код (`ValidateMatchingFieldGeometry`) ещё требует matching Resolution у всех ролей; снятие для UV-read — F0.5. `RequiresSquareTexel` (ADR-017) оставляет matching для fluid-`Load`. Proof `SwapFieldsPass`.
 
 ### Gray-Scott (M2c.1)
 

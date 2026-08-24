@@ -293,6 +293,9 @@ public abstract class SimPass
     /// </summary>
     public virtual int RepeatCount => 1;
 
+    /// <summary>Fluid operators assume hx == hy (ADR-016 §2.1). Validated at Build.</summary>
+    public virtual bool RequiresSquareTexel => false;
+
     public abstract void Initialize(SimContext context);
     public abstract void Execute(SimContext context, float deltaTime);
 }

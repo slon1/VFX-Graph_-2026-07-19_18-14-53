@@ -1,6 +1,6 @@
 # TechDebt.md — накопленный технический бэклог
 
-**Дата создания:** 2026-08-03 · **Обновлено:** 2026-08-23 (F0.4 + ADR-016)  
+**Дата создания:** 2026-08-03 · **Обновлено:** 2026-08-23 (F1.2 + F1.1 + F0.4 + ADR-016)  
 **Контекст:** накоплено за M2a … M2c.1 + мобильный прогон Gray-Scott (Samsung и др.), зафиксировано после первого мобильного теста (Samsung S10, Vulkan)
 
 Этот документ — рабочий список отложенных задач: реальных багов, известных ограничений и roadmap-пунктов, приоритет которых изменился по итогам тестирования. Не всё здесь срочно — приоритет и группа явно указаны при каждом пункте.
@@ -14,6 +14,8 @@
 - ~~**Численная проверка `DiffuseField` (ручной MCP)**~~ — сохранение суммы, максимум-принцип, CFL при `r=0.5`, сверка с CPU 5-point. **Автотест:** `HarnessDiffuseTests` (ADR-014).
 - ~~**Мёртвый null-coalescing `fields ?? new FieldSet()`**~~ — в `SimContext` уже `?? throw new ArgumentNullException` (`SimContext.cs:58`). F0.4.
 - ~~**`Releasing render texture that is set to be RenderTexture.active!` (Editor play in/out)**~~ — `FieldSet.Release` снимает `RenderTexture.active` перед `rt.Release()`. Compute-очистка полей вместо `SetRenderTarget` — отдельное направление, см. C ниже. Android pause/resume после фикса стоит перепроверить, но тот же путь Release.
+- ~~**Precision `fluidD`**~~ — F1.1 / ADR-017: дескриптор `R32_SFloat`, не общий `R16_SFloat` Scalar-полей. Зафиксировано тестом `DivergenceFieldPassTests`.
+- ~~**Precision `fluidPhi`**~~ — F1.2 / ADR-018: дескриптор `R32_SFloat`, как `fluidD`. Зафиксировано тестом `JacobiPhiPassTests` (4.5).
 
 ---
 
@@ -77,6 +79,8 @@
 8b. **`BoxBounds` Bounce при `extents.y = 0`.** Wrap (F0.4) оставляет ось нетронутой. Bounce по-прежнему зажимает `p.y` в `BoundsCenter.y`, потому что `minCorner == maxCorner`. Для 2D-плоскости обычно безвредно; не считать фикс wrap полным решением.
 
 8c. **Compute-очистка полей** вместо `SetRenderTarget`+`ClearRenderTarget` в `FieldSet.ClearOne`. Сняла бы связь с `RenderTexture.active` целиком, но требует дать `Allocate` доступ к библиотеке кернелов — изменение дизайна, не точечный фикс F0.4.
+
+8d. **Линейный дрейф `mean(Φ)` при `ΣD ≠ 0`.** Формула (ADR-018 §5): `mean(Φ) ← mean(Φ) − mean(D)/4` за итерацию; за кадр при RepeatCount=40 это `10·mean(D)`. Warm-start (`fluidPhi` не очищается) накапливает сдвиг кадр за кадром. На `u = u* − ∇Φ` константа не влияет, но мантисса `R32_SFloat` исчерпывается при удержании касания. **Известно, не устранено, блокер перед F1.6** (не перед F1.3/F1.4). Следующий тикет: **F1.2b** — zero-mean projection `fluidD` (reduction через `InterlockedAdd` fixed-point аккумулятор по образцу P2G, ADR-002).
 
 ---
 

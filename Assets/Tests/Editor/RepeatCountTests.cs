@@ -132,6 +132,13 @@ public class RepeatCountTests
     [Test]
     public void AllConcreteSimPasses_DefaultRepeatCountIsOne()
     {
+        // Solvers with a documented default other than 1. Next solver is added here explicitly.
+        System.Collections.Generic.Dictionary<string, int> solverDefaults =
+            new System.Collections.Generic.Dictionary<string, int>
+            {
+                { nameof(JacobiPhiPass), 40 },
+            };
+
         Type[] types = typeof(SimPass).Assembly.GetTypes();
         int checkedCount = 0;
         for (int i = 0; i < types.Length; i++)
@@ -154,12 +161,15 @@ public class RepeatCountTests
                 return;
             }
 
-            Assert.AreEqual(1, pass.RepeatCount, type.Name);
+            int expected = solverDefaults.TryGetValue(type.Name, out int documented)
+                ? documented
+                : 1;
+            Assert.AreEqual(expected, pass.RepeatCount, type.Name);
             checkedCount++;
         }
 
         Assert.That(checkedCount, Is.GreaterThan(0), "expected concrete SimPass types in the runtime assembly");
-        TestContext.WriteLine($"RepeatCount default 1 on {checkedCount} concrete SimPass types");
+        TestContext.WriteLine($"RepeatCount defaults checked on {checkedCount} concrete SimPass types");
     }
 
     [Test]
