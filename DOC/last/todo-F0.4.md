@@ -141,4 +141,5 @@ DoD: предупреждение не появляется при входе и
 - Particle-харнес и readback SoA-буферов.
 - `ClampFieldPass`, MacCormack/BFECC, замена VFX Graph — отдельные тикеты.
 - Clamp `deltaTime` — F0.7.
-- Снятие ограничения на совпадение разрешений у multi-role read-полей — F0.6.
+- Снятие matching Resolution для UV-read в `ValidateMatchingFieldGeometry` (поправка ADR-008) — F0.5.
+- Per-role `FieldParams` / `Load` с чужой сетки — F0.6.

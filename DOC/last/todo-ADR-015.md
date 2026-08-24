@@ -2,7 +2,7 @@
 
 ### Контекст
 
-Прочитать [ADR-015](../ADR/ADR-015-World-Owned-Repeat-Loop.md). Второй тикет фазы 0. Разблокирует `JacobiPressurePass`: без цикла итерационный решатель в фреймворк не ложится.
+Прочитать [ADR-015](../ADR/ADR-015-World-Owned-Repeat-Loop.md). Второй тикет фазы 0. Разблокирует `JacobiPhiPass`: без цикла итерационный решатель в фреймворк не ложится.
 
 Правки production-кода здесь **разрешены** (в отличие от ADR-014) и ограничены тремя местами: одно свойство в `SimPass`, цикл в `SimulationWorld.Update`, валидатор + его вызов в `Build`.
 
@@ -33,7 +33,7 @@
 public virtual int RepeatCount => 1;
 ```
 
-`virtual` property, **без** `[SerializeField]` в базе — обоснование в ADR-015 §1. Никакой существующий пасс это свойство не переопределяет: этот тикет вводит только механизм, `JacobiPressurePass` придёт в фазе F1.
+`virtual` property, **без** `[SerializeField]` в базе — обоснование в ADR-015 §1. Никакой существующий пасс это свойство не переопределяет: этот тикет вводит только механизм, `JacobiPhiPass` придёт в фазе F1.
 
 ### Шаг 2 — цикл в `SimulationWorld.Update`
 
@@ -96,7 +96,7 @@ void RunPass(SimPass pass, float deltaTime, int repeat);  // явное пере
 
 ### Вне скоупа
 
-- `JacobiPressurePass` и любые fluid-пассы — фаза F1.
+- `JacobiPhiPass` и любые fluid-пассы — фаза F1.
 - Субшаги по времени, clamp `deltaTime` — F0.7.
 - Точечные фиксы `!Enabled`, render target, NaN-guard'ы и четыре красных теста — F0.4.
 - Переопределение `RepeatCount` в существующих пассах — ни в одном.

@@ -4,8 +4,8 @@ using System.Collections.Generic;
 /// <summary>
 /// Build-time check that every enabled pass has RepeatCount ≥ 1 (ADR-015 §4).
 /// Disabled passes are skipped, matching Update / Initialize / accum allocation.
-/// Revisit when F0.4 initializes disabled passes — validation of disabled
-/// RepeatCount becomes meaningful only after that.
+/// F0.4 confirmed the four red tests were the VfxParticleBinder guard, not
+/// missing Initialize on disabled passes — disabled RepeatCount stays unvalidated.
 /// </summary>
 internal static class RepeatCountValidator
 {

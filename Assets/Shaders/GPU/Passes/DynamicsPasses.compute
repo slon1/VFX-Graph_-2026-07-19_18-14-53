@@ -44,9 +44,13 @@ float3 ReflectVelocity(float3 v, float3 n, float bounce, float friction)
     return tangential * (1.0 - friction) - n * (vn * bounce);
 }
 
-bool TinyOrNan(float len)
+// Finite-only unit vector. Zero (180° lerp) takes fallback. Does not detect NaN:
+// fast-math may fold isnan / (x != x), and Show compiled code already evaluates
+// both ternary sides (unconditional div). rsqrt arg is clamped off zero.
+float3 UnitOr(float3 v, float3 fallback)
 {
-    return isnan(len) || !(len > 1e-6);
+    float lenSq = dot(v, v);
+    return (lenSq > 1e-12) ? (v * rsqrt(max(lenSq, 1e-12))) : fallback;
 }
 
 [numthreads(THREADS, 1, 1)]
@@ -81,26 +85,14 @@ void HeadingSteer(uint3 id : SV_DispatchThreadID)
 
     float3 force = velocity[id.x];
     float3 h = heading[id.x];
-    float forceLen = length(force);
-    float hLen = length(h);
-
-    // TinyOrNan: !(len > eps) so IEEE NaN takes the safe branch, plus isnan
-    // because compute fast-math can make NaN > x true. Heading lives across
-    // frames — must recover from an already-infected buffer, not only avoid
-    // creating NaN on this dispatch.
-    float3 desired = TinyOrNan(forceLen)
-        ? (TinyOrNan(hLen) ? float3(1, 0, 0) : h / hLen)
-        : (force / forceLen);
-
-    h = TinyOrNan(hLen) ? desired : (h / hLen);
+    float3 desired = UnitOr(force, UnitOr(h, float3(1, 0, 0)));
+    h = UnitOr(h, desired);
 
     float k = saturate(TurnSpeed * DeltaTime);
     float3 blended = lerp(h, desired, k);
-    float blendedLen = length(blended);
-    h = TinyOrNan(blendedLen) ? desired : (blended / blendedLen);
+    h = UnitOr(blended, desired);
     h.y = 0.0;
-    float flat = length(h);
-    h = TinyOrNan(flat) ? float3(1, 0, 0) : (h / flat);
+    h = UnitOr(h, float3(1, 0, 0));
 
     heading[id.x] = h;
     velocity[id.x] = h * CruiseSpeed;
