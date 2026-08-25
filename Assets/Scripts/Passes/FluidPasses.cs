@@ -135,3 +135,116 @@ public sealed class SubtractPhiGradientPass : FieldKernelPass
             ref fieldWritesCache, velocityField,
             FieldAccess.WriteInPlace, FieldSemantic.Velocity, 2, FieldSlotRole.A);
 }
+
+/// <summary>
+/// Subtract mean(D) over all texels so Jacobi sees a compatible Neumann RHS (ADR-018 §5.1).
+/// Three kernels in one Execute; not FieldKernelPass (sealed single-kernel Execute).
+/// </summary>
+[Serializable]
+public sealed class ZeroMeanScalarPass : SimPass, IDisposable
+{
+    private const float Bias = 256f;
+    private const int FieldThreads = 8;
+
+    [SerializeField] private string scalarField = "fluidD";
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+    private KernelHandle clearKernel;
+    private KernelHandle accumKernel;
+    private KernelHandle applyKernel;
+    private GraphicsBuffer meanAccum;
+    private FieldDescriptor descriptor;
+    private int texelCount;
+    private int scale;
+    private int meanAccumId;
+    private int meanBiasId;
+    private int meanScaleId;
+    private int texelCountId;
+
+    public string ScalarField
+    {
+        get => scalarField;
+        set => scalarField = value;
+    }
+
+    public int Scale => scale;
+
+    public override string DisplayName => "Zero Mean Scalar";
+    public override PassCategory Category => PassCategory.Transport;
+    public override bool RequiresSquareTexel => false;
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.None;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.None;
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, scalarField,
+            FieldAccess.WriteInPlace, FieldSemantic.Scalar, 1, FieldSlotRole.A);
+
+    public override void Initialize(SimContext context)
+    {
+        clearKernel = context.FindKernel("ZeroMeanClear");
+        accumKernel = context.FindKernel("ZeroMeanAccum");
+        applyKernel = context.FindKernel("ZeroMeanApply");
+        meanAccumId = Shader.PropertyToID("MeanAccum");
+        meanBiasId = Shader.PropertyToID("MeanBias");
+        meanScaleId = Shader.PropertyToID("MeanScale");
+        texelCountId = Shader.PropertyToID("TexelCount");
+
+        descriptor = context.Fields.Get(scalarField).Descriptor;
+        Vector2Int res = descriptor.Resolution;
+        texelCount = res.x * res.y;
+        scale = Mathf.Max(1, (1 << 30) / (2 * texelCount * 256));
+
+        Dispose();
+        meanAccum = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
+    }
+
+    public override void Execute(SimContext context, float deltaTime)
+    {
+        LastExecuteDispatched = false;
+        if (!clearKernel.IsValid || !accumKernel.IsValid || !applyKernel.IsValid ||
+            meanAccum == null || descriptor == null)
+        {
+            return;
+        }
+
+        RenderTexture current = context.Fields.Get(scalarField).Current;
+        Vector2Int res = descriptor.Resolution;
+        int groupsX = (res.x + FieldThreads - 1) / FieldThreads;
+        int groupsY = (res.y + FieldThreads - 1) / FieldThreads;
+
+        context.Cmd.SetComputeBufferParam(
+            clearKernel.Shader, clearKernel.Index, meanAccumId, meanAccum);
+        context.Cmd.DispatchCompute(clearKernel.Shader, clearKernel.Index, 1, 1, 1);
+
+        FieldShaderParams.Push(context.Cmd, accumKernel.Shader, descriptor);
+        context.Cmd.SetComputeFloatParam(accumKernel.Shader, meanBiasId, Bias);
+        context.Cmd.SetComputeFloatParam(accumKernel.Shader, meanScaleId, scale);
+        context.Cmd.SetComputeTextureParam(
+            accumKernel.Shader, accumKernel.Index, SimShaderIds.FieldWriteA, current);
+        context.Cmd.SetComputeBufferParam(
+            accumKernel.Shader, accumKernel.Index, meanAccumId, meanAccum);
+        context.Cmd.DispatchCompute(accumKernel.Shader, accumKernel.Index, groupsX, groupsY, 1);
+
+        FieldShaderParams.Push(context.Cmd, applyKernel.Shader, descriptor);
+        context.Cmd.SetComputeFloatParam(applyKernel.Shader, meanBiasId, Bias);
+        context.Cmd.SetComputeFloatParam(applyKernel.Shader, meanScaleId, scale);
+        context.Cmd.SetComputeIntParam(applyKernel.Shader, texelCountId, texelCount);
+        context.Cmd.SetComputeTextureParam(
+            applyKernel.Shader, applyKernel.Index, SimShaderIds.FieldWriteA, current);
+        context.Cmd.SetComputeBufferParam(
+            applyKernel.Shader, applyKernel.Index, meanAccumId, meanAccum);
+        context.Cmd.DispatchCompute(applyKernel.Shader, applyKernel.Index, groupsX, groupsY, 1);
+
+        LastExecuteDispatched = true;
+    }
+
+    public void Dispose()
+    {
+        if (meanAccum != null)
+        {
+            meanAccum.Dispose();
+            meanAccum = null;
+        }
+    }
+}

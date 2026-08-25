@@ -618,6 +618,18 @@ public sealed class SimulationWorld : MonoBehaviour
         fieldDebugQuadsBinder = null;
         binders.Clear();
 
+        if (effect != null)
+        {
+            IReadOnlyList<SimPass> passes = effect.Passes;
+            for (int i = 0; i < passes.Count; i++)
+            {
+                if (passes[i] is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+        }
+
         fields?.Dispose();
         fields = null;
         particles?.Dispose();

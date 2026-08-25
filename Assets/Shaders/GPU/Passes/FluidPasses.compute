@@ -5,6 +5,9 @@
 #pragma kernel Divergence KERNEL_DIVERGENCE
 #pragma kernel Jacobi KERNEL_JACOBI
 #pragma kernel SubtractPhiGradient KERNEL_SUBTRACT
+#pragma kernel ZeroMeanClear KERNEL_ZEROMEAN
+#pragma kernel ZeroMeanAccum KERNEL_ZEROMEAN
+#pragma kernel ZeroMeanApply KERNEL_ZEROMEAN
 
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
 
@@ -97,5 +100,43 @@ void SubtractPhiGradient(uint3 id : SV_DispatchThreadID)
     float w = LoadClampedPhi(p + int2(-1, 0));
     float2 u = FieldWriteA[p];
     FieldWriteA[p] = u - float2((e - w) * 0.25, (n - s) * 0.25);
+}
+#endif
+
+#ifdef KERNEL_ZEROMEAN
+RWTexture2D<float> FieldWriteA;
+RWStructuredBuffer<uint> MeanAccum;
+float MeanBias;
+float MeanScale;
+uint TexelCount;
+
+[numthreads(1, 1, 1)]
+void ZeroMeanClear(uint3 id : SV_DispatchThreadID)
+{
+    MeanAccum[0] = 0;
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void ZeroMeanAccum(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+        return;
+
+    float d = FieldWriteA[id.xy];
+    d = clamp(d, -MeanBias, MeanBias);
+    float x = (d + MeanBias) * MeanScale;
+    x = (x == x) ? x : MeanBias * MeanScale; // NaN → encode 0
+    InterlockedAdd(MeanAccum[0], (uint)(x + 0.5));
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void ZeroMeanApply(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+        return;
+
+    float mean = (float)MeanAccum[0] / (MeanScale * (float)TexelCount) - MeanBias;
+    int2 p = int2(id.xy);
+    FieldWriteA[p] = FieldWriteA[p] - mean;
 }
 #endif
