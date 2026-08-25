@@ -442,7 +442,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 50
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -601,6 +601,7 @@ VisualEffect:
   m_StartSeed: 0
   m_ResetSeedOnPlay: 1
   m_AllowInstancing: 1
+  m_ReleaseInstanceOnDisable: 0
   m_ResourceVersion: 1
   m_PropertySheet:
     m_Float:
@@ -669,7 +670,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40024deb4f1f31e45bc61e845729cb9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationWorld
-  effect: {fileID: 11400000, guid: b87bc6b0bfe10934fb29d2f5b5545cec, type: 2}
+  effect: {fileID: 11400000, guid: 24ee52b954a36954ca731d6c826ae3dd, type: 2}
   passLibrary:
   - {fileID: 7200000, guid: a60dea895cfede043bc140022ff70824, type: 3}
   - {fileID: 7200000, guid: d11bdaf5caad3f14aba4b9f99bf511b7, type: 3}
@@ -678,9 +679,11 @@ MonoBehaviour:
   - {fileID: 7200000, guid: 95410a6f9ab44e5468121b290629b759, type: 3}
   - {fileID: 7200000, guid: a8c3e7f1b2d94e6a9f0c4d5e6a7b8c9d, type: 3}
   - {fileID: 7200000, guid: b9d4f8e2c3a05f7b1e2d6c8a9f0b1c2d, type: 3}
-  - {fileID: 7200000, guid: a8c3e1f0b4d27e9c5a1f8b0d3e4c5a6b, type: 3}
   - {fileID: 7200000, guid: d2f6b0a4e5c27b9d3a4f8e0c1b2d3e4f, type: 3}
+  - {fileID: 7200000, guid: a8c3e1f0b4d27e9c5a1f8b0d3e4c5a6b, type: 3}
+  - {fileID: 7200000, guid: 43d00879d4388144a94b1b85fa343bac, type: 3}
   - {fileID: 7200000, guid: 9ab85ac9b40bc2c40984dd61637621b3, type: 3}
+  - {fileID: 7200000, guid: 2a9f7d5b3c1e4084b6d8e0f2a4c61975, type: 3}
   - {fileID: 7200000, guid: a7c4e2f19b8d4e6a9f0c3d5e7b1a8246, type: 3}
   - {fileID: 7200000, guid: e3b7c1a04f8d2e6b9a5c0d4e8f1a2735, type: 3}
   visualEffect: {fileID: 1583680167}
