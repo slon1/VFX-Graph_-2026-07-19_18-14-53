@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-08-23 (ADR-016 единицы по семействам)
+**Снимок:** 2026-08-25 (F1.7 AdvectScalar + пресет Fluid2D)
 
 ---
 
@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | Reaction-diffusion, boids-диффузия | **texel**: лапласиан `N+S+E+W−4C` без `/h²` | `DiffuseField`, `DiffuseVelocityField`, `GrayScott` |
 | G2P-градиент | **UV**: центральные разности в UV, без деления на `Size` | `SampleGradientField`, `AddNormalizedGradientField` |
-| Fluid | **world**: `vel·dt/Size` в адвекции; проекция F1 без `h` при квадратном текселе | `AdvectVelocityField` + все пассы F1 |
+| Fluid | **world**: `vel·dt/Size` в адвекции; проекция F1 без `h` при квадратном текселе | `AdvectVelocityField`, `AdvectScalar` + все пассы F1 |
 
 `DiffuseVelocityField` — не вязкость. Поля проекции F1: `fluidD`, `fluidPhi` (Scalar, world/s); Φ не называть давлением. `RequiresSquareTexel` реализован (F1.1 / ADR-017). `fluidD` и `fluidPhi` — `R32_SFloat`.
 
@@ -53,7 +53,7 @@
 | `ShapePasses.compute` | CopyRest, Twist, SpringToRest |
 | `ForcePasses.compute` | Gravity, Drag, Vortex, Attractor/Repulsor, Noise, CurlNoise, Turbulence, TouchForce |
 | `DynamicsPasses.compute` | Integrate, **ClearVelocity**, **HeadingSteer**, SpeedLimit, Plane/Sphere/BoxBounds |
-| `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **DiffuseVelocityField**, **AdvectVelocityField** |
+| `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **DiffuseVelocityField**, **AdvectVelocityField**, **AdvectScalar** |
 | `P2GPasses.compute` | ClearUintBuffer, ScatterVelocity, NormalizeVelocityAccum |
 | `DensityPasses.compute` | ScatterDensity, NormalizeDensityAccum |
 | `GradientPasses.compute` | SampleGradient, **AddNormalizedGradient** |
@@ -63,7 +63,7 @@
 | `GrayScottPasses.compute` | GrayScottReact, SeedScalarDisk |
 | `TouchGrayScottPasses.compute` | TouchInjectGrayScott |
 | `AgentFieldFeedbackPasses.compute` | AgentBoostField, AgentErodeField |
-| `FluidPasses.compute` | Divergence, Jacobi, **Subtract Phi Gradient** |
+| `FluidPasses.compute` | Divergence, Jacobi, **Zero Mean Scalar**, **Subtract Phi Gradient**, **Solid Wall Velocity** |
 
 `ClearFieldPass` и `ClearFieldAccumPass` — **без** своих `.compute` (Clear RT / ClearUintBuffer из P2G).
 
@@ -330,6 +330,18 @@
 | **Хорошо для** | Первый кирпич Stable Fluids. Компактный сгусток в **нулевом** фоне съедает себя с тыла — для переноса пика нужен несущий поток (фон + bump). Dye/pressure — отдельные пассы |
 | **Ограничение** | Semi-Lagrangian bilinear **диссипативен** на off-grid backtrace (не баг). Целочисленный прогон (bump `vx=2` на фоне `1`) peak val Δ=0 — интерполяция вырождается в nearest. **Позиция:** `1.7×8=13.6` — это смещение **пассивного** tracer-а на однородном carrier; bump — лишняя скорость в ту же сторону, поэтому self-advection (Burgers) систематически обгоняет carrier. Бездиссипативный потолок overshoot для 2D-гауссиана: `N·A/2` (amp=0.05, 8 шагов → **0.200**); диссипация может только уменьшать. Геометрия автотеста: `64²`, `Size=64`, `dt=1`, центр `(20.5, 32.5)`, Gaussian `σ=1.5`, 8 шагов. amp=0.05 → overshoot **0.100** на `R32G32F` (внутри (0, 0.200)); на боевом `R16G16F` overshoot **0.26 > 0.200** — half непригоден для этого измерения, жёстче оценки шума `±0.1`. MCP `13.75` не подтверждён. amp=1 → dCom=+14.94 / dPeak=+16 (overshoot +1.3). Пик на широком профиле скачет по целым текселям; COM надёжнее. MacCormack/BFECC — отдельный тикет |
 
+### Advect Scalar
+| | |
+|--|--|
+| **Назначение** | Пассивный tracer: `dye_next = sample(dye, saturate(uv − u·dt/Size)) * Dissipation` (не self-advection) |
+| **Библиотека / kernel** | `FieldPasses` / `AdvectScalar` (`#ifdef KERNEL_ADVECTSCALAR`) |
+| **Fields** | WritePingPong Scalar ×1 Role A (`dye`); Read Velocity ×2 Role B (`velocity`). Слоты `FieldReadA`/`FieldWriteA`/`FieldReadB` |
+| **Параметры** | `scalarField` (`dye`), `velocityField` (`velocity`, не `flockVel`), `dissipationRate` (0 = выкл; CPU `exp(−rate·dt)`) |
+| **dt** | Да (backtrace и dissipation); UV clamp `saturate` (нет wrap; масса может налипать на рамку) |
+| **Единицы** | **world** (ADR-016 §1): `backUv = uv − velocity · dt / Size`. `RequiresSquareTexel` = false |
+| **Хорошо для** | Stam-контур глазами: heatmap dye в пресете Fluid2D после второго SolidWall |
+| **Ограничение** | Bilinear смаз (Techdebt 5). Стен на скаляре нет. F0.5 (dye выше res, чем velocity) нет. Краска тачем — вне скоупа |
+
 ### Divergence
 | | |
 |--|--|
@@ -339,8 +351,8 @@
 | **Параметры** | `velocityField` (default `velocity`, не `flockVel`), `divergenceField` (`fluidD`) |
 | **dt** | Нет |
 | **Единицы** | **world** (ADR-016 §2): `D = 2h·div`; квадратный тексель обязателен (`RequiresSquareTexel`) |
-| **Граница** | clamp-продолжение поля через `Load`, не истинная дивергенция; истинные граничные условия — F1.4 |
-| **Хорошо для** | Первый кернел fluid-проекции; не подключён к demo-пресетам (Fluid2D — F1.6) |
+| **Граница** | clamp-продолжение поля через `Load` у Divergence; непроницаемая рамка — `SolidWallVelocityPass` (F1.4), не этот кернел |
+| **Хорошо для** | Первый кернел fluid-проекции; в пресете Fluid2D после SeedScalarDisk |
 
 ### Jacobi
 | | |
@@ -352,9 +364,21 @@
 | **RepeatCount** | `iterations` (дефолт 40). Первый пасс, переопределяющий ADR-015 |
 | **dt** | Нет (итерации решателя на одном временном слое, не субшаги) |
 | **Единицы** | **world** (ADR-016 §2); квадратный тексель обязателен (`RequiresSquareTexel`) |
-| **Warm-start** | `fluidPhi` не очищается перед Jacobi, наследует результат предыдущего кадра; дрейф `mean(Φ)` при `ΣD ≠ 0` — Techdebt / **F1.2b** (блокер перед F1.6) |
+| **Warm-start** | `fluidPhi` не очищается перед Jacobi, наследует результат предыдущего кадра; дрейф `mean(Φ)` при `ΣD ≠ 0` — **устранено F1.2b** (`ZeroMeanScalarPass` до Jacobi) |
 | **Граница** | clamp-продолжение Φ через `Load`; `D` читается без clamp |
-| **Хорошо для** | Poisson Φ в fluid-проекции; не подключён к demo-пресетам (Fluid2D — F1.6) |
+| **Хорошо для** | Poisson Φ в fluid-проекции; в пресете Fluid2D после ZeroMean, Iterations=40 |
+
+### Zero Mean Scalar
+| | |
+|--|--|
+| **Назначение** | `D ← D − mean(D)` по всем текселям до Jacobi (условие разрешимости Neumann, ADR-018 §5.1) |
+| **Библиотека / kernel** | `FluidPasses` / `ZeroMeanClear`, `ZeroMeanAccum`, `ZeroMeanApply` (`#ifdef KERNEL_ZEROMEAN`) |
+| **Fields** | WriteInPlace Scalar ×1 Role A (`fluidD`). Слот `FieldWriteA`; `FieldReadA` нет. Три кернела в одном `Execute` |
+| **Параметры** | `scalarField` (default `fluidD`). Bias=256, Scale от N. Не инспекторские |
+| **RepeatCount** | 1 (не переопределён) |
+| **dt** | Нет |
+| **Единицы** | среднее без `h`; `RequiresSquareTexel` = false |
+| **Хорошо для** | Совместная правая часть Jacobi при `ΣD ≠ 0`; в пресете Fluid2D между Divergence и Jacobi |
 
 ### Subtract Phi Gradient
 | | |
@@ -366,8 +390,20 @@
 | **RepeatCount** | 1 (не переопределён) |
 | **dt** | Нет |
 | **Единицы** | **world** (ADR-016 §2); квадратный тексель обязателен (`RequiresSquareTexel`) |
-| **Граница** | clamp-продолжение Φ через `Load`; истинные непроницаемые BC — F1.4 |
-| **Хорошо для** | Замыкание Stam-проекции; не подключён к demo-пресетам (Fluid2D — F1.6). Zero-mean `fluidD` — **F1.2b**, блокер пресета, не этого пасса |
+| **Граница** | clamp-продолжение Φ через `Load`; непроницаемая рамка скорости — `SolidWallVelocityPass` после Subtract (и снова после Advect) |
+| **Хорошо для** | Замыкание Stam-проекции; в пресете Fluid2D после Jacobi, перед SolidWall. Zero-mean `fluidD` — `ZeroMeanScalarPass` перед Jacobi |
+
+### Solid Wall Velocity
+| | |
+|--|--|
+| **Назначение** | Free-slip: `u·n = 0` на рамке после Subtract (`x∈{0,N−1}` → `u.x=0`, `y∈{0,N−1}` → `u.y=0`, угол → `(0,0)`; интерьер не трогает) |
+| **Библиотека / kernel** | `FluidPasses` / `SolidWallVelocity` (`#ifdef KERNEL_SOLIDWALL`) |
+| **Fields** | WriteInPlace Velocity ×2 Role A (`velocity`). Слот `FieldWrite` (single-role), не `FieldWriteA`. `FieldReads` пустой |
+| **Параметры** | `velocityField` (default `velocity`, не `flockVel`) |
+| **RepeatCount** | 1 (не переопределён) |
+| **dt** | Нет |
+| **Единицы** | тот же fluid-грид, что проекция; `h` в формуле нет; квадратный тексель обязателен (`RequiresSquareTexel`) |
+| **Хорошо для** | Непроницаемая рамка Stam. В пресете Fluid2D — после Subtract и ещё раз после Advect |
 
 ### SampleGradientField (G2P)
 | | |
@@ -516,6 +552,8 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 
 **Gray-Scott-Agents:** Curl/Drag/Limit/Integrate/Bounds → presence Replace → Seed → GS×N → Boost/Erode → Touch — **без** flock-полей и SampleVelocity/Gradient (поле не рулит частицами)
 
+**Fluid2D ([ADR-022](ADR/ADR-022-Fluid2D-Preset.md) + [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md)):** `TouchInjectVelocity → SeedScalarDisk(dye) → Divergence → ZeroMeanScalar → Jacobi×40 → SubtractPhiGradient → SolidWallVelocity → Advect velocity → SolidWallVelocity → AdvectScalar` (`Assets/Effects/Fluid2D.asset`, меню Create/Assign, InputRouter=GroundXZ, quads velocity+dye)
+
 ---
 
 ## Источники частиц (`DataSourceKind`)
@@ -523,7 +561,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 | Kind | Назначение |
 |------|------------|
 | Cube / Mesh / Bitmap | Заполняют `restPosition` (и capacity) |
-| **None** | 0 частиц — field-only (Gray-Scott и т.п.); particle-пассы no-op; VFX SpawnCount=0 |
+| **None** | 0 частиц — field-only (Gray-Scott, **Fluid2D**); particle-пассы no-op; VFX SpawnCount=0 |
 
 ---
 
@@ -546,6 +584,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 | `ForcePasses.cs` | `ForcePasses.compute` |
 | `DynamicsPasses.cs` | `DynamicsPasses.compute` |
 | `FieldPasses.cs` | `FieldPasses`, `Diffuse`, `Decay`, `MultiFieldTest`, `GrayScott`, `TouchGrayScott`, `AgentFieldFeedback` |
+| `FluidPasses.cs` | `FluidPasses` (Divergence / ZeroMean / Jacobi / Subtract / SolidWall) |
 | `P2GPasses.cs` | `P2GPasses`, `DensityPasses` |
 | G2P gradient | `GradientPasses.compute` |
 

@@ -111,4 +111,7 @@ for i in 0 .. repeat-1:
 | ADR-016 | F0.3 | Единицы по семействам пассов: RD/boids — texel-Laplacian, Gradient — UV, fluid-контур — world; масштабирование `D = div·h`, `Q = q/h` |
 | ADR-018 | F1.2 | JacobiPhiPass: multi-role (fluidPhi/fluidD), RepeatCount-решатель, DoD на невязке |
 | ADR-020 | F1.3 | SubtractPhiGradientPass: WriteInPlace velocity − ∇Φ; цепочка Divergence→Jacobi→Subtract, DoD k=8 ≥3× |
-| ADR-019 | F1.7 | Fluid2D solver, постфактум: collocated cell-centered, итерации, precision, BC, шахматная мода как known limitation |
+| ADR-021 | F1.4 | SolidWallVelocityPass: u·n = 0 на рамке после Subtract, free-slip |
+| ADR-022 | F1.6 | Fluid2D EffectAsset: Touch → project → wall → advect → wall; калибровка Jacobi/Bias |
+| ADR-023 | F1.7 | AdvectScalarPass: пассивный dye по velocity; Seed + проводка Fluid2D |
+| ADR-019 | после F1.7 | Fluid2D solver, постфактум: collocated cell-centered, итерации, precision, BC, шахматная мода как known limitation |

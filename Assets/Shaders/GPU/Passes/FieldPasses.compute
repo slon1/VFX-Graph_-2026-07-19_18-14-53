@@ -1,8 +1,6 @@
-// Field passes: inject / decay / sample.
-// Texture slots are fixed (single-field-per-kernel):
-//   FieldRead  = SRV (Current for Read / WritePingPong source)
-//   FieldWrite = UAV (Current for WriteInPlace, Next for WritePingPong)
-// Multi-field-per-kernel binding is M2c (not yet).
+// Field passes: inject / decay / sample / advect.
+// KERNEL_ADVECTSCALAR isolates FieldReadA (float dye) from legacy FieldRead (float2).
+// Existing kernels stay behind #ifndef: Unity compiles the whole file per #pragma kernel.
 
 #pragma kernel TouchInjectVelocity
 #pragma kernel DecayField
@@ -11,6 +9,7 @@
 #pragma kernel AddNormalizedVelocityField
 #pragma kernel DiffuseVelocityField
 #pragma kernel AdvectVelocityField
+#pragma kernel AdvectScalar KERNEL_ADVECTSCALAR
 
 #include "Assets/Shaders/GPU/Includes/Touch.hlsl"
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
@@ -18,19 +17,22 @@
 #define FIELD_THREADS 8
 #define PARTICLE_THREADS 64
 
-Texture2D<float2> FieldRead;
-RWTexture2D<float2> FieldWrite;
 SamplerState sampler_linear_clamp;
 
 float DeltaTime;
 float DiffusionRate;
 float Dissipation; // precomputed exp(-rate * dt) on CPU; 1 = off
 
-// --- TouchInjectVelocity (WriteInPlace) ---
+// --- TouchInjectVelocity uniforms (shared; kernel body is #ifndef) ---
 StructuredBuffer<TouchForce> Touches;
 uint TouchCount;
 float MaxFieldSpeed; // <= 0 = unlimited
 
+#ifndef KERNEL_ADVECTSCALAR
+Texture2D<float2> FieldRead;
+RWTexture2D<float2> FieldWrite;
+
+// --- TouchInjectVelocity (WriteInPlace) ---
 [numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
 void TouchInjectVelocity(uint3 id : SV_DispatchThreadID)
 {
@@ -207,3 +209,28 @@ void AdvectVelocityField(uint3 id : SV_DispatchThreadID)
     float2 advected = FieldRead.SampleLevel(sampler_linear_clamp, backUv, 0);
     FieldWrite[id.xy] = advected * Dissipation;
 }
+#endif
+
+#ifdef KERNEL_ADVECTSCALAR
+Texture2D<float> FieldReadA;      // dye Current
+RWTexture2D<float> FieldWriteA;   // dye Next
+Texture2D<float2> FieldReadB;     // velocity
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void AdvectScalar(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    float2 uv = (float2(id.xy) + 0.5) * FieldTexelSize;
+    float2 vel = FieldReadB.SampleLevel(sampler_linear_clamp, uv, 0);
+
+    float2 backUv = uv - (vel * DeltaTime) / FieldSize;
+    backUv = saturate(backUv);
+
+    float sampled = FieldReadA.SampleLevel(sampler_linear_clamp, backUv, 0);
+    FieldWriteA[id.xy] = sampled * Dissipation;
+}
+#endif

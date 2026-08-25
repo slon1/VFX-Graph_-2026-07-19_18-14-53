@@ -1,11 +1,11 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-08-25  
-**Итерация:** 5.17 — F1.3 SubtractPhiGradientPass (готово, DoD k=8 ≥3×)  
-**Проект:** Unity `6000.4.3f1` / URP / VFX Graph 17.x  
+**Итерация:** 5.21 — F1.7 AdvectScalarPass закрыт; Stam-minimum F1 (кроме ADR-019) готов  
+**Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -142,25 +142,43 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 
 ---
 
+## F1.7 — AdvectScalarPass (готово)
+
+`AdvectScalarPass` в `FieldPasses.compute` (`#ifdef KERNEL_ADVECTSCALAR`): пассивный `dye_next = sample(dye, saturate(uv − u·dt/Size)) * Dissipation`. Dye WritePingPong A, velocity Read B. Пресет Fluid2D: Seed после Touch, AdvectScalar после второго SolidWall; dye R16, 128², dye-quad. Тесты 3.1–3.5: dCOM_x=7.99997902 (ожидание 8), velocity bitwise, odd-even интерьера **не виден**. F0.5 / краска тачем / MAC — вне скоупа.
+
+---
+
+## F1.6 — Fluid2D пресет (готово)
+
+`Assets/Effects/Fluid2D.asset`: Source None, 128² Size 32, XZ, `velocity` R16G16 / `fluidD`+`fluidPhi` R32 / `dye` R16. Живая цепочка (F1.6+F1.7): Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×**40** → Subtract → SolidWall → Advect(`velocity`, DissipationRate=0) → SolidWall → AdvectScalar. Quads: velocity `colorScale=0.125`, dye heatmap. Меню `Create Fluid2D Effect` / `Assign Fluid2D To Scene` (visualEffect не снимать, GroundXZ). Калибровка: Bias=256 хватило (MaxFieldSpeed=20, удержание ~10 с, Inf/NaN нет). Тест: `Fluid2DPresetTests` (не GPU).
+
+---
+
+## F1.4 — SolidWallVelocityPass (готово)
+
+`SolidWallVelocityPass` в `FluidPasses.compute` (`#ifdef KERNEL_SOLIDWALL`): free-slip `u·n = 0` на рамке, WriteInPlace Role A на `velocity`, слот `FieldWrite` (не `FieldWriteA`). Пуассон и ZeroMean не меняются. Тесты 3.1–3.3 зелёные (изолированный харнес только `velocity`). В пресете Fluid2D — после Subtract и ещё раз после Advect.
+
+---
+
 ## F1.3 — SubtractPhiGradientPass (готово)
 
-`SubtractPhiGradientPass` в `FluidPasses.compute` (`#ifdef KERNEL_SUBTRACT`): `u ← u* − ((ΦE−ΦW)/4, (ΦN−ΦS)/4)`, WriteInPlace Role A на `velocity`, Read Role B на `fluidPhi`, `u*` из `FieldWriteA`. Тесты 3.1–3.6 зелёные. Цепочка 3.6, k=8, Jacobi×40, 64² Size=32: meanD=−0.0478352606, |mean|/max=0.0183057487, maxBefore=2.61312771, maxAfter=0.58626616, **ratio=4.45723772** (≥3×). Исторически k=8 давал 4.46× на пороге 10× (красный), k=12 — 2.49×. Не подключён к demo-пресетам.
+`SubtractPhiGradientPass` в `FluidPasses.compute` (`#ifdef KERNEL_SUBTRACT`): `u ← u* − ((ΦE−ΦW)/4, (ΦN−ΦS)/4)`, WriteInPlace Role A на `velocity`, Read Role B на `fluidPhi`, `u*` из `FieldWriteA`. Тесты 3.1–3.6 зелёные. Цепочка 3.6, k=8, Jacobi×40, 64² Size=32: meanD=−0.0478352606, |mean|/max=0.0183057487, maxBefore=2.61312771, maxAfter=0.58626616, **ratio=4.45723772** (≥3×). Исторически k=8 давал 4.46× на пороге 10× (красный), k=12 — 2.49×. В пресете Fluid2D после Jacobi, перед SolidWall.
 
 ---
 
 ## F1.2 — JacobiPhiPass (готово)
 
-`JacobiPhiPass` в `FluidPasses.compute` (`#ifdef KERNEL_JACOBI`): `ΦC ← (ΦN+ΦS+ΦE+ΦW − D)/4`, WritePingPong Role A на `fluidPhi`, Read Role B на `fluidD`. `RepeatCount = iterations` (дефолт 40). `fluidPhi` = `R32_SFloat`. Тесты: `JacobiPhiPassTests`. Не подключён к demo-пресетам.
+`JacobiPhiPass` в `FluidPasses.compute` (`#ifdef KERNEL_JACOBI`): `ΦC ← (ΦN+ΦS+ΦE+ΦW − D)/4`, WritePingPong Role A на `fluidPhi`, Read Role B на `fluidD`. `RepeatCount = iterations` (дефолт 40). `fluidPhi` = `R32_SFloat`. Тесты: `JacobiPhiPassTests`. В пресете Fluid2D после ZeroMean, Iterations=40.
 
-### F1.2b — zero-mean projection `fluidD` (открыт, блокер перед F1.6)
+### F1.2b — ZeroMeanScalarPass (готово)
 
-Вычитание `mean(D)` до Jacobi, чтобы при `ΣD ≠ 0` не копился дрейф `mean(Φ)` (ADR-018 §5). Подход: reduction через `InterlockedAdd` fixed-point аккумулятор по образцу P2G (ADR-002). Не блокер F1.3/F1.4.
+`ZeroMeanScalarPass` в `FluidPasses.compute` (`#ifdef KERNEL_ZEROMEAN`): `D ← D − mean(D)` по всем текселям, три кернела в одном Execute (Clear / Accum / Apply), WriteInPlace Role A на `fluidD`, InterlockedAdd uint с Bias=256. Не `FieldAccumBuffer`. Тесты 3.1–3.5 зелёные. 64²: Scale=512; 3.1 meanBefore=1 meanAfter=0 maxAbsAfter=0; 3.4 meanD_after=0 meanPhi=0; 3.5 meanPhi1=0 meanPhi2=0. В пресете Fluid2D между Divergence и Jacobi. World на Teardown вызывает `Dispose` у пассов (`GraphicsBuffer` mean).
 
 ---
 
 ## F1.1 — DivergenceFieldPass + RequiresSquareTexel (готово)
 
-`SimPass.RequiresSquareTexel` + `SquareTexelValidator` на Build: (a) квадратный тексель, (b) совпадающее Resolution на всех полях пасса (переопределяет послабление `ValidatePassFieldCoordinates`). `DivergenceFieldPass` в `FluidPasses.compute`: `D = uE.x − uW.x + uN.y − uS.y`, clamp-граница, `fluidD` = `R32_SFloat`. Тесты: `DivergenceFieldPassTests`. Не подключён к demo-пресетам.
+`SimPass.RequiresSquareTexel` + `SquareTexelValidator` на Build: (a) квадратный тексель, (b) совпадающее Resolution на всех полях пасса (переопределяет послабление `ValidatePassFieldCoordinates`). `DivergenceFieldPass` в `FluidPasses.compute`: `D = uE.x − uW.x + uN.y − uS.y`, clamp-граница, `fluidD` = `R32_SFloat`. Тесты: `DivergenceFieldPassTests`. В пресете Fluid2D после Seed(dye).
 
 ---
 
@@ -173,15 +191,16 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 ## Файлы (ключевые)
 
 ```
-Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, AdvectVelocity, …), FluidPasses.cs (Divergence, Jacobi, SubtractPhiGradient), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
+Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, AdvectVelocity, AdvectScalar, …), FluidPasses.cs (Divergence, Jacobi, ZeroMeanScalar, SubtractPhiGradient, SolidWallVelocity), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
 Assets/Scripts/Runtime/    SimPass.cs (RepeatCount, RequiresSquareTexel, AttrSets.Heading, SimShaderIds.Dissipation), SimulationWorld.cs, RepeatCountValidator.cs, SquareTexelValidator.cs
 Assets/Shaders/GPU/Passes/ DynamicsPasses, FieldPasses, FluidPasses, GradientPasses (AddNormalizedGradient)
-Assets/Tests/Editor/       SubtractPhiGradientPassTests, JacobiPhiPassTests, DivergenceFieldPassTests, RepeatCountTests, FieldTestHarness, HarnessClearTests, HarnessSamplerTests, HarnessDiffuseTests, HarnessAdvectTests, …
-Assets/Scripts/Editor/     Adr012BoidsMk1Setup.cs
+Assets/Tests/Editor/       AdvectScalarPassTests, Fluid2DPresetTests, SolidWallVelocityPassTests, ZeroMeanScalarPassTests, SubtractPhiGradientPassTests, JacobiPhiPassTests, DivergenceFieldPassTests, RepeatCountTests, FieldTestHarness, HarnessClearTests, HarnessSamplerTests, HarnessDiffuseTests, HarnessAdvectTests, …
+Assets/Scripts/Editor/     M3DDemoTools.cs (Create/Assign Fluid2D), Adr012BoidsMk1Setup.cs
+Assets/Effects/            Fluid2D.asset
 ```
 
 ---
 
 ## Вне скоупа (далее)
 
-**F1.2b** zero-mean projection `fluidD` (блокер перед F1.6) · F1.4 BC · F1.6 Fluid2D · Trail/persistence · dye/tracer advection · vorticity confinement · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)
+**ADR-019** Fluid2D solver постфактум (сетка, Jacobi×40, precision, BC, шахматная мода как known limitation) · MAC / Rhie–Chow (триггер — odd-even интерьера на dye; F1.7 не виден) · F0.5 cross-res dye · Trail/persistence · vorticity confinement · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)

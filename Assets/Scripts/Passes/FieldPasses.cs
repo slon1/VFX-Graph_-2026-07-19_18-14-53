@@ -453,6 +453,60 @@ public sealed class AdvectVelocityFieldPass : FieldKernelPass
 }
 
 /// <summary>
+/// Passive scalar tracer: dye_next = sample(dye, saturate(uv − u·dt/Size)) * Dissipation.
+/// WritePingPong Role A on dye; velocity is Read Role B (not rewritten).
+/// </summary>
+[Serializable]
+public sealed class AdvectScalarPass : FieldKernelPass
+{
+    [SerializeField] private string scalarField = "dye";
+    [SerializeField] private string velocityField = "velocity";
+    [SerializeField, Min(0f)] private float dissipationRate = 0f;
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string ScalarField
+    {
+        get => scalarField;
+        set => scalarField = value;
+    }
+
+    public string VelocityField
+    {
+        get => velocityField;
+        set => velocityField = value;
+    }
+
+    public float DissipationRate
+    {
+        get => dissipationRate;
+        set => dissipationRate = value;
+    }
+
+    public override string DisplayName => "Advect Scalar";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "AdvectScalar";
+    public override bool RequiresSquareTexel => false;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, velocityField,
+            FieldAccess.Read, FieldSemantic.Velocity, 2, FieldSlotRole.B);
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, scalarField,
+            FieldAccess.WritePingPong, FieldSemantic.Scalar, 1, FieldSlotRole.A);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+        SetFloat(context, SimShaderIds.Dissipation, Mathf.Exp(-dissipationRate * deltaTime));
+    }
+}
+
+/// <summary>
 /// Hybrid G2P force: central-difference gradient of a scalar field at each particle,
 /// added as acceleration (direction * Strength * dt). Raw finite differences — does not
 /// require or assume prior Diffuse; noisy on sharp/raw fields by design.

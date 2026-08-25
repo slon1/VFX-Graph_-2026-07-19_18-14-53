@@ -2,7 +2,7 @@
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
 **Каталог пассов** (назначение, dt, Pass Library): [`pass-catalog.md`](pass-catalog.md).  
-Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md), [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md), [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md), [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md). План фазы: [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md), [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md), [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md), [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md), [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md)–[`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md), [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md)–[`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md). План фазы: [`plan-stable-fluid.md`](plan-stable-fluid.md) · [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 
@@ -20,8 +20,8 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocityField** (self-advection, ADR-013), **SteerToVelocityField** (Reynolds alignment), **AddNormalized*** + **HeadingSteer** (kinematic boids), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь, **кернелы Stam-проекции** (Divergence / Jacobi / SubtractPhiGradient; пресета Fluid2D нет — F1.6).  
-Пока нет: dye/tracer advection, Fluid2D-пресет, trail/persistence buffer, spatial hash / emitters с lifetime.
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocityField** (self-advection, ADR-013), **AdvectScalar** (пассивный dye, ADR-023), **SteerToVelocityField** (Reynolds alignment), **AddNormalized*** + **HeadingSteer** (kinematic boids), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь, **кернелы Stam-проекции** (Divergence / ZeroMean / Jacobi / SubtractPhiGradient / SolidWallVelocity) и **пресет Fluid2D** (меню Create/Assign, InputRouter = GroundXZ, quads velocity+dye).  
+Пока нет: trail/persistence buffer, spatial hash / emitters с lifetime.
 
 ---
 
@@ -39,9 +39,10 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **Gray-Scott-Boids** — boids + `agentPresence` P2G → Boost/Erode в U/V (plane 50×50; `flockVel` 64 + Steer/DiffuseVelocity).
    - **Boids_mk1** — kinematic field-flocking (ADR-012: AddNormalized* + HeadingSteer; Speed≈20).
    - **Gray-Scott-Agents** — то же one-way: частицы красят GS, поле их не рулит.
-3. Play. Для hybrid / Gray-Scott: InputRouter = **GroundXZ**.
+   - **Fluid2D** — Stam: Touch → Seed(dye) → project → wall → advect(`velocity`) → wall → AdvectScalar (None, XZ, velocity+dye quads).
+3. Play. Для hybrid / Gray-Scott / **Fluid2D**: InputRouter = **GroundXZ**.
 
-Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, **`ADR-012 Reconfigure Boids_mk1`**, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`.  
+Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, **`Create Fluid2D Effect`**, **`ADR-012 Reconfigure Boids_mk1`**, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`, **`Assign Fluid2D To Scene`**.  
 После смены пассов/полей в Play — **Rebuild** на SimulationWorld.  
 Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFeedbackPasses`.
 
@@ -51,6 +52,12 @@ Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFee
 2. Дескрипторы полей на **XZ** (`axisV = Z`), как Hybrid — чтобы совпасть с GroundXZ.
 3. Цепочка: `SeedScalarDisk(V)` → `GrayScottPass` × N → **`TouchInjectGrayScott`**; U clear=1, V clear=0; debug quads на U и V.
 4. Пресет: `Assets/Effects/Gray-Scott.asset`. Для мягкой кисти: `InputRouter.touchStrength ≈ 1` (дефолт 10 ≈ жёсткий диск). Каталог: [`pass-catalog.md`](pass-catalog.md).
+
+### Fluid2D (Stam)
+
+1. Пресет: `Assets/Effects/Fluid2D.asset` (меню `Create Fluid2D Effect` → сразу `Assign Fluid2D To Scene`; InputRouter = GroundXZ).
+2. Цепочка: Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect(velocity) → SolidWall → AdvectScalar.
+3. Debug quads: velocity (`colorScale=0.125`) и dye (heatmap). Play, тач по плоскости XZ. После Create guid часто новый — без Assign слот сцены смотрит в старый ассет.
 
 ### Boids → Gray-Scott
 
@@ -130,6 +137,8 @@ Hybrid (field + particles):
 - сглаживание scalar: `DiffuseFieldPass` — Transport, WritePingPong; CFL `rate·dt ≲ 0.2–0.25`;
 - сглаживание velocity: `DiffuseVelocityFieldPass` — тот же Laplacian на `float2` (`FieldPasses.compute`); 6× на `flockVel` 64×64;
 - self-advection velocity: `AdvectVelocityFieldPass` — Transport, WritePingPong, semi-Lagrangian; `dissipationRate` → `exp(-rate·dt)` на CPU, 0=выкл; ADR-013;
+- пассивный dye: `AdvectScalarPass` — Transport, dye WritePingPong A + velocity Read B; backtrace `uv − u·dt/Size`; ADR-023;
+- Stam projection: `DivergenceFieldPass` → `ZeroMeanScalarPass` → `JacobiPhiPass` → `SubtractPhiGradientPass` → `SolidWallVelocityPass` (`FluidPasses.compute`);
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
 - Gray-Scott: `GrayScottPass` + Seed + TouchInject; boids-гибрид: presence P2G → `AgentBoost`/`AgentErode` (`gain`); N=1–4 React; ADR-009;
 - cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;
@@ -149,5 +158,5 @@ Hybrid (field + particles):
 | P2G SM / Channels validation | `Runtime/FieldAccumPassValidator.cs` |
 | Field descriptor / requests | `Core/FieldDescriptor.cs`, `Core/FieldSet.cs`, `Core/FieldAccumBuffer.cs` |
 | Контракт пасса | `Runtime/SimPass.cs` |
-| Field / P2G / Gradient kernels | `Passes/FieldPasses.cs`, `Passes/P2GPasses.cs`, `Shaders/GPU/Passes/` |
+| Field / P2G / Gradient / Fluid kernels | `Passes/FieldPasses.cs`, `Passes/FluidPasses.cs`, `Passes/P2GPasses.cs`, `Shaders/GPU/Passes/` |
 | Binders | `VfxParticleBinder.cs`, `FieldDebugQuadsBinder.cs` |

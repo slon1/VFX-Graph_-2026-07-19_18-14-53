@@ -38,18 +38,18 @@
 | --- | --- | --- | --- | --- |
 | F1.1 | `DivergenceFieldPass` + `RequiresSquareTexel` | [ADR-017](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) | **Готово** | `D = uE.x − uW.x + uN.y − uS.y` (raw, не `/2h`), clamp-граница. `SquareTexelValidator`: (a) квадратный тексель на каждом поле, (b) совпадающее `Resolution` по всем полям пасса — Build-time, до `Initialize`. `fluidD`: `Scalar`, `R32_SFloat`. Multi-role: `velocity` Read Role A, `fluidD` WriteInPlace Role B. |
 | F1.2 | `JacobiPhiPass` | [ADR-018](ADR/ADR-018-Jacobi-Phi-Pass.md) | **Готово** | `ΦC ← (ΦN+ΦS+ΦE+ΦW − D)/4`. Multi-role: `fluidPhi` WritePingPong Role A, `fluidD` Read Role B (первое чисто read-only использование Role B). `RepeatCount = iterations` (дефолт 40) — первый реальный потребитель F0.1. `fluidPhi`: `Scalar`, `R32_SFloat`. Кернел разведён с `Divergence` через `#ifdef KERNEL_*` в одном `FluidPasses.compute` (типовой конфликт `FieldReadA`: `float2` vs `float`). Класс назван `JacobiPhiPass`, не `JacobiPressurePass` — ADR-016 запрещает называть `Φ` давлением, правило распространено и на имя типа. |
-| F1.2b | Zero-mean projection `fluidD` | (в составе ADR-018 §5) | **Открыто — блокер перед F1.6, не перед F1.3/F1.4** | При `ΣD ≠ 0` (типичный случай для несимметричного впрыска через касание) `mean(Φ)` дрейфует линейно: `mean(Φ_{k+1}) = mean(Φ_k) − mean(D)/4`. За `RepeatCount=40` это `10·mean(D)` за кадр; с warm-start (`fluidPhi` не очищается между кадрами) накопление продолжается кадр за кадром до исчерпания мантиссы `R32_SFloat`. Решение: reduction по `D` через `InterlockedAdd` fixed-point аккумулятор (по образцу P2G, ADR-002), вычесть `mean(D)` перед Jacobi. Для F1.2 тесты используют точно zero-mean синтетические источники — дрейф не наблюдается искусственно, но реальный touch-впрыск (F1.6) без этой правки накопит дрейф. |
+| F1.2b | Zero-mean projection `fluidD` | [ADR-018 §5.1](ADR/ADR-018-Jacobi-Phi-Pass.md) | **Готово** | `ZeroMeanScalarPass`: `D ← D − mean(D)` по всем текселям, до Jacobi. Три кернела в одном Execute, InterlockedAdd uint со знаковым Bias (не `FieldAccumBuffer`). |
 | F1.3 | `SubtractPhiGradientPass` | [ADR-020](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) | **Готово** | `u = u* − ((ΦE−ΦW)/4, (ΦN−ΦS)/4)`. WriteInPlace Role A `velocity`, Read Role B `fluidPhi`, `u*` из `FieldWriteA`. Цепочка 3.6: k=8, ≥3× ([ADR-020 §3](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md)). |
-| F1.4 | Boundary Conditions | — план | **После F1.3** | Сейчас граница — clamp continuation (эффективно Neumann-подобная, не истинная физическая BC). F1.4 вводит явное обнуление нормальной компоненты `velocity` на границе после проекции (F1.3) — то, что делает границу непроницаемой, а не просто «продолжение соседней ячейки». Взаимодействует с F1.2b: истинная BC меняет null-space задачи Пуассона, разбор зависимости — часть DoD этого тикета, не предполагается заранее. |
-| F1.6 | `Fluid2D` пресет | — план | **Блокирован F1.2b** | Сборка `Divergence → Jacobi ×N → SubtractPhiGradient → (Advect velocity, уже есть с ADR-013)` в один `EffectAsset` + touch-инъекция скорости (`TouchInjectVelocityFieldPass`, уже существует). Здесь калибруется реальный дефолт `iterations` у `JacobiPhiPass` (сейчас `40` — предварительная оценка). Калибровать по **осевым** модам Jacobi как худшему случаю (touch широкополосный), не по диагонали — [Techdebt 8e](last/Techdebt.md); помнить, что `λ^40` по Φ не есть отношение `max|D|` ([Techdebt 8f](last/Techdebt.md), errata 2 [ADR-020 §3](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md)). F1.2b — жёсткий блокер: без zero-mean projection удержание касания копит дрейф `mean(Φ)`. |
-| F1.7 | `AdvectScalarPass` (dye/tracer) | — план | **После F1.6** | Перенос пассивного скаляра (`dye`) полем `velocity` тем же semi-Lagrangian механизмом, что `AdvectVelocityFieldPass` (ADR-013), но без self-advection (скаляр не влияет на несущее поле). Визуальная проверка результата всего Stam-контура — до этого тикета фактическая корректность fluid-контура наблюдается только по числам харнеса, не глазами. |
+| F1.4 | `SolidWallVelocityPass` | [ADR-021](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) | **Готово** | Free-slip: `u·n = 0` на рамке после Subtract. Пуассон/ZeroMean не меняются. ТЗ: [`todo-F1.4.md`](last/todo-F1.4.md). |
+| F1.6 | `Fluid2D` пресет | [ADR-022](ADR/ADR-022-Fluid2D-Preset.md) | **Готово** | `Assets/Effects/Fluid2D.asset`: Touch → project → wall → Advect(`velocity`) → wall. Bias=256 хватило. DissipationRate=0. С F1.7 в том же ассете: Seed(dye) + AdvectScalar. ТЗ: [`todo-F1.6.md`](last/todo-F1.6.md). |
+| F1.7 | `AdvectScalarPass` (dye/tracer) | [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md) | **Готово** | Пассивный `dye`: `dye ← sample(dye, uv − u·dt/Size)`. Multi-role: dye WritePingPong A, velocity Read B. В пресете после второго SolidWall + `SeedScalarDisk`. Odd-even интерьера на dye **не виден**. ТЗ: [`todo-F1.7.md`](last/todo-F1.7.md). |
 | ADR-019 | Fluid2D solver, постфактум | — план (номер зарезервирован в [ADR-014 §таблица](ADR/ADR-014-GPU-Numeric-Test-Harness.md)) | **После F1.7** | Итоговый суммирующий ADR по всему Stam-контуру: коллокейтед cell-centered сетка, число итераций Jacobi, точность (`R32_SFloat` по всей цепочке), контракт границы, шахматная мода коллокейтед-решётки как **known limitation** (не баг) — четный/нечетный checkerboard-паттерн, характерный для non-staggered MAC-схемы, осознанно принят, не устраняется в рамках F1. |
 
 ---
 
 ## 3. Фаза F2 — качество / метастабильность (черновик, не детализировано)
 
-Не начинать до закрытия всей фазы F1 (включая F1.2b и ADR-019). Список ниже — фиксация направления, не тикеты с DoD.
+Не начинать до закрытия всей фазы F1 (включая ADR-019). Список ниже — фиксация направления, не тикеты с DoD.
 
 - **Vorticity confinement** — восстановление энергии высоких частот, потерянной из-за численной диссипации semi-Lagrangian advection (см. [Techdebt 5](last/Techdebt.md): −39% амплитуды гауссова пика за 8 шагов на carrier `1.7`). Это и есть путь к «метастабильности» — визуально живым, закрученным структурам, а не строгой физической точности.
 - **MacCormack / BFECC advection** — снижение численной диссипации основного advect-пасса (альтернатива или дополнение vorticity confinement). Явно отложено при закрытии F0.4/ADR-013 как «отдельный тикет, не точечный фикс».
@@ -64,13 +64,14 @@
 
 - **Texel/UV-зависимость параметров** ([Techdebt 8](last/Techdebt.md)) — существующие Diffuse/GrayScott не приводятся к world; fluid — отдельное world-семейство, живёт по своим правилам (ADR-016).
 - **Численная диссипация semi-Lagrangian advect** ([Techdebt 5](last/Techdebt.md)) — не баг, задокументированная плата за unconditional stability; путь устранения — F2 (vorticity confinement / MacCormack).
-- **Линейный дрейф `mean(Φ)`** ([Techdebt 8d](last/Techdebt.md)) — см. F1.2b выше, единственный из этого списка, что реально блокирует следующий тикет фазы F1 (F1.6).
+- **Линейный дрейф `mean(Φ)`** ([Techdebt 8d](last/Techdebt.md)) — устранено F1.2b (`ZeroMeanScalarPass`); F1.6: Bias=256 хватило на штатный сплеш (MaxFieldSpeed=20, удержание ~10 с).
 - **Пол `max|D|` после проекции** ([Techdebt 8e](last/Techdebt.md), [8f](last/Techdebt.md)) — осевые моды Jacobi и несогласованность collocated `div∘grad`; не блокер F1.3/F1.4.
+- **Рамка `D` после стен** ([Techdebt 8g](last/Techdebt.md)) — ожидаемо после F1.4; второй проекции нет.
 
 ---
 
 ## 5. Как читать этот план
 
 - Столбец «Статус» — источник истины по факту закрытия; при закрытии тикета обновлять здесь **и** в [`status.md`](status.md) (там — журнал по датам, здесь — план по порядку зависимостей).
-- Порядок F1.1 → F1.2 (+F1.2b) → F1.3 → F1.4 → F1.6 → F1.7 → ADR-019 — это зависимости, не даты; F1.2b может закрываться параллельно с F1.3/F1.4 (не блокирует их), но обязан закрыться строго до F1.6.
+- Порядок F1.1 → F1.2 (+F1.2b) → F1.3 → F1.4 → F1.6 → F1.7 → ADR-019 — это зависимости, не даты. F1.7 закрыт; следующий тикет фазы — ADR-019 (не MAC: odd-even интерьера на dye не виден).
 - Каждый закрытый пункт фазы F1 сопровождается собственным ADR и `todo-*.md` в [`ADR/`](ADR/) и [`last/`](last/) — этот документ не заменяет их, только даёт карту целиком.
