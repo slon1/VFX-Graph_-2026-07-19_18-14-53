@@ -8,6 +8,7 @@
 #pragma kernel ZeroMeanClear KERNEL_ZEROMEAN
 #pragma kernel ZeroMeanAccum KERNEL_ZEROMEAN
 #pragma kernel ZeroMeanApply KERNEL_ZEROMEAN
+#pragma kernel SolidWallVelocity KERNEL_SOLIDWALL
 
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
 
@@ -138,5 +139,24 @@ void ZeroMeanApply(uint3 id : SV_DispatchThreadID)
     float mean = (float)MeanAccum[0] / (MeanScale * (float)TexelCount) - MeanBias;
     int2 p = int2(id.xy);
     FieldWriteA[p] = FieldWriteA[p] - mean;
+}
+#endif
+
+#ifdef KERNEL_SOLIDWALL
+RWTexture2D<float2> FieldWrite;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void SolidWallVelocity(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+        return;
+
+    int2 p = int2(id.xy);
+    float2 u = FieldWrite[p];
+    if (p.x == 0 || p.x == FieldResolution.x - 1)
+        u.x = 0;
+    if (p.y == 0 || p.y == FieldResolution.y - 1)
+        u.y = 0;
+    FieldWrite[p] = u;
 }
 #endif

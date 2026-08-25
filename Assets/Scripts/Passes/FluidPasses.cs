@@ -248,3 +248,29 @@ public sealed class ZeroMeanScalarPass : SimPass, IDisposable
         }
     }
 }
+
+/// <summary>
+/// Free-slip walls: u·n = 0 on the frame after Subtract (ADR-021).
+/// WriteInPlace Role A on velocity; FieldWrite (single-role), not FieldWriteA.
+/// Square texel required. Does not change Poisson / ZeroMean.
+/// </summary>
+[Serializable]
+public sealed class SolidWallVelocityPass : FieldKernelPass
+{
+    [SerializeField] private string velocityField = "velocity";
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string VelocityField { get => velocityField; set => velocityField = value; }
+
+    public override string DisplayName => "Solid Wall Velocity";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "SolidWallVelocity";
+    public override bool RequiresSquareTexel => true;
+    // RepeatCount не переопределять.
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, velocityField,
+            FieldAccess.WriteInPlace, FieldSemantic.Velocity, 2, FieldSlotRole.A);
+}

@@ -145,9 +145,9 @@ u = ( sin(2π k x / L), sin(2π k y / L) ),  k = 8
 
 #### 5. Что остаётся в других тикетах
 
-- F1.2b (zero-mean `D`) — не смешивать. Сид (б) подобран совместно; реальный touch — нет. Блокер F1.6, не F1.3.
-- F1.4 — явная непроницаемая граница после Subtract. Здесь граница = тот же clamp, что у Divergence/Jacobi.
-- F1.6 — EffectAsset, touch, калибровка iterations, visual. Не начинать без F1.2b.
+- F1.2b (zero-mean `D`) — закрыт, [ADR-018 §5.1](ADR-018-Jacobi-Phi-Pass.md). Не смешивать с этим тикетом.
+- F1.4 — непроницаемая граница после Subtract: [ADR-021](ADR-021-Solid-Wall-Velocity-Pass.md). Здесь граница = clamp соседей Φ.
+- F1.6 — EffectAsset, touch, калибровка iterations, visual. F1.2b больше не блокер; F1.4 не блокер.
 - ADR-019 — итоговый Fluid2D после F1.7; номер не занимаем.
 
 ### Отклонённые варианты
