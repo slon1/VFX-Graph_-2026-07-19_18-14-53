@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-08-25  
+**Снимок:** 2026-08-26  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
@@ -119,7 +119,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 ### Fluid projection (Stam)
 
 - Кернелы проекции: Divergence / **ZeroMeanScalar** (`fluidD` zero-mean перед Jacobi) / Jacobi / SubtractPhiGradient / **SolidWallVelocity** (free-slip `u·n=0` на рамке).
-- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. F0.5 (dye выше res, чем velocity) по-прежнему нет. Odd-even интерьера на dye **не виден** — MAC не открывали.
+- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). F0.5 (dye выше res, чем velocity) по-прежнему нет. Odd-even интерьера на dye **не виден** — MAC не открывали.
 
 ---
 
@@ -127,7 +127,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 | Тема | Сейчас |
 | --- | --- |
-| Stable Fluids (Stam-minimum) | кернелы + пресет Fluid2D с dye есть; ADR-019 / vorticity / F0.5 / MAC — позже |
+| Stable Fluids (Stam-minimum) | кернелы + пресет Fluid2D с dye + [ADR-019](ADR/ADR-019-Fluid2D-Solver.md); vorticity / F0.5 / MAC — позже (F2 / после F1) |
 | Texel / UV Laplacian и градиент | Параметры Diffuse / GrayScott / SampleGradient зависят от разрешения и `Size` (ADR-016); не «исправлять» `/h²` |
 | Нет emitters | lifetime/compaction позже |
 | Нет SpatialHash | boids/sand позже |

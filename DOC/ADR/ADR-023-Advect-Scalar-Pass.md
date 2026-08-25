@@ -6,7 +6,7 @@
 **Реализует:** semi-Lagrangian backtrace [ADR-013](ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) без self-advection; world-единицы [ADR-016](ADR-016-Units-By-Pass-Family.md) §2; multi-role [ADR-008](ADR-008-Multi-Field-Per-Kernel-Binding.md); пресет [ADR-022](ADR-022-Fluid2D-Preset.md)
 **ТЗ:** [`todo-F1.7.md`](../last/todo-F1.7.md)
 
-ADR-019 **не занимаем.** Он по-прежнему постфактум-сводка всего Stam после закрытия F1.7 (сетка, итерации, precision, BC, шахматная мода как known limitation). Этот тикет — кернел tracer + проводка в `Fluid2D.asset`.
+Сводка Stam после F1.7: [ADR-019](ADR-019-Fluid2D-Solver.md). Этот тикет — кернел tracer + проводка в `Fluid2D.asset`.
 
 ### Контекст
 
@@ -108,7 +108,7 @@ Debug quads: `velocity` (`colorScale=0.125`) **и** `dye` (`DebugFieldQuadSlot.D
 
 [ADR-016 §4](ADR-016-Units-By-Pass-Family.md): триггер MAC — **устойчивый checkerboard интерьера** (чёт/нечет тексели, Nyquist-мода collocated `div∘grad`), не грязь рамки от `saturate` и не полосатость bilinear (Techdebt 5).
 
-Стоп и отчёт (MAC не открывать), только если после размешивания в **интерьере** квада видна явная шахматка 1 тексель. Рамка / смаз / шум — написать «не виден» и закрывать. ADR-019 заберёт моду как known limitation, если визуал чистый или спорный.
+Стоп и отчёт (MAC не открывать), только если после размешивания в **интерьере** квада видна явная шахматка 1 тексель. Рамка / смаз / шум — написать «не виден» и закрывать. Мода как known limitation — [ADR-019](ADR-019-Fluid2D-Solver.md).
 
 **F1.7 visual (2026-08-25):** odd-even интерьера на dye **не виден** (после swirl диск растянулся в 4-лучевую звезду без 1-тексельной шахматки). MAC не открывали.
 
@@ -120,11 +120,11 @@ Debug quads: `velocity` (`colorScale=0.125`) **и** `dye` (`DebugFieldQuadSlot.D
 - (−) Краска тачем нет: один диск на Rebuild.
 - (−) Dissipation dye — тот же полу-лагранжев смаз, Techdebt 5.
 
-**Вне скоупа:** ADR-019; MAC / Rhie–Chow (даже если odd-even виден — стоп и отчёт); F0.5; `FieldSemantic.Dye`; TouchInjectScalar; второй Poisson; смена Jacobi/Bias/production `velocity`; Harris-порядок; MacCormack.
+**Вне скоупа:** MAC / Rhie–Chow (даже если odd-even виден — стоп и отчёт); F0.5; `FieldSemantic.Dye`; TouchInjectScalar; второй Poisson; смена Jacobi/Bias/production `velocity`; Harris-порядок; MacCormack.
 
 ### Альтернативы (отклонены)
 
-**Занять ADR-019.** Номер — сводка после dye, не кернел tracer.
+**Занять ADR-019 под tracer.** Номер — сводка после dye, не кернел. Закрыт: [ADR-019](ADR-019-Fluid2D-Solver.md).
 
 **Положить кернел в `FluidPasses.compute`.** Проекция без семплера/`dt`; адвекция уже в `FieldPasses.compute`.
 

@@ -1,11 +1,11 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-08-25  
-**Итерация:** 5.21 — F1.7 AdvectScalarPass закрыт; Stam-minimum F1 (кроме ADR-019) готов  
+**Дата:** 2026-08-26  
+**Итерация:** 5.22 — ADR-019 Fluid2D solver (постфактум) закрыт; Stam-minimum F1 готов  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-019`](ADR/ADR-019-Fluid2D-Solver.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -142,6 +142,10 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 
 ---
 
+## ADR-019 — Fluid2D solver, постфактум (готово)
+
+Сводка Stam без нового кода: collocated cell-centered, Jacobi×40, `fluidD`/`fluidPhi` R32, free-slip после Subtract и Advect. Known limitation — **несогласованность дискретных операторов div/grad/Jacobi** (замер: ADR-020 §3). Odd-even интерьера на dye не виден — MAC не открывали. Файл: [`ADR-019-Fluid2D-Solver.md`](ADR/ADR-019-Fluid2D-Solver.md).
+
 ## F1.7 — AdvectScalarPass (готово)
 
 `AdvectScalarPass` в `FieldPasses.compute` (`#ifdef KERNEL_ADVECTSCALAR`): пассивный `dye_next = sample(dye, saturate(uv − u·dt/Size)) * Dissipation`. Dye WritePingPong A, velocity Read B. Пресет Fluid2D: Seed после Touch, AdvectScalar после второго SolidWall; dye R16, 128², dye-quad. Тесты 3.1–3.5: dCOM_x=7.99997902 (ожидание 8), velocity bitwise, odd-even интерьера **не виден**. F0.5 / краска тачем / MAC — вне скоупа.
@@ -203,4 +207,4 @@ Assets/Effects/            Fluid2D.asset
 
 ## Вне скоупа (далее)
 
-**ADR-019** Fluid2D solver постфактум (сетка, Jacobi×40, precision, BC, шахматная мода как known limitation) · MAC / Rhie–Chow (триггер — odd-even интерьера на dye; F1.7 не виден) · F0.5 cross-res dye · Trail/persistence · vorticity confinement · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)
+**F2** vorticity confinement / MacCormack · MAC / Rhie–Chow (триггер — odd-even интерьера на dye; F1.7 не виден) · F0.5 cross-res dye · Trail/persistence · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)

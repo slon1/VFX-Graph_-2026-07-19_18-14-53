@@ -6,7 +6,7 @@
 **Реализует:** формулы [ADR-016](ADR-016-Units-By-Pass-Family.md) §2; кернелы [ADR-017](ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) / [ADR-018](ADR-018-Jacobi-Phi-Pass.md) (+ §5.1 ZeroMean) / [ADR-020](ADR-020-Subtract-Phi-Gradient-Pass.md) / [ADR-021](ADR-021-Solid-Wall-Velocity-Pass.md); self-advection [ADR-013](ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md); квадратный тексель [ADR-017](ADR-017-Divergence-Pass-And-Square-Texel-Contract.md)
 **ТЗ:** [`todo-F1.6.md`](../last/todo-F1.6.md)
 
-ADR-019 **не занимаем.** Он зарезервирован под итоговый Fluid2D solver после F1.7 (dye). Этот тикет — пресет и калибровка рычагов, не новый кернел и не постфактум-сводка сетки.
+ADR-019 закрыт после F1.7: [ADR-019-Fluid2D-Solver.md](ADR-019-Fluid2D-Solver.md). Этот тикет — пресет и калибровка рычагов, не новый кернел и не постфактум-сводка сетки.
 
 ### Контекст
 
@@ -113,13 +113,13 @@ SolidWallVelocity          // второй экземпляр, после Advect
 - (−) Рамка `D` после стен грязная; второго Poisson нет.
 - (−) `velocity` в пресете — half; численный пол D на боевом формате хуже, чем в оракуле `R32G32`. Это production, не регресс 3.6.
 
-**Вне скоупа:** `AdvectScalarPass` / dye (F1.7); ADR-019; MAC / Rhie–Chow; явная вязкость; мобильный бюджет; второй проход проекции; `ClampFieldPass`; частицы / SampleVelocity на fluid; debug-quad Φ; смена Bias на SerializeField; смена production-формата `velocity`; Harris-порядок Advect-before-project.
+**Вне скоупа:** `AdvectScalarPass` / dye на момент F1.6 (закрыто в F1.7); MAC / Rhie–Chow; явная вязкость; мобильный бюджет; второй проход проекции; `ClampFieldPass`; частицы / SampleVelocity на fluid; debug-quad Φ; смена Bias на SerializeField; смена production-формата `velocity`; Harris-порядок Advect-before-project.
 
 ### Альтернативы (отклонены)
 
 **Touch после Advect / только один SolidWall.** Сплеш уедет неспроецированным; Advect снова испортит нормаль. Оба экземпляра стены и Touch-сначала уже согласованы с ADR-021 и catalog.
 
-**Занять ADR-019.** Номер обещан постфактум-сводке после F1.7. Пресет без dye — не итоговый solver.
+**Занять ADR-019 в F1.6.** Отклонено: номер — сводка после dye. Закрыт: [ADR-019](ADR-019-Fluid2D-Solver.md).
 
 **Резолюция 64² как в харнесе.** Дешевле Jacobi, но demo читается как «клетка». Desktop-first → 128², тот же `Size = 32` (квадратный тексель).
 

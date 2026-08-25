@@ -15,7 +15,6 @@ public class ZeroMeanScalarPassTests
     private const int PlusX = 20;
     private const int MinusX = 44;
     private const int DipoleY = 32;
-    private const float Bias = 256f;
     private const float DeltaTime = 1f;
 
     [Test]
@@ -41,7 +40,7 @@ public class ZeroMeanScalarPassTests
                 float tol = 2f / pass.Scale;
 
                 string report =
-                    $"3.1 N={Resolution * Resolution} Scale={pass.Scale} Bias={Bias.ToString("G9", CultureInfo.InvariantCulture)} " +
+                    $"3.1 N={Resolution * Resolution} Scale={pass.Scale} Bias={ZeroMeanScalarPass.Bias.ToString("G9", CultureInfo.InvariantCulture)} " +
                     $"meanBefore={meanBefore.ToString("G9", CultureInfo.InvariantCulture)} " +
                     $"meanAfter={meanAfter.ToString("G9", CultureInfo.InvariantCulture)} " +
                     $"maxAbsAfter={maxAbsAfter.ToString("G9", CultureInfo.InvariantCulture)}";

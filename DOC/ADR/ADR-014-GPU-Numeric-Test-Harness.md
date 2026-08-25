@@ -114,4 +114,4 @@ for i in 0 .. repeat-1:
 | ADR-021 | F1.4 | SolidWallVelocityPass: u·n = 0 на рамке после Subtract, free-slip |
 | ADR-022 | F1.6 | Fluid2D EffectAsset: Touch → project → wall → advect → wall; калибровка Jacobi/Bias |
 | ADR-023 | F1.7 | AdvectScalarPass: пассивный dye по velocity; Seed + проводка Fluid2D |
-| ADR-019 | после F1.7 | Fluid2D solver, постфактум: collocated cell-centered, итерации, precision, BC, шахматная мода как known limitation |
+| ADR-019 | F1 сводка | Fluid2D solver, постфактум: collocated, Jacobi×40, precision, BC; known limitation — **несогласованность дискретных операторов div/grad/Jacobi** ([ADR-019](ADR-019-Fluid2D-Solver.md); замер ADR-020 §3) |

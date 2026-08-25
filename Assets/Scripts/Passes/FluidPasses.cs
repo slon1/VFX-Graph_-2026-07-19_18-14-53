@@ -143,7 +143,7 @@ public sealed class SubtractPhiGradientPass : FieldKernelPass
 [Serializable]
 public sealed class ZeroMeanScalarPass : SimPass, IDisposable
 {
-    private const float Bias = 256f;
+    public const float Bias = 256f;
     private const int FieldThreads = 8;
 
     [SerializeField] private string scalarField = "fluidD";
@@ -193,7 +193,7 @@ public sealed class ZeroMeanScalarPass : SimPass, IDisposable
         descriptor = context.Fields.Get(scalarField).Descriptor;
         Vector2Int res = descriptor.Resolution;
         texelCount = res.x * res.y;
-        scale = Mathf.Max(1, (1 << 30) / (2 * texelCount * 256));
+        scale = Mathf.Max(1, (1 << 30) / (2 * texelCount * (int)Bias));
 
         Dispose();
         meanAccum = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));

@@ -43,13 +43,13 @@
 | F1.4 | `SolidWallVelocityPass` | [ADR-021](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) | **Готово** | Free-slip: `u·n = 0` на рамке после Subtract. Пуассон/ZeroMean не меняются. ТЗ: [`todo-F1.4.md`](last/todo-F1.4.md). |
 | F1.6 | `Fluid2D` пресет | [ADR-022](ADR/ADR-022-Fluid2D-Preset.md) | **Готово** | `Assets/Effects/Fluid2D.asset`: Touch → project → wall → Advect(`velocity`) → wall. Bias=256 хватило. DissipationRate=0. С F1.7 в том же ассете: Seed(dye) + AdvectScalar. ТЗ: [`todo-F1.6.md`](last/todo-F1.6.md). |
 | F1.7 | `AdvectScalarPass` (dye/tracer) | [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md) | **Готово** | Пассивный `dye`: `dye ← sample(dye, uv − u·dt/Size)`. Multi-role: dye WritePingPong A, velocity Read B. В пресете после второго SolidWall + `SeedScalarDisk`. Odd-even интерьера на dye **не виден**. ТЗ: [`todo-F1.7.md`](last/todo-F1.7.md). |
-| ADR-019 | Fluid2D solver, постфактум | — план (номер зарезервирован в [ADR-014 §таблица](ADR/ADR-014-GPU-Numeric-Test-Harness.md)) | **После F1.7** | Итоговый суммирующий ADR по всему Stam-контуру: коллокейтед cell-centered сетка, число итераций Jacobi, точность (`R32_SFloat` по всей цепочке), контракт границы, шахматная мода коллокейтед-решётки как **known limitation** (не баг) — четный/нечетный checkerboard-паттерн, характерный для non-staggered MAC-схемы, осознанно принят, не устраняется в рамках F1. |
+| ADR-019 | Fluid2D solver, постфактум | [ADR-019](ADR/ADR-019-Fluid2D-Solver.md) | **Готово** | Сводка Stam: collocated cell-centered, Jacobi×40, `R32_SFloat`, BC. Known limitation — **несогласованность дискретных операторов div/grad/Jacobi** (`div_{2h}∘grad_{2h} ≠ L_Jacobi`); замер — errata 2 [ADR-020 §3](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md), не пересказ. Odd-even интерьера на dye не виден — MAC не открывали. |
 
 ---
 
 ## 3. Фаза F2 — качество / метастабильность (черновик, не детализировано)
 
-Не начинать до закрытия всей фазы F1 (включая ADR-019). Список ниже — фиксация направления, не тикеты с DoD.
+Не начинать до закрытия всей фазы F1 (включая ADR-019 — **закрыт**). Список ниже — фиксация направления, не тикеты с DoD.
 
 - **Vorticity confinement** — восстановление энергии высоких частот, потерянной из-за численной диссипации semi-Lagrangian advection (см. [Techdebt 5](last/Techdebt.md): −39% амплитуды гауссова пика за 8 шагов на carrier `1.7`). Это и есть путь к «метастабильности» — визуально живым, закрученным структурам, а не строгой физической точности.
 - **MacCormack / BFECC advection** — снижение численной диссипации основного advect-пасса (альтернатива или дополнение vorticity confinement). Явно отложено при закрытии F0.4/ADR-013 как «отдельный тикет, не точечный фикс».
@@ -65,7 +65,7 @@
 - **Texel/UV-зависимость параметров** ([Techdebt 8](last/Techdebt.md)) — существующие Diffuse/GrayScott не приводятся к world; fluid — отдельное world-семейство, живёт по своим правилам (ADR-016).
 - **Численная диссипация semi-Lagrangian advect** ([Techdebt 5](last/Techdebt.md)) — не баг, задокументированная плата за unconditional stability; путь устранения — F2 (vorticity confinement / MacCormack).
 - **Линейный дрейф `mean(Φ)`** ([Techdebt 8d](last/Techdebt.md)) — устранено F1.2b (`ZeroMeanScalarPass`); F1.6: Bias=256 хватило на штатный сплеш (MaxFieldSpeed=20, удержание ~10 с).
-- **Пол `max|D|` после проекции** ([Techdebt 8e](last/Techdebt.md), [8f](last/Techdebt.md)) — осевые моды Jacobi и несогласованность collocated `div∘grad`; не блокер F1.3/F1.4.
+- **Пол `max|D|` после проекции** ([Techdebt 8e](last/Techdebt.md), [8f](last/Techdebt.md)) — осевые моды Jacobi и **несогласованность дискретных операторов div/grad/Jacobi**; канон имени — [ADR-019](ADR/ADR-019-Fluid2D-Solver.md), замер — [ADR-020 §3](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md).
 - **Рамка `D` после стен** ([Techdebt 8g](last/Techdebt.md)) — ожидаемо после F1.4; второй проекции нет.
 
 ---
@@ -73,5 +73,5 @@
 ## 5. Как читать этот план
 
 - Столбец «Статус» — источник истины по факту закрытия; при закрытии тикета обновлять здесь **и** в [`status.md`](status.md) (там — журнал по датам, здесь — план по порядку зависимостей).
-- Порядок F1.1 → F1.2 (+F1.2b) → F1.3 → F1.4 → F1.6 → F1.7 → ADR-019 — это зависимости, не даты. F1.7 закрыт; следующий тикет фазы — ADR-019 (не MAC: odd-even интерьера на dye не виден).
+- Порядок F1.1 → F1.2 (+F1.2b) → F1.3 → F1.4 → F1.6 → F1.7 → ADR-019 — это зависимости, не даты. **F1 и ADR-019 закрыты.** Дальше — черновик F2 (не MAC: odd-even интерьера на dye не виден).
 - Каждый закрытый пункт фазы F1 сопровождается собственным ADR и `todo-*.md` в [`ADR/`](ADR/) и [`last/`](last/) — этот документ не заменяет их, только даёт карту целиком.

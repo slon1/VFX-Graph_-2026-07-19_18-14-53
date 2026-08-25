@@ -135,7 +135,7 @@ u = ( sin(2π k x / L), sin(2π k y / L) ),  k = 8
 4. `JacobiPhiPass.Iterations = 40` (дефолт, `RepeatCount`).
 5. `SubtractPhiGradient`.
 6. `Divergence` повторно → `D'`.
-7. Утверждение: `max|D'|_interior < max|D|_interior / 3`. Не «до нуля», не «на порядок», не «просто меньше». Коллокейтед сетка оставляет шахматную моду (ADR-016 §4, в ADR-019 постфактум как known limitation).
+7. Утверждение: `max|D'|_interior < max|D|_interior / 3`. Не «до нуля», не «на порядок», не «просто меньше». Коллокейтед сетка оставляет шахматную моду (ADR-016 §4). **[ADR-019](ADR-019-Fluid2D-Solver.md)** забирает это как known limitation под именем **несогласованность дискретных операторов div/grad/Jacobi** (errata 2 выше — канон замера; не пересказывать).
 
 #### 4. Формат velocity в тесте vs production
 
@@ -148,7 +148,7 @@ u = ( sin(2π k x / L), sin(2π k y / L) ),  k = 8
 - F1.2b (zero-mean `D`) — закрыт, [ADR-018 §5.1](ADR-018-Jacobi-Phi-Pass.md). Не смешивать с этим тикетом.
 - F1.4 — непроницаемая граница после Subtract: [ADR-021](ADR-021-Solid-Wall-Velocity-Pass.md). Здесь граница = clamp соседей Φ.
 - F1.6 — EffectAsset, touch, калибровка iterations, visual. F1.2b больше не блокер; F1.4 не блокер.
-- ADR-019 — итоговый Fluid2D после F1.7; номер не занимаем.
+- ADR-019 — итоговый Fluid2D: [ADR-019](ADR-019-Fluid2D-Solver.md) (закрыт после F1.7).
 
 ### Отклонённые варианты
 
