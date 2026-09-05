@@ -44,7 +44,7 @@ SolidWallVelocity          // второй экземпляр, после Advect
 
 **Touch в начале.** Радиальный сплеш не zero-mean (`ΣD ≠ 0`). Без ZeroMean перед Jacobi warm-start `fluidPhi` снова поедет ([ADR-018 §5](ADR-018-Jacobi-Phi-Pass.md)). Touch обязан попасть в `u*` **до** Divergence того же кадра, иначе проекция отрабатывает прошлое поле, а свежий впрыск уезжает неспроецированным в Advect.
 
-**Проекция, затем Advect** — уже зафиксировано в [`pass-catalog.md`](../pass-catalog.md). Не переставлять на Harris-порядок (Advect → force → project) в этом тикете.
+**Проекция, затем Advect** — уже зафиксировано в [`pass-catalog.md`](../pass-catalog.md). Не переставлять на Harris-порядок (Advect → force → project) в этом тикете. Замер: [ADR-024](ADR-024-Harris-Order-Experiment.md) §7 — ≥2× нет, production остаётся Project→Advect.
 
 **Два экземпляра `SolidWallVelocityPass`**, не `RepeatCount = 2` на одном объекте: между ними должен стоять Advect. Advect (clamp UV) снова рождает нормаль на рамке ([ADR-021](ADR-021-Solid-Wall-Velocity-Pass.md)). Второй кернел не пишем.
 

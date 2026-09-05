@@ -119,7 +119,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 ### Fluid projection (Stam)
 
 - Кернелы проекции: Divergence / **ZeroMeanScalar** (`fluidD` zero-mean перед Jacobi) / Jacobi / SubtractPhiGradient / **SolidWallVelocity** (free-slip `u·n=0` на рамке).
-- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). F0.5 (dye выше res, чем velocity) по-прежнему нет. Odd-even интерьера на dye **не виден** — MAC не открывали.
+- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). Порядок project→advect измерен ([ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7) — Harris на λ=8 чуть чище по D, ≥2× нет; production не меняли. Эталон: `Fluid2D_HarrisOrder.asset`. F0.5 (dye выше res, чем velocity) по-прежнему нет. Odd-even интерьера на dye **не виден** — MAC не открывали.
 
 ---
 

@@ -1,7 +1,7 @@
 # План: Stable Fluid (Stam) для M3D Framework
 
 **Дата создания:** 2026-08-24
-**Статус документа:** живой план фазы F1 (+ хвосты F0, черновик F2). Обновлять по факту закрытия каждого пункта — не переписывать историю, дописывать.
+**Статус документа:** F1 закрыта (включая F1.8b / ADR-024). Хвосты F0 и черновик F2. Обновлять по факту закрытия каждого пункта — не переписывать историю, дописывать.
 **Связанные документы:** [`status.md`](status.md) · [`capabilities.md`](capabilities.md) · [`pass-catalog.md`](pass-catalog.md) · [`last/Techdebt.md`](last/Techdebt.md)
 
 ---
@@ -44,12 +44,14 @@
 | F1.6 | `Fluid2D` пресет | [ADR-022](ADR/ADR-022-Fluid2D-Preset.md) | **Готово** | `Assets/Effects/Fluid2D.asset`: Touch → project → wall → Advect(`velocity`) → wall. Bias=256 хватило. DissipationRate=0. С F1.7 в том же ассете: Seed(dye) + AdvectScalar. ТЗ: [`todo-F1.6.md`](last/todo-F1.6.md). |
 | F1.7 | `AdvectScalarPass` (dye/tracer) | [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md) | **Готово** | Пассивный `dye`: `dye ← sample(dye, uv − u·dt/Size)`. Multi-role: dye WritePingPong A, velocity Read B. В пресете после второго SolidWall + `SeedScalarDisk`. Odd-even интерьера на dye **не виден**. ТЗ: [`todo-F1.7.md`](last/todo-F1.7.md). |
 | ADR-019 | Fluid2D solver, постфактум | [ADR-019](ADR/ADR-019-Fluid2D-Solver.md) | **Готово** | Сводка Stam: collocated cell-centered, Jacobi×40, `R32_SFloat`, BC. Known limitation — **несогласованность дискретных операторов div/grad/Jacobi** (`div_{2h}∘grad_{2h} ≠ L_Jacobi`); замер — errata 2 [ADR-020 §3](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md), не пересказ. Odd-even интерьера на dye не виден — MAC не открывали. |
+| F1.8 | Project→Advect vs Harris — эксперимент | [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) | **Закрыто (confound §5)** | λ=4 / k=16: не голос про порядок. ТЗ: [`todo-F1.8-harris-order.md`](last/todo-F1.8-harris-order.md). |
+| F1.8b | тот же харнес, λ=8 текселей, A=1 | [ADR-024 §6–§7](ADR/ADR-024-Harris-Order-Experiment.md) | **Закрыто, production без смены** | Гейт 4 ок; B ниже A на 8/8 (`B/A` 0.55–0.72), ≥2× нет. Visual: Harris-филамент, A — пух. Вердикт: Project→Advect остаётся. |
 
 ---
 
 ## 3. Фаза F2 — качество / метастабильность (черновик, не детализировано)
 
-Не начинать до закрытия всей фазы F1 (включая ADR-019 — **закрыт**). Список ниже — фиксация направления, не тикеты с DoD.
+Не начинать до закрытия всей фазы F1 (ADR-019 и F1.8b — **закрыты**). Список ниже — фиксация направления, не тикеты с DoD.
 
 - **Vorticity confinement** — восстановление энергии высоких частот, потерянной из-за численной диссипации semi-Lagrangian advection (см. [Techdebt 5](last/Techdebt.md): −39% амплитуды гауссова пика за 8 шагов на carrier `1.7`). Это и есть путь к «метастабильности» — визуально живым, закрученным структурам, а не строгой физической точности.
 - **MacCormack / BFECC advection** — снижение численной диссипации основного advect-пасса (альтернатива или дополнение vorticity confinement). Явно отложено при закрытии F0.4/ADR-013 как «отдельный тикет, не точечный фикс».

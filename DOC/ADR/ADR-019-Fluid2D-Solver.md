@@ -3,7 +3,7 @@
 **Статус:** Принято (документация). Кода нет — кернелы и пресет уже закрыты F1.1–F1.7.
 **Дата:** 2026-08-26
 **Контекст:** M3D Framework, фаза F1 — итоговая сводка Stam-контура после dye
-**Собирает:** единицы [ADR-016](ADR-016-Units-By-Pass-Family.md); `RequiresSquareTexel` [ADR-017](ADR-017-Divergence-Pass-And-Square-Texel-Contract.md); Jacobi / ZeroMean [ADR-018](ADR-018-Jacobi-Phi-Pass.md); Subtract [ADR-020](ADR-020-Subtract-Phi-Gradient-Pass.md); стены [ADR-021](ADR-021-Solid-Wall-Velocity-Pass.md); пресет [ADR-022](ADR-022-Fluid2D-Preset.md); dye [ADR-023](ADR-023-Advect-Scalar-Pass.md); self-advection [ADR-013](ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md)
+**Собирает:** единицы [ADR-016](ADR-016-Units-By-Pass-Family.md); `RequiresSquareTexel` [ADR-017](ADR-017-Divergence-Pass-And-Square-Texel-Contract.md); Jacobi / ZeroMean [ADR-018](ADR-018-Jacobi-Phi-Pass.md); Subtract [ADR-020](ADR-020-Subtract-Phi-Gradient-Pass.md); стены [ADR-021](ADR-021-Solid-Wall-Velocity-Pass.md); пресет [ADR-022](ADR-022-Fluid2D-Preset.md); dye [ADR-023](ADR-023-Advect-Scalar-Pass.md); self-advection [ADR-013](ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md); порядок project vs Harris [ADR-024](ADR-024-Harris-Order-Experiment.md)
 **План фазы:** [`plan-stable-fluid.md`](../plan-stable-fluid.md)
 
 Номер держали свободным, пока не было живого пресета с dye. Это не новый пасс и не CFD-ревизия сетки.
@@ -33,7 +33,7 @@ SolidWallVelocity
 AdvectScalar(dye ← velocity)
 ```
 
-Quads: `velocity` (`colorScale=0.125`) и `dye` (heatmap). Φ не выводим. Порядок **project → advect**, не Harris. Второго прохода проекции нет.
+Quads: `velocity` (`colorScale=0.125`) и `dye` (heatmap). Φ не выводим. Порядок **project → advect**, не Harris — замер [ADR-024](ADR-024-Harris-Order-Experiment.md) §7: на λ=8 Harris ~30–45% чище по интерьерному `max|D|`, порог ≥2× не взят; production не меняли. Второго прохода проекции нет.
 
 Это композиция пассов, не подсистема и не `SolverPreset`.
 
@@ -91,7 +91,7 @@ Quads: `velocity` (`colorScale=0.125`) и `dye` (heatmap). Φ не выводи�
 
 **Открыть MAC, потому что схема collocated.** Триггер не сработал.
 
-**Второй Poisson после стен / Harris-порядок / явная вязкость / `DiffuseVelocity` как ν.** Отклонены в тикетах F1; рычаг густоты — `DissipationRate` (сейчас 0).
+**Второй Poisson после стен / Harris-порядок / явная вязкость / `DiffuseVelocity` как ν.** Отклонены в тикетах F1. Harris повторно измерен [ADR-024](ADR-024-Harris-Order-Experiment.md) §7: ≥2× нет, production не меняли. Рычаг густоты — `DissipationRate` (сейчас 0).
 
 **Назвать Φ давлением.** ADR-016 §2.2.
 

@@ -115,3 +115,4 @@ for i in 0 .. repeat-1:
 | ADR-022 | F1.6 | Fluid2D EffectAsset: Touch → project → wall → advect → wall; калибровка Jacobi/Bias |
 | ADR-023 | F1.7 | AdvectScalarPass: пассивный dye по velocity; Seed + проводка Fluid2D |
 | ADR-019 | F1 сводка | Fluid2D solver, постфактум: collocated, Jacobi×40, precision, BC; known limitation — **несогласованность дискретных операторов div/grad/Jacobi** ([ADR-019](ADR-019-Fluid2D-Solver.md); замер ADR-020 §3) |
+| ADR-024 | F1.8 / F1.8b | Project→Advect vs Harris: λ=4 confound Jacobi; λ=8 ≥2× нет; production без смены |
