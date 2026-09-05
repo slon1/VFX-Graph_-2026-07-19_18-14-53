@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-08-26  
+**Снимок:** 2026-09-05  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
@@ -36,7 +36,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 - Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
 - `RepeatCount` (ADR-015): World повторяет `Execute + Swap` N раз за кадр (итерации решателя, не субшаги `dt`). Default 1; `JacobiPhiPass` переопределяет (дефолт 40).
 - Единицы по семействам (ADR-016): RD/boids-диффузия — **texel** Laplacian без `/h²`; G2P-градиент — **UV** без `/Size`; fluid — **world**. Существующие texel/UV не меняются. `RequiresSquareTexel` проверяется на Build (`SquareTexelValidator`, ADR-017).
-- Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — слоты (`VectorRg` / `ScalarHeatmap` + Gradient LUT + hdrIntensity), layout по AxisU.
+- Debug: `FieldDebugQuadsBinder` + `M3D/FieldDebug` — слоты (`VectorRg` / `ScalarHeatmap` + Gradient LUT + hdrIntensity), layout по AxisU. Desktop post-FX: global `M3D Volume` + `M3DVolumeProfile` (Bloom + ACES); на мобилке Volume выключает `M3DVolumeMobileGate` (ADR-025).
 
 ### Multi-field kernel (M2c)
 
