@@ -20,7 +20,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
-Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocityField** (self-advection, ADR-013), **AdvectScalar** (пассивный dye, ADR-023), **SteerToVelocityField** (Reynolds alignment), **AddNormalized*** + **HeadingSteer** (kinematic boids), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь, **кернелы Stam-проекции** (Divergence / ZeroMean / Jacobi / SubtractPhiGradient / SolidWallVelocity) и **пресет Fluid2D** (меню Create/Assign, InputRouter = GroundXZ, quads velocity+dye). Эксперимент F2.1: **VorticityConfinement** + `Fluid2D_Vorticity.asset` (не production; visual — энергия у рамки, не тонкий интерьер).  
+Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocityField** (self-advection, ADR-013), **AdvectScalar** (пассивный dye, ADR-023), **SteerToVelocityField** (Reynolds alignment), **AddNormalized*** + **HeadingSteer** (kinematic boids), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь, **кернелы Stam-проекции** (Divergence / ZeroMean / Jacobi / SubtractPhiGradient / SolidWallVelocity) и **пресет Fluid2D** (меню Create/Assign, InputRouter = GroundXZ, quads velocity+dye). Эксперимент VC: **VorticityConfinement** + `Fluid2D_Vorticity.asset` (`BorderMargin=2`, не production; look интерьера не взят, торнадо рамки сняты).  
 Пока нет: trail/persistence buffer, spatial hash / emitters с lifetime.
 
 ---
@@ -59,7 +59,7 @@ Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFee
 1. Пресет: `Assets/Effects/Fluid2D.asset` (меню `Create Fluid2D Effect` → сразу `Assign Fluid2D To Scene`; InputRouter = GroundXZ).
 2. Цепочка: Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect(velocity) → SolidWall → AdvectScalar.
 3. Debug quads: velocity (`colorScale=0.125`) и dye (heatmap). Play, тач по плоскости XZ. После Create guid часто новый — без Assign слот сцены смотрит в старый ассет.
-4. Эксперимент vorticity (не production): `Tools/M3D/Assign Fluid2D Vorticity Experiment To Scene`. Цепочка Harris + VC до проекции, `ε_vc=1`. Visual закрыт — [`play-F2.1-touch.md`](last/play-F2.1-touch.md). Правка пасса в инспекторе меняет `.asset` сразу (ScriptableObject).
+4. Эксперимент vorticity (не production): `Tools/M3D/Assign Fluid2D Vorticity Experiment To Scene`. Цепочка Harris + VC до проекции, `ε_vc=1`, `BorderMargin=2`. Visual F2.1b закрыт — [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md): торнадо рамки нет, look интерьера нет. **Create Vorticity не вызывать** (`radiusUV` на диске 0.16). Правка пасса в инспекторе меняет `.asset` сразу (ScriptableObject).
 
 ### Boids → Gray-Scott
 
@@ -141,7 +141,7 @@ Hybrid (field + particles):
 - self-advection velocity: `AdvectVelocityFieldPass` — Transport, WritePingPong, semi-Lagrangian; `dissipationRate` → `exp(-rate·dt)` на CPU, 0=выкл; ADR-013;
 - пассивный dye: `AdvectScalarPass` — Transport, dye WritePingPong A + velocity Read B; backtrace `uv − u·dt/Size`; ADR-023;
 - Stam projection: `DivergenceFieldPass` → `ZeroMeanScalarPass` → `JacobiPhiPass` → `SubtractPhiGradientPass` → `SolidWallVelocityPass` (`FluidPasses.compute`);
-- vorticity confinement (эксперимент): `VorticityConfinementPass` — Transport, WritePingPong, `ε_vc`, `Fluid2D_Vorticity.asset`, не Fluid2D; ADR-027;
+- vorticity confinement (эксперимент): `VorticityConfinementPass` — Transport, WritePingPong, `ε_vc`, `borderMargin=2` на ассете, `Fluid2D_Vorticity.asset`, не Fluid2D; ADR-027;
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
 - Gray-Scott: `GrayScottPass` + Seed + TouchInject; boids-гибрид: presence P2G → `AgentBoost`/`AgentErode` (`gain`); N=1–4 React; ADR-009;
 - cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;

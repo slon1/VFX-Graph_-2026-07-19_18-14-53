@@ -41,6 +41,7 @@ public class VorticityConfinementPassTests
         Assert.IsTrue(pass.RequiresSquareTexel);
         Assert.AreEqual("velocity", pass.VelocityField);
         Assert.AreEqual(1f, pass.EpsilonVc);
+        Assert.AreEqual(0, pass.BorderMargin);
         Assert.AreEqual(1, pass.RepeatCount);
 
         PropertyInfo kernelName = typeof(FieldKernelPass).GetProperty(
@@ -91,6 +92,32 @@ public class VorticityConfinementPassTests
     public void Identity_EpsilonZero_R16_BitwiseAfterSeed()
     {
         AssertIdentityEpsilonZero(GraphicsFormat.R16G16_SFloat);
+    }
+
+    [Test]
+    [Category("GPU")]
+    public void BorderMarginTwo_EpsilonOne_RingBitwise_InteriorDeltaNonzero()
+    {
+        const int margin = 2;
+        using (FieldTestHarness harness = CreateIdentityHarness(GraphicsFormat.R32G32_SFloat))
+        {
+            Vector2[] seed = NoiseSeed(IdentityResolution);
+            harness.SeedVelocity(Velocity, seed);
+            Vector2[] afterSeed = harness.ReadVelocity(Velocity);
+
+            VorticityConfinementPass pass = CreateVc(harness, 1f, margin);
+            harness.RunPass(pass, DeltaTime);
+            Vector2[] after = harness.ReadVelocity(Velocity);
+
+            AssertFiniteVelocity(after, "F2.1b m=2 ε=1");
+            AssertRingBitwiseEqual(
+                afterSeed, after, IdentityResolution, margin, "F2.1b ring m=2");
+            float interiorDelta = MaxAbsDeltaOutsideMargin(
+                afterSeed, after, IdentityResolution, margin);
+            Assert.Greater(
+                interiorDelta, 0f,
+                "F2.1b interior outside ring max|Δu| > 0 (mask must not copy whole field)");
+        }
     }
 
     [Test]
@@ -507,9 +534,14 @@ public class VorticityConfinementPassTests
         Assert.LessOrEqual(absDiff, tol, $"{label} |{a:G9}-{b:G9}|={absDiff:G9} tol={tol:G9}");
     }
 
-    private static VorticityConfinementPass CreateVc(FieldTestHarness harness, float epsilonVc)
+    private static VorticityConfinementPass CreateVc(
+        FieldTestHarness harness, float epsilonVc, int borderMargin = 0)
     {
-        VorticityConfinementPass pass = new VorticityConfinementPass { EpsilonVc = epsilonVc };
+        VorticityConfinementPass pass = new VorticityConfinementPass
+        {
+            EpsilonVc = epsilonVc,
+            BorderMargin = borderMargin,
+        };
         pass.Initialize(harness.Context);
         return pass;
     }
@@ -765,6 +797,29 @@ public class VorticityConfinementPassTests
         return maxAbs;
     }
 
+    private static float MaxAbsDeltaOutsideMargin(
+        Vector2[] before, Vector2[] after, int resolution, int margin)
+    {
+        float maxAbs = 0f;
+        int last = resolution - margin;
+        for (int y = margin; y < last; y++)
+        {
+            for (int x = margin; x < last; x++)
+            {
+                int i = y * resolution + x;
+                float dx = after[i].x - before[i].x;
+                float dy = after[i].y - before[i].y;
+                float mag = Mathf.Sqrt(dx * dx + dy * dy);
+                if (mag > maxAbs)
+                {
+                    maxAbs = mag;
+                }
+            }
+        }
+
+        return maxAbs;
+    }
+
     private static float InteriorKineticEnergy(Vector2[] velocity, int resolution)
     {
         double sum = 0d;
@@ -803,6 +858,32 @@ public class VorticityConfinementPassTests
         {
             for (int x = 1; x < resolution - 1; x++)
             {
+                int i = y * resolution + x;
+                Assert.AreEqual(
+                    BitConverter.SingleToInt32Bits(expected[i].x),
+                    BitConverter.SingleToInt32Bits(obtained[i].x),
+                    $"{label} ({x},{y}).x expected={expected[i].x:G9} obtained={obtained[i].x:G9}");
+                Assert.AreEqual(
+                    BitConverter.SingleToInt32Bits(expected[i].y),
+                    BitConverter.SingleToInt32Bits(obtained[i].y),
+                    $"{label} ({x},{y}).y expected={expected[i].y:G9} obtained={obtained[i].y:G9}");
+            }
+        }
+    }
+
+    private static void AssertRingBitwiseEqual(
+        Vector2[] expected, Vector2[] obtained, int resolution, int margin, string label)
+    {
+        int last = resolution - 1;
+        for (int y = 0; y < resolution; y++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                if (x >= margin && x <= last - margin && y >= margin && y <= last - margin)
+                {
+                    continue;
+                }
+
                 int i = y * resolution + x;
                 Assert.AreEqual(
                     BitConverter.SingleToInt32Bits(expected[i].x),

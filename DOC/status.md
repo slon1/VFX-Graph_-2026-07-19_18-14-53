@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-09-16  
-**Итерация:** 5.28 — F2.1 закрыт (EditMode + visual: look интерьера не взят)  
+**Итерация:** 5.31 — F2.1b закрыт (маска сняла торнадо; look интерьера нет)  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
@@ -23,9 +23,13 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 Пасс + `Fluid2D_Vorticity.asset`. EditMode: ε=0 identity, D кадр 1 0.98× / кадр 8 8.16× (гейт 10×), KE 3.54×, Nyquist не растёт, 0.272 ms.
 
-**Visual (2026-09-16):** A=Fluid2D vs B=Vorticity, `radiusUV=0.16`, ε=1, 30 с ×3. Inf/шахматки нет. Интерьер dye B не тоньше (клубы как A). Velocity B — постоянные потоки/торнадо **у рамки**, не успех look. Production не меняли. Дальше F2.2; F2.3 обязан включить Harris без VC.
+**Visual (2026-09-16):** A=Fluid2D vs B=Vorticity, `radiusUV=0.16`, ε=1, 30 с ×3. Inf/шахматки нет. Интерьер dye B не тоньше (клубы как A). Velocity B — постоянные потоки/торнадо **у рамки**, не успех look. Production не меняли.
 
-## F2 — F2.0–F2.1 закрыты; F2.2 не начат
+## F2.1b — маска силы (готово)
+
+`BorderMargin=2` на живом ассете. Visual: торнадо рамки нет (clamp-curl); dye — клубы как F2.1; look не взят. [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md). `m` не ширить. F2.2 не стопорить.
+
+## F2 — F2.0–F2.1b закрыты; F2.2 не начат
 
 [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md): F2.2 — limited MacCormack dye, scratch не Role C. F2.3 — visual A/B/C основной критерий; `Fluid2D.asset` можно сменить (≥2× не гейт). Вне фазы: viscosity, MAC, F0.5, velocity-MacCormack, F0.7.
 

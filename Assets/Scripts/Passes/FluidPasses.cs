@@ -284,11 +284,13 @@ public sealed class VorticityConfinementPass : FieldKernelPass
 {
     [SerializeField] private string velocityField = "velocity";
     [SerializeField, Min(0f)] private float epsilonVc = 1f;
+    [SerializeField, Min(0)] private int borderMargin;
 
     [NonSerialized] private FieldRequest[] fieldWritesCache;
 
     public string VelocityField { get => velocityField; set => velocityField = value; }
     public float EpsilonVc { get => epsilonVc; set => epsilonVc = value; }
+    public int BorderMargin { get => borderMargin; set => borderMargin = value; }
 
     public override string DisplayName => "Vorticity Confinement";
     public override PassCategory Category => PassCategory.Transport;
@@ -304,5 +306,6 @@ public sealed class VorticityConfinementPass : FieldKernelPass
     {
         SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
         SetFloat(context, SimShaderIds.EpsilonVc, epsilonVc);
+        SetInt(context, SimShaderIds.BorderMargin, borderMargin);
     }
 }

@@ -847,7 +847,7 @@ public static class M3DDemoTools
                 FieldName = "velocity",
                 DissipationRate = 0f,
             },
-            new VorticityConfinementPass { EpsilonVc = 1f },
+            new VorticityConfinementPass { EpsilonVc = 1f, BorderMargin = 2 },
             new DivergenceFieldPass(),
             new ZeroMeanScalarPass(),
             new JacobiPhiPass { Iterations = 40 },

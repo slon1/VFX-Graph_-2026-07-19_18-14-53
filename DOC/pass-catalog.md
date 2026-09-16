@@ -411,11 +411,11 @@
 | **Назначение** | Fedkiw 2D: `ω` как curl на стенсиле Divergence (без `/2h`); `f = ε_vc · h · ω · (N.y, −N.x)`; `u ← u + f·dt`. Early-out при `ε_vc=0` |
 | **Библиотека / kernel** | `FluidPasses` / `VorticityConfinement` (`#ifdef KERNEL_VORTICITY`) |
 | **Fields** | WritePingPong Velocity ×2 (`velocity`). Слоты `FieldRead`/`FieldWrite` (single-role), не `FieldWriteA`. `FieldReads` пустой |
-| **Параметры** | `velocityField` (default `velocity`, не `flockVel`); `epsilonVc` (default 1, `[Min(0)]`) |
+| **Параметры** | `velocityField` (default `velocity`, не `flockVel`); `epsilonVc` (default 1, `[Min(0)]`); `borderMargin` (класс default 0, `[Min(0)]`; живой ассет/Create = 2) — сила `f=0` на рамке `m` текселей, не маска чтения ω |
 | **RepeatCount** | 1 (не переопределён) |
 | **dt** | Да (`u + f·DeltaTime`) |
 | **Единицы** | **world**; `h = FieldSize.x / FieldResolution.x` в кернеле; квадратный тексель обязателен (`RequiresSquareTexel`) |
-| **Хорошо для** | Эксперимент F2.1: `Fluid2D_Vorticity.asset` сразу после Advect velocity, **до** Divergence. Не production: visual 2026-09-16 — энергия у рамки, не тонкий интерьер |
+| **Хорошо для** | Эксперимент: `Fluid2D_Vorticity.asset` сразу после Advect velocity, **до** Divergence. Не production. F2.1b: `m=2` снял торнадо рамки (clamp-curl); look интерьера нет |
 
 ### SampleGradientField (G2P)
 | | |
@@ -566,7 +566,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 
 **Fluid2D ([ADR-022](ADR/ADR-022-Fluid2D-Preset.md) + [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md); сводка [ADR-019](ADR/ADR-019-Fluid2D-Solver.md)):** `TouchInjectVelocity → SeedScalarDisk(dye) → Divergence → ZeroMeanScalar → Jacobi×40 → SubtractPhiGradient → SolidWallVelocity → Advect velocity → SolidWallVelocity → AdvectScalar` (`Assets/Effects/Fluid2D.asset`, меню Create/Assign, InputRouter=GroundXZ, quads velocity+dye). Порядок **project → advect** измерен в [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7 (λ=8: Harris ~30–45% чище по `max|D|`, ≥2× нет) — production не меняли. Эталон Harris: `Fluid2D_HarrisOrder.asset` (меню Assign, не Demo Effects).
 
-**Fluid2D Vorticity ([ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md), эксперимент, не production):** `Touch → Seed(dye) → Advect velocity → VorticityConfinement → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect dye` (`Assets/Effects/Fluid2D_Vorticity.asset`, меню Create/Assign Vorticity Experiment). Одна стена. `ε_vc=1`. Visual закрыт: интерьер не выиграл, потоки у рамки — [`play-F2.1-touch.md`](last/play-F2.1-touch.md).
+**Fluid2D Vorticity ([ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md), эксперимент, не production):** `Touch → Seed(dye) → Advect velocity → VorticityConfinement → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect dye` (`Assets/Effects/Fluid2D_Vorticity.asset`). Одна стена. `ε_vc=1`, `borderMargin=2`. Visual F2.1b: торнадо рамки нет (clamp-curl); dye-клубы; look не взят — [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md). Create factory `radiusUV=0.08` — не вызывать (на диске 0.16).
 
 ---
 

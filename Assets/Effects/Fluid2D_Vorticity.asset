@@ -178,6 +178,7 @@ MonoBehaviour:
         enabled: 1
         velocityField: velocity
         epsilonVc: 1
+        borderMargin: 2
     - rid: 879766679447928909
       type: {class: DivergenceFieldPass, ns: , asm: Assembly-CSharp}
       data:

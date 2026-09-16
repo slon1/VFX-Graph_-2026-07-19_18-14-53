@@ -47,6 +47,7 @@ internal static class SimShaderIds
     public static readonly int Dissipation = Shader.PropertyToID("Dissipation");
     public static readonly int DecayFactor = Shader.PropertyToID("DecayFactor");
     public static readonly int EpsilonVc = Shader.PropertyToID("EpsilonVc");
+    public static readonly int BorderMargin = Shader.PropertyToID("BorderMargin");
 }
 
 /// <summary>

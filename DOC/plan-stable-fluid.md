@@ -1,7 +1,7 @@
 # План: Stable Fluid (Stam) для M3D Framework
 
 **Дата создания:** 2026-08-24
-**Статус документа:** F0.1–F0.4 и вся F1 закрыты. F2.0–F2.1 **Готово**. F2.2+ не начаты. F0.5–F0.7 не входят в F2.
+**Статус документа:** F0.1–F0.4 и вся F1 закрыты. F2.0–F2.1b **Готово**. F2.2+ не начаты. F0.5–F0.7 не входят в F2.
 **Связанные документы:** [`status.md`](status.md) · [`capabilities.md`](capabilities.md) · [`pass-catalog.md`](pass-catalog.md) · [`last/Techdebt.md`](last/Techdebt.md)
 
 ---
@@ -56,7 +56,8 @@
 | # | Тикет | ADR | Статус | Суть |
 | --- | --- | --- | --- | --- |
 | F2.0 | Baseline, R16-цепочка, smoke Build, odd-even | [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) | **Готово** | 8i+8j+odd-even+ms. Visual: Inf/шахматки нет; 0.08 гаснет к 30 с; читаемый freeze — больший диск в сессии (клубы). ТЗ: [`todo-F2.0.md`](last/todo-F2.0.md). |
-| F2.1 | Vorticity confinement | [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md) | **Готово** | Пасс + `Fluid2D_Vorticity.asset`. Visual: интерьер dye не выиграл; энергия у рамки. Production не меняли. ТЗ: [`todo-F2.1.md`](last/todo-F2.1.md). |
+| F2.1 | Vorticity confinement | [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md) | **Готово** | Пасс + `Fluid2D_Vorticity.asset`. Visual без маски: энергия у рамки. Production не меняли. ТЗ: [`todo-F2.1.md`](last/todo-F2.1.md). |
+| F2.1b | Маска силы VC ×2 текселя | [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md) | **Готово** | `f=0` на рамке ширины 2. Visual: торнадо нет (clamp-curl); dye-клубы; look не взят. [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md). |
 | F2.2 | Limited MacCormack, только dye | [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) | **Не начато** | Scratch-поле, не Role C. Limiter min/max. В пресет — после VC. Velocity-MacCormack вне F2. |
 | F2.3 | Production decision | [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) | **Не начато** | Visual A/B/C/(D) — основной критерий, не довесок. Можно сменить `Fluid2D.asset`. ≥2× не гейт. |
 

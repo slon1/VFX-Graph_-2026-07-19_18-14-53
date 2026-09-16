@@ -168,6 +168,7 @@ RWTexture2D<float2> FieldWrite;
 
 float EpsilonVc;
 float DeltaTime;
+int BorderMargin;
 
 float2 LoadClampedVelocity(int2 q)
 {
@@ -194,6 +195,13 @@ void VorticityConfinement(uint3 id : SV_DispatchThreadID)
     int2 p = int2(id.xy);
     float2 u = LoadClampedVelocity(p);
     if (EpsilonVc == 0)
+    {
+        FieldWrite[p] = u;
+        return;
+    }
+
+    int m = BorderMargin;
+    if (p.x < m || p.y < m || p.x >= FieldResolution.x - m || p.y >= FieldResolution.y - m)
     {
         FieldWrite[p] = u;
         return;

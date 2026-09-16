@@ -1,6 +1,6 @@
 ## ADR-027: VorticityConfinementPass (F2.1)
 
-**Статус:** Реализовано. F2.1 **закрыт** (EditMode 2026-09-06 + visual 2026-09-16). Look-цель интерьера не взята — см. § visual.
+**Статус:** Реализовано. F2.1 **закрыт**. F2.1b **закрыт** (EditMode + visual 2026-09-16): торнадо рамки сняты маской; look интерьера не взят.
 **Дата:** 2026-09-06
 **Контекст:** M3D Framework, F2.1 — look-тикет мелкомасштабной структуры
 **Скоуп фазы:** [ADR-026](ADR-026-F2-Small-Scale-Structure.md) § F2.1
@@ -77,6 +77,7 @@ RWTexture2D<float2> FieldWrite;
 
 float EpsilonVc;
 float DeltaTime;
+int BorderMargin;
 
 float2 LoadClampedVelocity(int2 q)
 {
@@ -108,6 +109,13 @@ void VorticityConfinement(uint3 id : SV_DispatchThreadID)
         return;
     }
 
+    int m = BorderMargin;
+    if (p.x < m || p.y < m || p.x >= FieldResolution.x - m || p.y >= FieldResolution.y - m)
+    {
+        FieldWrite[p] = u;
+        return;
+    }
+
     float omega = VorticityAt(p);
     float absE = abs(VorticityAt(p + int2( 1, 0)));
     float absW = abs(VorticityAt(p + int2(-1, 0)));
@@ -122,7 +130,7 @@ void VorticityConfinement(uint3 id : SV_DispatchThreadID)
 #endif
 ```
 
-`DeltaTime` / `EpsilonVc` объявить **внутри** токена (как слоты). Глобальный `DeltaTime` из адвекции в `FieldPasses.compute` сюда не копировать — другой файл.
+`DeltaTime` / `EpsilonVc` / `BorderMargin` объявить **внутри** токена (как слоты). Глобальный `DeltaTime` из адвекции в `FieldPasses.compute` сюда не копировать — другой файл.
 
 #### 6. Экспериментальный ассет, не production
 
@@ -133,9 +141,7 @@ Touch → Seed(dye) → Advect velocity → VorticityConfinement
   → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect dye
 ```
 
-Одна стена после проекции (как Harris), не две как Fluid2D. Поля/форматы/128²/Size 32/GroundXZ/quads — как Fluid2D. `SeedScalarDisk.radiusUV = 0.08` (как Create Fluid2D). `ε_vc` по умолчанию **1**. `DissipationRate=0`. Jacobi×40.
-
-Меню Create/Assign отдельно, не Demo Effects. Create = `DeleteAsset` этого пути. **Не** вызывать Create Fluid2D / Create HarrisOrder.
+Одна стена после проекции (как Harris), не две как Fluid2D. Поля/форматы/128²/Size 32/GroundXZ/quads — как Fluid2D. Create: `SeedScalarDisk.radiusUV = 0.08`, `ε_vc=1`, `BorderMargin=2`. Живой диск: `radiusUV=0.16`, `m=2`. Меню Create/Assign отдельно, не Demo Effects. Create = `DeleteAsset` этого пути — **не вызывать** (сотрёт look). **Не** вызывать Create Fluid2D / Create HarrisOrder. `DissipationRate=0`. Jacobi×40.
 
 `Fluid2DPresetTests` не расширять под этот ассет — отдельный composition-тест.
 
@@ -170,7 +176,23 @@ Smoke: `Rebuild()` на `Fluid2D_Vorticity.asset` зелёный. `ε=1` и Jaco
 
 **Visual оператора (2026-09-16).** A=`Fluid2D`, B=`Fluid2D_Vorticity`, `radiusUV=0.16`, `ε_vc=1`, мазок ×3, 30 с, оба квада. Inf/шахматки/взрыва нет. A: velocity к 30 с почти мёртв; dye — клубы/грибы. B: интерьер dye **того же класса**, нить не тоньше; velocity держит постоянные потоки / «торнадо» **вдоль рамки**, dye снизу подкручивается краем. Look-цель F2 (тонкие интерьерные филаменты) **не взята**. Энергия VC села на рамку (8g + одна стена + curl у края), не в середину. `Fluid2D.asset` не менять. F2.3: обязательно Harris **без** VC, иначе порядок и VC смешаны.
 
-F2.1 **закрыт**.
+F2.1 **закрыт**. Look-цель на **этом** ассете без маски не взята. Диагноз рамки — § F2.1b, не переигрывание A/B.
+
+#### F2.1b — маска силы, 2 текселя (диагностика)
+
+Не новый ADR. Гипотезы не смешивать с 8g: VC в кадре **до** стены; 8g — после. Clamp-`Load` в `VorticityAt` / `∇|ω|` у края — отдельный сигнал (раздутый curl).
+
+Маска **только `f`**, не чтение ω для интерьера. Ширина **2**: сила в текселе `p` берёт `|ω|(p±1)`, тот ω достаёт `u` через clamp. `BorderMargin=0` = кернел F2.1. На экспериментальном ассете look — **2**. Create пишет `m=2` и **`radiusUV=0.08`** (factory); живой диск **0.16** — не вызывать Create. `m` — `[Min(0)]`.
+
+После early-out `ε_vc=0`: если `p` в рамке `m` текселей → записать `u`, не добавлять `f`.
+
+DoD: `m=0` не ломает identity F2.1; при `m=2`, `ε=1` кольцо 2 текселя bitwise сид + интерьер `max|Δu|>0`; Inf нет. Успех маски ≠ production. F2.2 не стопорить. Visual 2026-09-16: торнадо сняты, на 3-й тексель не съехали, `m` не ширить.
+
+ТЗ: [`todo-F2.1b.md`](../last/todo-F2.1b.md).
+
+**EditMode замерено (2026-09-16).** Create не вызывали (живой `radiusUV=0.16`). `BorderMargin=2` дописан на существующий ассет. Гейты: identity `m=0` ε=0 R32 зелёный; `m=2` ε=1 кольцо 2 текселя bitwise сид, интерьер вне кольца `max|Δu| > 0`; Inf нет; 3.3 без правок зелёный; пресет `BorderMargin==2`, `ε=1`, `radiusUV==0.16`. D/KE не гоняли как гейт.
+
+**Visual оператора (2026-09-16).** [`play-F2.1b-touch.md`](../last/play-F2.1b-touch.md): только B, `radiusUV=0.16`, `m=2`, ε=1, ×3 × 30 с. Торнадо рамки **нет**, на 3-й тексель не съехали. Dye — клубы того же класса, что F2.1. Inf/шахматки нет. Гипотеза clamp-curl **подтверждена**; look F2 маска не взяла. `m` не ширить. На экспериментальном ассете `m=2` оставить (иначе снова смотрим артефакт). Production нет. F2.1b **закрыт**.
 
 ### Отклонённые варианты
 
@@ -187,6 +209,8 @@ F2.1 **закрыт**.
 **Класть кернел в `FieldPasses.compute`.** texel/UV-файл; VC — world/fluid.
 
 **Писать `ε_vc` в `Fluid2D.asset`.** F2.3.
+
+**Маска чтения ω / ширина 1.** Интерьерный curl должен остаться как F2.1. `m=1` не закрывает стенсиль `∇|ω|` (сила в `x=1` всё ещё видит clamp). F2.1b — только `f=0` при `m=2`.
 
 ### Последствия
 

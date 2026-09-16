@@ -1,11 +1,12 @@
 ## ADR-026: F2 — восстановление мелкомасштабной структуры (скоуп фазы)
 
-**Статус:** Принято. F2.0 **закрыт**. F2.1 **закрыт** (EditMode + visual 2026-09-16: look интерьера не взят). F2.2+ не начаты.
+**Статус:** Принято. F2.0–F2.1b **закрыты**. F2.2+ не начаты.
 **Дата:** 2026-09-05
 **Контекст:** M3D Framework, после закрытия F1 / [ADR-024 §7](ADR-024-Harris-Order-Experiment.md)
 **План:** [`plan-stable-fluid.md`](../plan-stable-fluid.md) §3
 **ТЗ F2.0:** [`todo-F2.0.md`](../last/todo-F2.0.md) · **Тач F2.0:** [`play-F2.0-touch.md`](../last/play-F2.0-touch.md)
 **ТЗ F2.1:** [`todo-F2.1.md`](../last/todo-F2.1.md) · **Тач F2.1:** [`play-F2.1-touch.md`](../last/play-F2.1-touch.md) · **пасс:** [ADR-027](ADR-027-Vorticity-Confinement-Pass.md)
+**ТЗ F2.1b:** [`todo-F2.1b.md`](../last/todo-F2.1b.md) · **Тач F2.1b:** [`play-F2.1b-touch.md`](../last/play-F2.1b-touch.md)
 **Не меняет в этом ADR:** `Assets/Effects/Fluid2D.asset`, кернелы F1. Смена production — только тикет F2.3.
 
 ### Контекст
@@ -25,7 +26,8 @@ F1 закрыл Stam-minimum: Touch → проекция → Advect → dye, des
 | # | Тикет | Суть |
 | --- | --- | --- |
 | F2.0 | Baseline + R16 + smoke + odd-even | Зафиксировать production-профиль **до** новых кернелов. Coverage [Techdebt 8i](../last/Techdebt.md) и [8j](../last/Techdebt.md). Протокол тача как F1.8b (не гейт EditMode). GPU ms — запись без порога. Odd-even diagnostic **обязателен** (velocity и dye). ТЗ: [`todo-F2.0.md`](../last/todo-F2.0.md). |
-| F2.1 | Vorticity confinement | Первый look-тикет. Пасс + `Assets/Effects/Fluid2D_Vorticity.asset`. Не `Fluid2D.asset`, не переписывать `Fluid2D_HarrisOrder.asset`. Кернел/слоты: [ADR-027](ADR-027-Vorticity-Confinement-Pass.md). |
+| F2.1 | Vorticity confinement | Первый look-тикет. Пасс + `Assets/Effects/Fluid2D_Vorticity.asset`. Не `Fluid2D.asset`. Visual без маски: энергия на рамке. [ADR-027](ADR-027-Vorticity-Confinement-Pass.md). |
+| F2.1b | Маска силы VC, 2 текселя | Диагностика: торнадо рамки = clamp-curl; `f=0` на 2 текселях их сняла; look интерьера нет. [`play-F2.1b-touch.md`](../last/play-F2.1b-touch.md). |
 | F2.2 | Limited MacCormack для **dye** | Меньше смаза tracer. Имя метода одно. Velocity-correction **вне F2**. Архитектура буфера — § F2.2 ниже (scratch, не Role C). При отдельном ассете: `Fluid2D_MacCormackDye.asset`. |
 | F2.3 | Production decision | Сравнить режимы. Visual A/B/C/(D) — **основной** критерий закрытия, наравне с числами, не довесок. **Можно** сменить `Fluid2D.asset` отдельным ADR. Порог ≥2× из ADR-024 **не** гейт. |
 
@@ -106,7 +108,7 @@ Touch → Seed(dye) → Advect velocity → VorticityConfinement
 
 **Visual оператора (2026-09-16).** [`play-F2.1-touch.md`](../last/play-F2.1-touch.md): A vs B, `radiusUV=0.16`, `ε=1`. Inf/шахматки нет. Интерьер dye B не тоньше и не «живее серединой» — клубы как у A. Velocity B: постоянные потоки / торнадо **у рамки** (не успех VC). Production не менять. F2.3 сравнит Harris без VC.
 
-F2.1 **закрыт**. Look-DoD «тонкие интерьерные филаменты» **не выполнен**; пасс и пресет остаются экспериментом.
+F2.1 **закрыт**. Look-DoD «тонкие интерьерные филаменты» **на ассете без маски не выполнен**. F2.1b **закрыт**: торнадо = clamp-curl, маска их сняла; интерьер не стал живее.
 
 #### F2.2 — limited MacCormack, только dye
 

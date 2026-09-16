@@ -68,13 +68,14 @@ public class Fluid2DVorticityPresetTests
 
         SeedScalarDiskPass seed = (SeedScalarDiskPass)asset.Passes[1];
         Assert.AreEqual("dye", seed.FieldName);
-        Assert.AreEqual(0.08f, seed.RadiusUV, 1e-4f);
+        Assert.AreEqual(0.16f, seed.RadiusUV, 1e-4f);
 
         AdvectVelocityFieldPass advectVelocity = (AdvectVelocityFieldPass)asset.Passes[2];
         Assert.AreEqual("velocity", advectVelocity.FieldName);
 
         VorticityConfinementPass vorticity = (VorticityConfinementPass)asset.Passes[3];
         Assert.AreEqual(1f, vorticity.EpsilonVc);
+        Assert.AreEqual(2, vorticity.BorderMargin);
 
         AdvectScalarPass advectScalar = (AdvectScalarPass)asset.Passes[9];
         Assert.AreEqual("dye", advectScalar.ScalarField);
