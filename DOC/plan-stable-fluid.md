@@ -1,7 +1,7 @@
 # План: Stable Fluid (Stam) для M3D Framework
 
 **Дата создания:** 2026-08-24
-**Статус документа:** F1 закрыта (включая F1.8b / ADR-024). Хвосты F0 и черновик F2. Обновлять по факту закрытия каждого пункта — не переписывать историю, дописывать.
+**Статус документа:** F0.1–F0.4 и вся F1 закрыты. F2.0–F2.1 **Готово**. F2.2+ не начаты. F0.5–F0.7 не входят в F2.
 **Связанные документы:** [`status.md`](status.md) · [`capabilities.md`](capabilities.md) · [`pass-catalog.md`](pass-catalog.md) · [`last/Techdebt.md`](last/Techdebt.md)
 
 ---
@@ -24,9 +24,9 @@
 | F0.2 | GPU numeric test harness | [ADR-014](ADR/ADR-014-GPU-Numeric-Test-Harness.md) | **Готово** | `FieldTestHarness`, `HarnessProbes.compute` (test-only), миграция ручных MCP-замеров в автотесты (`HarnessSamplerTests`, `HarnessDiffuseTests`, `HarnessAdvectTests`). Обязательная инфраструктура для всех численных DoD фазы F1. |
 | F0.3 | Units by pass family | [ADR-016](ADR/ADR-016-Units-By-Pass-Family.md) | **Готово** | Формализация texel/UV/world конвенций; `fluidD`/`fluidPhi` объявлены как `Scalar` `world/s`, `R32_SFloat`; введён `RequiresSquareTexel`. |
 | F0.4 | Точечные фиксы | — | **Готово** | Четыре красных теста (`VfxParticleBinder`), NaN в `HeadingSteer`/`BoxBounds`, `RenderTexture.active` warning, физическая вилка Advect-теста. Не fluid-специфично, но разблокировало чистый прогон сьюта перед стартом F1. |
-| F0.5 | Снять matching-resolution для read в multi-role (cross-res dye/velocity) | — | **Отложено до после F1** | Цель: dye на высоком разрешении под velocity на грубом. Требует раздельного push `Resolution`/`TexelSize` по ролям A/B в кернел, не общего дескриптора — не тривиальный «убрать проверку равенства». |
-| F0.6 | Cross-resolution G2P | — | **Отложено до после F1** | Связано с F0.5; не блокирует Stam-контур на одном разрешении. |
-| F0.7 | `deltaTime` clamp в `SimulationWorld` | — | **Открыто, низкий приоритет** ([Techdebt 1b](last/Techdebt.md)) | Не блокер fluid: semi-Lagrangian advection безусловно устойчив к `dt` (в отличие от явного Laplacian у Diffuse/GrayScott, где это реальный CFL-риск на мобиле). |
+| F0.5 | Снять matching-resolution для read в multi-role (cross-res dye/velocity) | — | **Вне F2** | Dye выше разрешением, чем velocity. Не в этой фазе (остаёмся 128² одно res). |
+| F0.6 | Cross-resolution G2P | — | **Вне F2** | Связано с F0.5. |
+| F0.7 | `deltaTime` clamp в `SimulationWorld` | — | **Не F2** ([Techdebt 1b](last/Techdebt.md)) | Fluid semi-Lagrangian устойчив к `dt`; пункт живёт в группе A, не в таблице Stam-F2. |
 
 ---
 
@@ -49,14 +49,18 @@
 
 ---
 
-## 3. Фаза F2 — качество / метастабильность (черновик, не детализировано)
+## 3. Фаза F2 — восстановление мелкомасштабной структуры
 
-Не начинать до закрытия всей фазы F1 (ADR-019 и F1.8b — **закрыты**). Список ниже — фиксация направления, не тикеты с DoD.
+Скоуп: [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md). Не «точнее CFD». Метастабильность = живые тонкие dye-филаменты (VC + меньше смаза tracer). R32 — диагностический оракул; claims по `D` и любая правка `Fluid2D.asset` — на R16 ([Techdebt 8i](last/Techdebt.md)).
 
-- **Vorticity confinement** — восстановление энергии высоких частот, потерянной из-за численной диссипации semi-Lagrangian advection (см. [Techdebt 5](last/Techdebt.md): −39% амплитуды гауссова пика за 8 шагов на carrier `1.7`). Это и есть путь к «метастабильности» — визуально живым, закрученным структурам, а не строгой физической точности.
-- **MacCormack / BFECC advection** — снижение численной диссипации основного advect-пасса (альтернатива или дополнение vorticity confinement). Явно отложено при закрытии F0.4/ADR-013 как «отдельный тикет, не точечный фикс».
-- **Explicit viscosity** — рассмотрено и отклонено для v1 (числово неэффективно на используемых разрешениях); `dissipationRate` (уже есть, ADR-013/ADR-016) остаётся художественным рычагом вместо него. Возврат к теме — только если после живого пресета (F1.6) `dissipationRate` окажется недостаточным художественно.
-- **Мобильная адаптация fluid-контура** — desktop-first решение (см. §0) означает, что бюджет на мобиле для этого контура пока не оценивался и не оптимизировался.
+| # | Тикет | ADR | Статус | Суть |
+| --- | --- | --- | --- | --- |
+| F2.0 | Baseline, R16-цепочка, smoke Build, odd-even | [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) | **Готово** | 8i+8j+odd-even+ms. Visual: Inf/шахматки нет; 0.08 гаснет к 30 с; читаемый freeze — больший диск в сессии (клубы). ТЗ: [`todo-F2.0.md`](last/todo-F2.0.md). |
+| F2.1 | Vorticity confinement | [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md) | **Готово** | Пасс + `Fluid2D_Vorticity.asset`. Visual: интерьер dye не выиграл; энергия у рамки. Production не меняли. ТЗ: [`todo-F2.1.md`](last/todo-F2.1.md). |
+| F2.2 | Limited MacCormack, только dye | [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) | **Не начато** | Scratch-поле, не Role C. Limiter min/max. В пресет — после VC. Velocity-MacCormack вне F2. |
+| F2.3 | Production decision | [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) | **Не начато** | Visual A/B/C/(D) — основной критерий, не довесок. Можно сменить `Fluid2D.asset`. ≥2× не гейт. |
+
+**Вне F2:** explicit viscosity; MAC (кроме diagnostic в F2.0); F0.5/F0.6; F0.7; MacCormack velocity; Role C; второй Poisson; подъём Jacobi; мобильная адаптация; выдуманный GPU-порог мс.
 
 ---
 
@@ -65,16 +69,17 @@
 Полный список — [`last/Techdebt.md`](last/Techdebt.md) группа C. Кратко, применительно к fluid:
 
 - **Texel/UV-зависимость параметров** ([Techdebt 8](last/Techdebt.md)) — существующие Diffuse/GrayScott не приводятся к world; fluid — отдельное world-семейство, живёт по своим правилам (ADR-016).
-- **Численная диссипация semi-Lagrangian advect** ([Techdebt 5](last/Techdebt.md)) — не баг, задокументированная плата за unconditional stability; путь устранения — F2 (vorticity confinement / MacCormack).
-- **Линейный дрейф `mean(Φ)`** ([Techdebt 8d](last/Techdebt.md)) — устранено F1.2b (`ZeroMeanScalarPass`); F1.6: Bias=256 хватило на штатный сплеш (MaxFieldSpeed=20, удержание ~10 с).
+- **Численная диссипация semi-Lagrangian advect** ([Techdebt 5](last/Techdebt.md)) — не баг; путь — F2.1/F2.2 ([ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md)).
+- **Линейный дрейф `mean(Φ)`** ([Techdebt 8d](last/Techdebt.md)) — устранено F1.2b (`ZeroMeanScalarPass`); F1.6: Bias=256 хватило на штатный сплеш (MaxFieldSpeed=20, удержание ~10 с). Клип Accum молчаливый; overflow штатного пресета не баг.
 - **Пол `max|D|` после проекции** ([Techdebt 8e](last/Techdebt.md), [8f](last/Techdebt.md)) — осевые моды Jacobi и **несогласованность дискретных операторов div/grad/Jacobi**; канон имени — [ADR-019](ADR/ADR-019-Fluid2D-Solver.md), замер — [ADR-020 §3](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md).
 - **Рамка `D` после стен** ([Techdebt 8g](last/Techdebt.md)) — ожидаемо после F1.4; второй проекции нет.
+- **Оракул R32 ≠ production R16** ([Techdebt 8i](last/Techdebt.md)) — F2.0; smoke Build — [8j](last/Techdebt.md); GPU-потолок F2 — [8k](last/Techdebt.md) (не установлен).
 
 ---
 
 ## 5. Как читать этот план
 
 - Столбец «Статус» — источник истины по факту закрытия; при закрытии тикета обновлять здесь **и** в [`status.md`](status.md) (там — журнал по датам, здесь — план по порядку зависимостей).
-- Порядок F1.1 → F1.2 (+F1.2b) → F1.3 → F1.4 → F1.6 → F1.7 → ADR-019 — это зависимости, не даты. **F1 и ADR-019 закрыты.** Дальше — черновик F2 (не MAC: odd-even интерьера на dye не виден).
+- Порядок F1.1 → … → F1.8b — зависимости, не даты. **F1 закрыта.** F2: F2.0 → F2.1 → (F2.2 можно параллелить после F2.0) → F2.3. Не MAC.
 - Каждый закрытый пункт фазы F1 сопровождается собственным ADR и `todo-*.md` в [`ADR/`](ADR/) и [`last/`](last/) — этот документ не заменяет их, только даёт карту целиком.
 - **Смежный трек, не fluid-specific:** [ADR-025](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) / [`todo-postfx-layer1.md`](last/todo-postfx-layer1.md) — HDR Camera + Bloom + ACES Volume, generic-слой поверх любого `EffectAsset` (в т.ч. Fluid2D). **Реализовано** (2026-09-05): `M3D Volume` + `M3DVolumeProfile` в `Test1`, desktop-only через `M3DVolumeMobileGate`. Не встроен в таблицы F0/F1/F2 по номеру, т.к. не привязан к самому Stam-контуру.

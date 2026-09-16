@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-09-05  
+**Снимок:** 2026-09-16  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
@@ -32,7 +32,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 - Декларация на EffectAsset (`FieldDescriptor`: format, resolution, plane basis).
 - `FieldAccess`: Read / WriteInPlace / WritePingPong (World-owned Swap, только после реального dispatch).
-- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **AddNormalizedGradientField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**, **AdvectVelocityField**, **AdvectScalarPass**, **DivergenceFieldPass**, **JacobiPhiPass**, **ZeroMeanScalarPass**, **SubtractPhiGradientPass**, **SolidWallVelocityPass**, **ClearVelocity**, **HeadingSteer**.
+- Пассы: ClearField, TouchInjectVelocity, DecayField / **DecayFieldScalar**, SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **AddNormalizedGradientField**, **SampleGradientField**, **DiffuseField**, **DiffuseVelocityField**, **AdvectVelocityField**, **AdvectScalarPass**, **DivergenceFieldPass**, **JacobiPhiPass**, **ZeroMeanScalarPass**, **SubtractPhiGradientPass**, **SolidWallVelocityPass**, **VorticityConfinementPass**, **ClearVelocity**, **HeadingSteer**.
 - Texture slots: `FieldRead` / `FieldWrite` (single-field); multi-field: `FieldReadA/B` + `FieldWriteA/B` (ADR-008 / M2c).
 - `RepeatCount` (ADR-015): World повторяет `Execute + Swap` N раз за кадр (итерации решателя, не субшаги `dt`). Default 1; `JacobiPhiPass` переопределяет (дефолт 40).
 - Единицы по семействам (ADR-016): RD/boids-диффузия — **texel** Laplacian без `/h²`; G2P-градиент — **UV** без `/Size`; fluid — **world**. Существующие texel/UV не меняются. `RequiresSquareTexel` проверяется на Build (`SquareTexelValidator`, ADR-017).
@@ -98,7 +98,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 | Категория | Примеры |
 | --- | --- |
 | Shape / Force / Dynamics | CopyRest, Twist, Gravity, Vortex, **SampleGradient**, **AddNormalizedGradient**, **SteerToVelocityField**, **ClearVelocity**, **HeadingSteer**, Integrate, Bounds, … |
-| Emit / Transport | ClearField, **SeedScalarDisk**, TouchInject, Decay / **DecayScalar**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocity**, **AdvectScalar**, **Divergence** / **ZeroMeanScalar** / **Jacobi** / **SubtractPhiGradient** / **SolidWallVelocity**, **SwapFields**, **GrayScott**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
+| Emit / Transport | ClearField, **SeedScalarDisk**, TouchInject, Decay / **DecayScalar**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocity**, **AdvectScalar**, **Divergence** / **ZeroMeanScalar** / **Jacobi** / **SubtractPhiGradient** / **SolidWallVelocity** / **VorticityConfinement**, **SwapFields**, **GrayScott**, SampleVelocity, ClearAccum, ScatterVelocity/Density, Normalize |
 
 ### Демо-пресеты
 
@@ -113,13 +113,14 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 | **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |
 | **Gray-Scott-Agents** | agents → GS only (no field feedback) |
 | **Fluid2D** | Stam: Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect → SolidWall → AdvectScalar (None, GroundXZ, velocity+dye quads) |
+| **Fluid2D_Vorticity** | эксперимент F2.1: Advect → VC → Project → Wall → dye (`ε_vc=1`); не production |
 
 ---
 
 ### Fluid projection (Stam)
 
-- Кернелы проекции: Divergence / **ZeroMeanScalar** (`fluidD` zero-mean перед Jacobi) / Jacobi / SubtractPhiGradient / **SolidWallVelocity** (free-slip `u·n=0` на рамке).
-- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). Порядок project→advect измерен ([ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7) — Harris на λ=8 чуть чище по D, ≥2× нет; production не меняли. Эталон: `Fluid2D_HarrisOrder.asset`. F0.5 (dye выше res, чем velocity) по-прежнему нет. Odd-even интерьера на dye **не виден** — MAC не открывали.
+- Кернелы проекции: Divergence / **ZeroMeanScalar** (`fluidD` zero-mean перед Jacobi) / Jacobi / SubtractPhiGradient / **SolidWallVelocity** (free-slip `u·n=0` на рамке). **VorticityConfinement** — look-тикет F2.1 на `Fluid2D_Vorticity.asset` (Harris + VC до проекции), не в production.
+- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). Порядок project→advect измерен ([ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7) — Harris на λ=8 чуть чище по D, ≥2× нет; production не меняли. Эталон: `Fluid2D_HarrisOrder.asset`. F2: [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md); VC — [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md) (закрыт: look интерьера не взят, энергия у рамки). F0.5 вне F2. Odd-even интерьера на dye **не виден** — MAC не открывали.
 
 ---
 
@@ -127,7 +128,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 | Тема | Сейчас |
 | --- | --- |
-| Stable Fluids (Stam-minimum) | кернелы + пресет Fluid2D с dye + [ADR-019](ADR/ADR-019-Fluid2D-Solver.md); vorticity / F0.5 / MAC — позже (F2 / после F1) |
+| Stable Fluids (Stam-minimum + F2 скоуп) | F1 закрыта ([ADR-019](ADR/ADR-019-Fluid2D-Solver.md)). F2: [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) — VC (`Fluid2D_Vorticity`) + limited MacCormack dye (scratch, не Role C); MAC / F0.5 / viscosity вне фазы |
 | Texel / UV Laplacian и градиент | Параметры Diffuse / GrayScott / SampleGradient зависят от разрешения и `Size` (ADR-016); не «исправлять» `/h²` |
 | Нет emitters | lifetime/compaction позже |
 | Нет SpatialHash | boids/sand позже |

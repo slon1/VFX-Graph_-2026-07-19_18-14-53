@@ -164,7 +164,7 @@ MonoBehaviour:
         enabled: 1
         fieldName: dye
         centerUV: {x: 0.5, y: 0.5}
-        radiusUV: 0.08
+        radiusUV: 0.16
         value: 1
     - rid: 7627695370185998445
       type: {class: DivergenceFieldPass, ns: , asm: Assembly-CSharp}

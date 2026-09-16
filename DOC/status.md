@@ -1,17 +1,33 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-09-05  
-**Итерация:** 5.24 — ADR-025 PostFX (HDR + Bloom + ACES) реализован в `Test1`; production Fluid2D без изменений  
+**Дата:** 2026-09-16  
+**Итерация:** 5.28 — F2.1 закрыт (EditMode + visual: look интерьера не взят)  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-019`](ADR/ADR-019-Fluid2D-Solver.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`ADR-024`](ADR/ADR-024-Harris-Order-Experiment.md) · [`ADR-025`](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-019`](ADR/ADR-019-Fluid2D-Solver.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`ADR-024`](ADR/ADR-024-Harris-Order-Experiment.md) · [`ADR-025`](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) · [`ADR-026`](ADR/ADR-026-F2-Small-Scale-Structure.md) · [`ADR-027`](ADR/ADR-027-Vorticity-Confinement-Pass.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
 ## 5.24 — ADR-025 HDR + Bloom + ACES (готово)
 
 Generic desktop post-FX, не fluid-specific. `Tools/M3D/Setup Post-Processing`: `M3D Volume` + `M3DVolumeProfile` (Bloom `0.8/0.4/0.65`, ACES) в `Test1`; камера `renderPostProcessing=1`; `m_VolumeProfile` снят с PC/Mobile RP asset. Runtime: `M3DVolumeMobileGate`. Сквозная проверка `hdrIntensity` на Fluid2D dye. Мобильный рантайм не гонялся.
+
+## F2.0 — baseline production (готово)
+
+EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChain interior 0.168 → 0.078; odd-even dye `E=1`; Nyquist `E(u.x)` 0.100 → 0.0089; wall-clock `0.21 ms/кадр` CPU/driver. `Rebuild()` на `Fluid2D.asset` зелёный.
+
+**Visual (2026-09-06):** только Fluid2D, мазок ×3, 30 с. Inf/шахматки нет. Create 0.08 к 30 с почти гаснет; читаемый freeze — больший диск, ушёл в ассет (**0.16**). F2.1: то же число на обоих SO.
+
+## F2.1 — vorticity confinement (готово)
+
+Пасс + `Fluid2D_Vorticity.asset`. EditMode: ε=0 identity, D кадр 1 0.98× / кадр 8 8.16× (гейт 10×), KE 3.54×, Nyquist не растёт, 0.272 ms.
+
+**Visual (2026-09-16):** A=Fluid2D vs B=Vorticity, `radiusUV=0.16`, ε=1, 30 с ×3. Inf/шахматки нет. Интерьер dye B не тоньше (клубы как A). Velocity B — постоянные потоки/торнадо **у рамки**, не успех look. Production не меняли. Дальше F2.2; F2.3 обязан включить Harris без VC.
+
+## F2 — F2.0–F2.1 закрыты; F2.2 не начат
+
+[ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md): F2.2 — limited MacCormack dye, scratch не Role C. F2.3 — visual A/B/C основной критерий; `Fluid2D.asset` можно сменить (≥2× не гейт). Вне фазы: viscosity, MAC, F0.5, velocity-MacCormack, F0.7.
 
 ---
 
@@ -154,7 +170,7 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 
 ## F1.8 / F1.8b — Harris-order (закрыто, production без смены)
 
-λ=4: confound Jacobi k=16, не голос про порядок. λ=8 A=1: гейт 4 ок, B ниже A на 8/8 (`B/A` 0.55–0.72), ≥2× нет. Visual: Harris — тонкий хребет, Fluid2D — пух/разрыв; Inf/шахматки нет. **Вердикт [ADR-024 §7](ADR/ADR-024-Harris-Order-Experiment.md):** гипотеза по направлению верна, по силе нет; `Fluid2D.asset` остаётся Project→Advect.
+λ=4: confound Jacobi k=16, не голос про порядок. λ=8 A=1: гейт 4 ок, B ниже A на 8/8 (`B/A` 0.55–0.72), ≥2× нет. Visual: Harris — тонкий хребет, Fluid2D — пух/разрыв; Inf/шахматки нет. **Вердикт [ADR-024 §7](ADR/ADR-024-Harris-Order-Experiment.md):** гипотеза по направлению верна, по силе нет; `Fluid2D.asset` остаётся Project→Advect. Scope: TG + R32, 8 кадров; visual на боевом R16. Не доказано, что Project→Advect лучше «в целом». Follow-up до production-решений F2: R16-цепочка ([Techdebt 8i](last/Techdebt.md)); smoke Build — [8j](last/Techdebt.md).
 
 ---
 
@@ -207,18 +223,18 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 ## Файлы (ключевые)
 
 ```
-Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, AdvectVelocity, AdvectScalar, …), FluidPasses.cs (Divergence, Jacobi, ZeroMeanScalar, SubtractPhiGradient, SolidWallVelocity), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
-Assets/Scripts/Runtime/    SimPass.cs (RepeatCount, RequiresSquareTexel, AttrSets.Heading, SimShaderIds.Dissipation), SimulationWorld.cs, RepeatCountValidator.cs, SquareTexelValidator.cs
+Assets/Scripts/Passes/     FieldPasses.cs (AddNormalized*, Steer, DiffuseVelocity, AdvectVelocity, AdvectScalar, …), FluidPasses.cs (Divergence, Jacobi, ZeroMeanScalar, SubtractPhiGradient, SolidWallVelocity, VorticityConfinement), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
+Assets/Scripts/Runtime/    SimPass.cs (RepeatCount, RequiresSquareTexel, AttrSets.Heading, SimShaderIds.Dissipation, EpsilonVc), SimulationWorld.cs, RepeatCountValidator.cs, SquareTexelValidator.cs
 Assets/Shaders/GPU/Passes/ DynamicsPasses, FieldPasses, FluidPasses, GradientPasses (AddNormalizedGradient)
-Assets/Tests/Editor/       HarrisOrderExperimentTests, AdvectScalarPassTests, Fluid2DPresetTests, SolidWallVelocityPassTests, ZeroMeanScalarPassTests, SubtractPhiGradientPassTests, JacobiPhiPassTests, DivergenceFieldPassTests, RepeatCountTests, FieldTestHarness, HarnessClearTests, HarnessSamplerTests, HarnessDiffuseTests, HarnessAdvectTests, …
+Assets/Tests/Editor/       VorticityConfinementPassTests, Fluid2DVorticityPresetTests, Fluid2DVorticityWorldSmokeTests, Fluid2DProductionProfileTests, Fluid2DWorldSmokeTests, HarrisOrderExperimentTests, AdvectScalarPassTests, Fluid2DPresetTests, …
 Assets/Scripts/Editor/     M3DDemoTools.cs, PostProcessingSetup.cs, Adr012BoidsMk1Setup.cs
 Assets/Scripts/Runtime/    …, PostFX/M3DVolumeMobileGate.cs
 Assets/Settings/           M3DVolumeProfile.asset (Bloom + ACES; не DefaultVolumeProfile)
-Assets/Effects/            Fluid2D.asset, Fluid2D_HarrisOrder.asset (эксперимент, не production)
+Assets/Effects/            Fluid2D.asset, Fluid2D_HarrisOrder.asset, Fluid2D_Vorticity.asset (эксперименты, не production)
 ```
 
 ---
 
 ## Вне скоупа (далее)
 
-**F2** vorticity confinement / MacCormack · MAC / Rhie–Chow (триггер — odd-even интерьера на dye; F1.7 не виден) · F0.5 cross-res dye · Trail/persistence · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)
+**F2.2–F2.3** не начаты · MAC / Rhie–Chow (триггер — устойчивая шахматка интерьера **после** сравнения с baseline F2.0; F2.0 visual и F1.7 не виден) · F0.5 cross-res dye (вне F2) · Trail/persistence · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)

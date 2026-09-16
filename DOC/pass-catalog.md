@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-09-05 (ADR-024 Harris-order закрыт; production Fluid2D без смены)
+**Снимок:** 2026-09-16 (F2.1 закрыт: VC эксперимент, look интерьера не взят; production Fluid2D без смены)
 
 ---
 
@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | Reaction-diffusion, boids-диффузия | **texel**: лапласиан `N+S+E+W−4C` без `/h²` | `DiffuseField`, `DiffuseVelocityField`, `GrayScott` |
 | G2P-градиент | **UV**: центральные разности в UV, без деления на `Size` | `SampleGradientField`, `AddNormalizedGradientField` |
-| Fluid | **world**: `vel·dt/Size` в адвекции; проекция F1 без `h` при квадратном текселе | `AdvectVelocityField`, `AdvectScalar` + все пассы F1 |
+| Fluid | **world**: `vel·dt/Size` в адвекции; проекция F1 без `h` при квадратном текселе | `AdvectVelocityField`, `AdvectScalar` + все пассы F1 + `VorticityConfinement` |
 
 `DiffuseVelocityField` — не вязкость. Поля проекции F1: `fluidD`, `fluidPhi` (Scalar, world/s); Φ не называть давлением. `RequiresSquareTexel` реализован (F1.1 / ADR-017). `fluidD` и `fluidPhi` — `R32_SFloat`.
 
@@ -63,7 +63,7 @@
 | `GrayScottPasses.compute` | GrayScottReact, SeedScalarDisk |
 | `TouchGrayScottPasses.compute` | TouchInjectGrayScott |
 | `AgentFieldFeedbackPasses.compute` | AgentBoostField, AgentErodeField |
-| `FluidPasses.compute` | Divergence, Jacobi, **Zero Mean Scalar**, **Subtract Phi Gradient**, **Solid Wall Velocity** |
+| `FluidPasses.compute` | Divergence, Jacobi, **Zero Mean Scalar**, **Subtract Phi Gradient**, **Solid Wall Velocity**, **Vorticity Confinement** |
 
 `ClearFieldPass` и `ClearFieldAccumPass` — **без** своих `.compute` (Clear RT / ClearUintBuffer из P2G).
 
@@ -405,6 +405,18 @@
 | **Единицы** | тот же fluid-грид, что проекция; `h` в формуле нет; квадратный тексель обязателен (`RequiresSquareTexel`) |
 | **Хорошо для** | Непроницаемая рамка Stam. В пресете Fluid2D — после Subtract и ещё раз после Advect |
 
+### Vorticity Confinement
+| | |
+|--|--|
+| **Назначение** | Fedkiw 2D: `ω` как curl на стенсиле Divergence (без `/2h`); `f = ε_vc · h · ω · (N.y, −N.x)`; `u ← u + f·dt`. Early-out при `ε_vc=0` |
+| **Библиотека / kernel** | `FluidPasses` / `VorticityConfinement` (`#ifdef KERNEL_VORTICITY`) |
+| **Fields** | WritePingPong Velocity ×2 (`velocity`). Слоты `FieldRead`/`FieldWrite` (single-role), не `FieldWriteA`. `FieldReads` пустой |
+| **Параметры** | `velocityField` (default `velocity`, не `flockVel`); `epsilonVc` (default 1, `[Min(0)]`) |
+| **RepeatCount** | 1 (не переопределён) |
+| **dt** | Да (`u + f·DeltaTime`) |
+| **Единицы** | **world**; `h = FieldSize.x / FieldResolution.x` в кернеле; квадратный тексель обязателен (`RequiresSquareTexel`) |
+| **Хорошо для** | Эксперимент F2.1: `Fluid2D_Vorticity.asset` сразу после Advect velocity, **до** Divergence. Не production: visual 2026-09-16 — энергия у рамки, не тонкий интерьер |
+
 ### SampleGradientField (G2P)
 | | |
 |--|--|
@@ -553,6 +565,8 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 **Gray-Scott-Agents:** Curl/Drag/Limit/Integrate/Bounds → presence Replace → Seed → GS×N → Boost/Erode → Touch — **без** flock-полей и SampleVelocity/Gradient (поле не рулит частицами)
 
 **Fluid2D ([ADR-022](ADR/ADR-022-Fluid2D-Preset.md) + [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md); сводка [ADR-019](ADR/ADR-019-Fluid2D-Solver.md)):** `TouchInjectVelocity → SeedScalarDisk(dye) → Divergence → ZeroMeanScalar → Jacobi×40 → SubtractPhiGradient → SolidWallVelocity → Advect velocity → SolidWallVelocity → AdvectScalar` (`Assets/Effects/Fluid2D.asset`, меню Create/Assign, InputRouter=GroundXZ, quads velocity+dye). Порядок **project → advect** измерен в [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7 (λ=8: Harris ~30–45% чище по `max|D|`, ≥2× нет) — production не меняли. Эталон Harris: `Fluid2D_HarrisOrder.asset` (меню Assign, не Demo Effects).
+
+**Fluid2D Vorticity ([ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md), эксперимент, не production):** `Touch → Seed(dye) → Advect velocity → VorticityConfinement → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect dye` (`Assets/Effects/Fluid2D_Vorticity.asset`, меню Create/Assign Vorticity Experiment). Одна стена. `ε_vc=1`. Visual закрыт: интерьер не выиграл, потоки у рамки — [`play-F2.1-touch.md`](last/play-F2.1-touch.md).
 
 ---
 
