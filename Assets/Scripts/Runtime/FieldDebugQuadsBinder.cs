@@ -142,7 +142,14 @@ public sealed class FieldDebugQuadsBinder : IRenderBinder
             Collider collider = quadObject.GetComponent<Collider>();
             if (collider != null)
             {
-                Object.Destroy(collider);
+                if (Application.isPlaying)
+                {
+                    Object.Destroy(collider);
+                }
+                else
+                {
+                    Object.DestroyImmediate(collider);
+                }
             }
 
             CreateLabel(quadObject.transform, slot.fieldName, descriptor.Size);
