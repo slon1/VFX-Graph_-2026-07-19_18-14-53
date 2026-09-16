@@ -9,6 +9,7 @@
 #pragma kernel ZeroMeanAccum KERNEL_ZEROMEAN
 #pragma kernel ZeroMeanApply KERNEL_ZEROMEAN
 #pragma kernel SolidWallVelocity KERNEL_SOLIDWALL
+#pragma kernel VorticityConfinement KERNEL_VORTICITY
 
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
 
@@ -158,5 +159,55 @@ void SolidWallVelocity(uint3 id : SV_DispatchThreadID)
     if (p.y == 0 || p.y == FieldResolution.y - 1)
         u.y = 0;
     FieldWrite[p] = u;
+}
+#endif
+
+#ifdef KERNEL_VORTICITY
+Texture2D<float2> FieldRead;
+RWTexture2D<float2> FieldWrite;
+
+float EpsilonVc;
+float DeltaTime;
+
+float2 LoadClampedVelocity(int2 q)
+{
+    int2 maxP = FieldResolution - 1;
+    q = clamp(q, int2(0, 0), maxP);
+    return FieldRead.Load(int3(q, 0));
+}
+
+float VorticityAt(int2 q)
+{
+    float2 uE = LoadClampedVelocity(q + int2( 1, 0));
+    float2 uW = LoadClampedVelocity(q + int2(-1, 0));
+    float2 uN = LoadClampedVelocity(q + int2( 0, 1));
+    float2 uS = LoadClampedVelocity(q + int2( 0,-1));
+    return (uE.y - uW.y) - (uN.x - uS.x);
+}
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void VorticityConfinement(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+        return;
+
+    int2 p = int2(id.xy);
+    float2 u = LoadClampedVelocity(p);
+    if (EpsilonVc == 0)
+    {
+        FieldWrite[p] = u;
+        return;
+    }
+
+    float omega = VorticityAt(p);
+    float absE = abs(VorticityAt(p + int2( 1, 0)));
+    float absW = abs(VorticityAt(p + int2(-1, 0)));
+    float absN = abs(VorticityAt(p + int2( 0, 1)));
+    float absS = abs(VorticityAt(p + int2( 0,-1)));
+    float2 grad = float2(absE - absW, absN - absS);
+    float2 N = grad / (length(grad) + 1e-5);
+    float h = FieldSize.x / FieldResolution.x;
+    float2 f = EpsilonVc * h * omega * float2(N.y, -N.x);
+    FieldWrite[p] = u + f * DeltaTime;
 }
 #endif

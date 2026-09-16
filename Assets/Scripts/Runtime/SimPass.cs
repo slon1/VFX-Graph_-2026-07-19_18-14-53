@@ -46,6 +46,7 @@ internal static class SimShaderIds
     /// <summary>Precomputed exp(-dissipationRate * dt) for AdvectVelocityField. 1 = off.</summary>
     public static readonly int Dissipation = Shader.PropertyToID("Dissipation");
     public static readonly int DecayFactor = Shader.PropertyToID("DecayFactor");
+    public static readonly int EpsilonVc = Shader.PropertyToID("EpsilonVc");
 }
 
 /// <summary>

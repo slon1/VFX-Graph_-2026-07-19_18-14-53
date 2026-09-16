@@ -274,3 +274,35 @@ public sealed class SolidWallVelocityPass : FieldKernelPass
             ref fieldWritesCache, velocityField,
             FieldAccess.WriteInPlace, FieldSemantic.Velocity, 2, FieldSlotRole.A);
 }
+
+/// <summary>
+/// Fedkiw vorticity confinement on collocated velocity (ADR-027).
+/// WritePingPong, legacy FieldRead/FieldWrite. Square texel required.
+/// </summary>
+[Serializable]
+public sealed class VorticityConfinementPass : FieldKernelPass
+{
+    [SerializeField] private string velocityField = "velocity";
+    [SerializeField, Min(0f)] private float epsilonVc = 1f;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string VelocityField { get => velocityField; set => velocityField = value; }
+    public float EpsilonVc { get => epsilonVc; set => epsilonVc = value; }
+
+    public override string DisplayName => "Vorticity Confinement";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "VorticityConfinement";
+    public override bool RequiresSquareTexel => true;
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, velocityField,
+            FieldAccess.WritePingPong, FieldSemantic.Velocity, 2);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+        SetFloat(context, SimShaderIds.EpsilonVc, epsilonVc);
+    }
+}
