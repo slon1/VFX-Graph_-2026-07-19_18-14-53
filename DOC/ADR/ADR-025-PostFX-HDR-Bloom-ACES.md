@@ -89,7 +89,7 @@ Bloom bloom = profile.Has<Bloom>()
 
 Errata к снимку на дату ADR: формулировка «в сцене нет ни одного Volume» была верна для `Test1` и неверна для `SampleScene` (там уже `Global Volume` + `SampleSceneProfile`: Bloom `1 / 0.25 / 0.5`, Tonemapping Neutral, Vignette `0.2`). Тот же `SampleSceneProfile` висел на `PC_RPAsset` и `Mobile_RPAsset` как `m_VolumeProfile`. В `Test1` у камеры было `renderPostProcessing = 0`.
 
-Следствие: сценический `M3DVolumeMobileGate` не выключил бы Bloom на мобилке, пока quality-профиль несёт Bloom. Setup **снимает** `m_VolumeProfile` с обоих URP asset (`None`) и включает `renderPostProcessing` на камерах открытой сцены. `m_SupportsHDR` и Renderer Asset не пишутся. `SampleScene` / `SampleSceneProfile` / `DefaultVolumeProfile` не трогаются.
+Следствие: сценический `M3DVolumeMobileGate` не выключил бы Bloom на мобилке, пока quality-профиль несёт Bloom. Setup снимает `m_VolumeProfile` **только если это `SampleSceneProfile`** (шаблон URP); `None` — no-op; любой другой quality-профиль не трогает (warning). Включает `renderPostProcessing` на камерах открытой сцены. `m_SupportsHDR` и Renderer Asset не пишутся. `SampleScene` / содержимое `SampleSceneProfile` / `DefaultVolumeProfile` не правятся. Объект `M3D Volume`: если `sharedProfile` уже `M3DVolumeProfile` — не переназначает; чужой профиль на этом объекте заменяется, чтобы не смешать Bloom с Vignette/Neutral.
 
 `VolumeProfile.Add<T>()` не персистит sub-asset сам: после `Add` Setup вызывает `AssetDatabase.AddObjectToAsset`. Повторный MenuItem идемпотентен (`TryGet` → не сбрасывает калибровку).
 

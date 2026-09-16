@@ -1,6 +1,6 @@
 ## ТЗ для программиста — Слой 1: HDR Camera + Bloom + ACES Volume
 
-**Закрыто 2026-09-05.** Реализовано: [ADR-025](../ADR/ADR-025-PostFX-HDR-Bloom-ACES.md). Это ТЗ не переоткрывать. Факт относительно черновика: `m_VolumeProfile` снят с PC/Mobile RP asset (иначе гейт не глушил Bloom); `VolumeProfile.Add<T>()` персистится через `AddObjectToAsset`.
+**Закрыто 2026-09-05.** Реализовано: [ADR-025](../ADR/ADR-025-PostFX-HDR-Bloom-ACES.md). Это ТЗ не переоткрывать. Факт относительно черновика: с PC/Mobile RP asset снят только шаблонный `SampleSceneProfile` (иначе гейт не глушил Bloom); чужой quality-профиль Setup не трогает. `VolumeProfile.Add<T>()` персистится через `AddObjectToAsset`.
 
 Роль этого документа: собрать скриптовый, коммитящийся сетап пост-обработки по [ADR-025](../ADR/ADR-025-PostFX-HDR-Bloom-ACES.md). Применяется к любому `EffectAsset` (Fluid2D, Gray-Scott-Boids, Boids_mk1), не к одному конкретному пресету.
 

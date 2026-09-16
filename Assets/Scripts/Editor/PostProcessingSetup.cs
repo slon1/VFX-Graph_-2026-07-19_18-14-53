@@ -12,6 +12,7 @@ public static class PostProcessingSetup
 {
     private const string VolumeObjectName = "M3D Volume";
     private const string ProfilePath = "Assets/Settings/M3DVolumeProfile.asset";
+    private const string SampleSceneProfilePath = "Assets/Settings/SampleSceneProfile.asset";
     private const string PcRpAssetPath = "Assets/Settings/PC_RPAsset.asset";
     private const string MobileRpAssetPath = "Assets/Settings/Mobile_RPAsset.asset";
 
@@ -131,11 +132,20 @@ public static class PostProcessingSetup
             return;
         }
 
-        string previous = profileProp.objectReferenceValue.name;
+        string previousPath = AssetDatabase.GetAssetPath(profileProp.objectReferenceValue);
+        string previousName = profileProp.objectReferenceValue.name;
+        if (previousPath != SampleSceneProfilePath)
+        {
+            Debug.LogWarning(
+                $"M3D: {assetPath} m_VolumeProfile is '{previousName}' ({previousPath}); " +
+                "leaving it in place (only SampleSceneProfile is auto-detached).");
+            return;
+        }
+
         profileProp.objectReferenceValue = null;
         so.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(asset);
-        Debug.Log($"M3D: detached m_VolumeProfile '{previous}' from {assetPath} (HDR flags untouched).");
+        Debug.Log($"M3D: detached m_VolumeProfile '{previousName}' from {assetPath} (HDR flags untouched).");
     }
 
     private static void EnsureCameraPostProcessing()
@@ -210,18 +220,24 @@ public static class PostProcessingSetup
             Debug.Log($"M3D: reusing volume profile at '{ProfilePath}'.");
         }
 
-        if (volume.sharedProfile != desired)
+        if (volume.sharedProfile == desired)
         {
-            if (volume.sharedProfile != null)
-            {
-                Debug.LogWarning(
-                    $"M3D: replacing Volume sharedProfile '{volume.sharedProfile.name}' with '{desired.name}'.");
-            }
-
-            volume.sharedProfile = desired;
-            EditorUtility.SetDirty(volume);
+            Debug.Log("M3D: Volume already uses M3DVolumeProfile.");
+            return desired;
         }
 
+        if (volume.sharedProfile != null)
+        {
+            Debug.LogWarning(
+                $"M3D: replacing Volume sharedProfile '{volume.sharedProfile.name}' with '{desired.name}'.");
+        }
+        else
+        {
+            Debug.Log($"M3D: assigned '{desired.name}' to Volume.");
+        }
+
+        volume.sharedProfile = desired;
+        EditorUtility.SetDirty(volume);
         return desired;
     }
 
