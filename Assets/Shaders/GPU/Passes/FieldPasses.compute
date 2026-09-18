@@ -1,6 +1,6 @@
 // Field passes: inject / decay / sample / advect.
-// KERNEL_ADVECTSCALAR isolates FieldReadA (float dye) from legacy FieldRead (float2).
-// Existing kernels stay behind #ifndef: Unity compiles the whole file per #pragma kernel.
+// KERNEL_ADVECTSCALAR / KERNEL_COPYSCALAR / KERNEL_MACCORMACKCOMBINE isolate float dye
+// slots from legacy FieldRead (float2). Unity compiles the whole file per #pragma kernel.
 
 #pragma kernel TouchInjectVelocity
 #pragma kernel DecayField
@@ -10,6 +10,8 @@
 #pragma kernel DiffuseVelocityField
 #pragma kernel AdvectVelocityField
 #pragma kernel AdvectScalar KERNEL_ADVECTSCALAR
+#pragma kernel CopyScalar KERNEL_COPYSCALAR
+#pragma kernel MacCormackCombine KERNEL_MACCORMACKCOMBINE
 
 #include "Assets/Shaders/GPU/Includes/Touch.hlsl"
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
@@ -28,7 +30,7 @@ StructuredBuffer<TouchForce> Touches;
 uint TouchCount;
 float MaxFieldSpeed; // <= 0 = unlimited
 
-#ifndef KERNEL_ADVECTSCALAR
+#if !defined(KERNEL_ADVECTSCALAR) && !defined(KERNEL_COPYSCALAR) && !defined(KERNEL_MACCORMACKCOMBINE)
 Texture2D<float2> FieldRead;
 RWTexture2D<float2> FieldWrite;
 
@@ -232,5 +234,47 @@ void AdvectScalar(uint3 id : SV_DispatchThreadID)
 
     float sampled = FieldReadA.SampleLevel(sampler_linear_clamp, backUv, 0);
     FieldWriteA[id.xy] = sampled * Dissipation;
+}
+#endif
+
+#ifdef KERNEL_COPYSCALAR
+RWTexture2D<float> FieldWriteA;   // dyeMacScratch Current
+Texture2D<float> FieldReadB;      // dye Current
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void CopyScalar(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    FieldWriteA[p] = FieldReadB.Load(int3(p, 0));
+}
+#endif
+
+#ifdef KERNEL_MACCORMACKCOMBINE
+Texture2D<float> FieldReadA;      // φ_b  dye Current
+RWTexture2D<float> FieldWriteA;   // φ_f  dye Next → φ*
+Texture2D<float> FieldReadB;      // φ0   dyeMacScratch
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void MacCormackCombine(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    int2 p = int2(id.xy);
+    float phiB = FieldReadA.Load(int3(p, 0));
+    float phiF = FieldWriteA[p];
+    float phi0 = FieldReadB.Load(int3(p, 0));
+    float lo = min(phi0, min(phiF, phiB));
+    float hi = max(phi0, max(phiF, phiB));
+    float phiStar = phiF + 0.5 * (phi0 - phiB);
+    phiStar = clamp(phiStar, lo, hi);
+    FieldWriteA[p] = max(phiStar, 0.0);
 }
 #endif

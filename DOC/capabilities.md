@@ -114,13 +114,14 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 | **Gray-Scott-Agents** | agents → GS only (no field feedback) |
 | **Fluid2D** | Stam: Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect → SolidWall → AdvectScalar (None, GroundXZ, velocity+dye quads) |
 | **Fluid2D_Vorticity** | эксперимент: Advect → VC → Project → Wall → dye (`ε_vc=1`, `borderMargin=2`); не production; look интерьера не взят |
+| **Fluid2D_MacCormackDye** | эксперимент F2.2: VC-цепочка + limited MacCormack dye (`dyeMacScratch`); не production; look не взят (клубы как Vorticity) |
 
 ---
 
 ### Fluid projection (Stam)
 
 - Кернелы проекции: Divergence / **ZeroMeanScalar** (`fluidD` zero-mean перед Jacobi) / Jacobi / SubtractPhiGradient / **SolidWallVelocity** (free-slip `u·n=0` на рамке). **VorticityConfinement** — look-тикет F2.1 на `Fluid2D_Vorticity.asset` (Harris + VC до проекции), не в production.
-- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). Порядок project→advect измерен ([ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7) — Harris на λ=8 чуть чище по D, ≥2× нет; production не меняли. Эталон: `Fluid2D_HarrisOrder.asset`. F2: [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md); VC — [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md) (F2.1b закрыт: торнадо рамки = clamp-curl, look интерьера не взят). F0.5 вне F2. Odd-even интерьера на dye **не виден** — MAC не открывали.
+- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). Порядок project→advect измерен ([ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7) — Harris на λ=8 чуть чище по D, ≥2× нет; production не меняли. Эталон: `Fluid2D_HarrisOrder.asset`. F2: [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md); VC — [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md) (F2.1b закрыт). F2.2 закрыт — [ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md) (look не взят). F0.5 вне F2. Odd-even интерьера на dye **не виден** — MAC не открывали.
 
 ---
 
@@ -128,7 +129,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 | Тема | Сейчас |
 | --- | --- |
-| Stable Fluids (Stam-minimum + F2 скоуп) | F1 закрыта ([ADR-019](ADR/ADR-019-Fluid2D-Solver.md)). F2.0–F2.1b закрыты ([ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md)); дальше limited MacCormack dye (scratch, не Role C). MAC / F0.5 / viscosity вне фазы |
+| Stable Fluids (Stam-minimum + F2 скоуп) | F1 закрыта ([ADR-019](ADR/ADR-019-Fluid2D-Solver.md)). F2.0–F2.2 закрыты; F2.2 ([ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md)) — limited MacCormack dye, scratch не Role C, look не взят. F2.3 не начат. MAC / F0.5 / viscosity вне фазы |
 | Texel / UV Laplacian и градиент | Параметры Diffuse / GrayScott / SampleGradient зависят от разрешения и `Size` (ADR-016); не «исправлять» `/h²` |
 | Нет emitters | lifetime/compaction позже |
 | Нет SpatialHash | boids/sand позже |

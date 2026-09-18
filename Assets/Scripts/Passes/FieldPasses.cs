@@ -462,6 +462,7 @@ public sealed class AdvectScalarPass : FieldKernelPass
     [SerializeField] private string scalarField = "dye";
     [SerializeField] private string velocityField = "velocity";
     [SerializeField, Min(0f)] private float dissipationRate = 0f;
+    [SerializeField] private bool reverse;
 
     [NonSerialized] private FieldRequest[] fieldReadsCache;
     [NonSerialized] private FieldRequest[] fieldWritesCache;
@@ -484,6 +485,12 @@ public sealed class AdvectScalarPass : FieldKernelPass
         set => dissipationRate = value;
     }
 
+    public bool Reverse
+    {
+        get => reverse;
+        set => reverse = value;
+    }
+
     public override string DisplayName => "Advect Scalar";
     public override PassCategory Category => PassCategory.Transport;
     protected override string KernelName => "AdvectScalar";
@@ -501,9 +508,97 @@ public sealed class AdvectScalarPass : FieldKernelPass
 
     protected override void SetParams(SimContext context, float deltaTime)
     {
+        if (reverse)
+        {
+            SetFloat(context, SimShaderIds.Dissipation, 1f);
+            SetFloat(context, SimShaderIds.DeltaTime, -deltaTime);
+            return;
+        }
+
         SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
         SetFloat(context, SimShaderIds.Dissipation, Mathf.Exp(-dissipationRate * deltaTime));
     }
+}
+
+/// <summary>
+/// Pointwise copy of a scalar field into scratch (WriteInPlace, no swap). F2.2 φ0 snapshot.
+/// </summary>
+[Serializable]
+public sealed class CopyScalarPass : FieldKernelPass
+{
+    [SerializeField] private string scratchField = "dyeMacScratch";
+    [SerializeField] private string scalarField = "dye";
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string ScratchField
+    {
+        get => scratchField;
+        set => scratchField = value;
+    }
+
+    public string ScalarField
+    {
+        get => scalarField;
+        set => scalarField = value;
+    }
+
+    public override string DisplayName => "Copy Scalar";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "CopyScalar";
+    public override bool RequiresSquareTexel => false;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, scalarField,
+            FieldAccess.Read, FieldSemantic.Scalar, 1, FieldSlotRole.B);
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, scratchField,
+            FieldAccess.WriteInPlace, FieldSemantic.Scalar, 1, FieldSlotRole.A);
+}
+
+/// <summary>
+/// Limited MacCormack combine: φ* = clamp(φ_f + 0.5(φ0 − φ_b), min(φ0,φ_f,φ_b), max(...)); then max(φ*, 0).
+/// All three values at texel p. φ_f is UAV-Load of dye Next (FieldWriteA at p only). ADR-028.
+/// </summary>
+[Serializable]
+public sealed class LimitedMacCormackCombinePass : FieldKernelPass
+{
+    [SerializeField] private string scalarField = "dye";
+    [SerializeField] private string scratchField = "dyeMacScratch";
+
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string ScalarField
+    {
+        get => scalarField;
+        set => scalarField = value;
+    }
+
+    public string ScratchField
+    {
+        get => scratchField;
+        set => scratchField = value;
+    }
+
+    public override string DisplayName => "Limited MacCormack Combine";
+    public override PassCategory Category => PassCategory.Transport;
+    protected override string KernelName => "MacCormackCombine";
+    public override bool RequiresSquareTexel => false;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, scratchField,
+            FieldAccess.Read, FieldSemantic.Scalar, 1, FieldSlotRole.B);
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, scalarField,
+            FieldAccess.WritePingPong, FieldSemantic.Scalar, 1, FieldSlotRole.A);
 }
 
 /// <summary>

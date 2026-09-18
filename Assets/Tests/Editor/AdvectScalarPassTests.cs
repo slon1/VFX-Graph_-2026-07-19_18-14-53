@@ -156,6 +156,42 @@ public class AdvectScalarPassTests
         Assert.AreEqual(FieldSlotRole.B, read.Role);
     }
 
+    [Test]
+    public void Contract_Reverse_DefaultFalse()
+    {
+        AdvectScalarPass pass = new AdvectScalarPass();
+        Assert.IsFalse(pass.Reverse);
+    }
+
+    [Test]
+    [Category("GPU")]
+    public void Reverse_IntegerForwardThenReverse_InteriorMatchesSeedBitwise()
+    {
+        float[] seed = UniqueScalar();
+        using (FieldTestHarness harness = CreateHarness())
+        {
+            AssumeDtOverHIsOne();
+            harness.SeedVelocity(Velocity, UniformVelocity(new Vector2(1f, 0f)));
+            harness.SeedScalar(Dye, seed);
+
+            AdvectScalarPass forward = CreatePass(harness);
+            AdvectScalarPass reverse = new AdvectScalarPass
+            {
+                ScalarField = Dye,
+                VelocityField = Velocity,
+                DissipationRate = 0f,
+                Reverse = true,
+            };
+            reverse.Initialize(harness.Context);
+
+            harness.RunPass(forward, DeltaTime);
+            harness.RunPass(reverse, DeltaTime);
+
+            float[] obtained = harness.ReadScalar(Dye);
+            AssertInteriorBitwiseEqual(seed, obtained, "forward+reverse interior");
+        }
+    }
+
     private static FieldTestHarness CreateHarness()
     {
         FieldDescriptor dye = FieldTestHarness.Descriptor(
@@ -206,6 +242,33 @@ public class AdvectScalarPassTests
         }
 
         return field;
+    }
+
+    private static float[] UniqueScalar()
+    {
+        float[] field = new float[Res * Res];
+        for (int i = 0; i < field.Length; i++)
+        {
+            field[i] = i + 0.125f;
+        }
+
+        return field;
+    }
+
+    private static void AssertInteriorBitwiseEqual(float[] expected, float[] obtained, string label)
+    {
+        Assert.AreEqual(expected.Length, obtained.Length, $"{label}: length");
+        for (int y = 1; y < Res - 1; y++)
+        {
+            for (int x = 1; x < Res - 1; x++)
+            {
+                int i = y * Res + x;
+                Assert.AreEqual(
+                    BitConverter.SingleToInt32Bits(expected[i]),
+                    BitConverter.SingleToInt32Bits(obtained[i]),
+                    $"{label} ({x},{y}) expected={expected[i]:G9} obtained={obtained[i]:G9}");
+            }
+        }
     }
 
     private static float[] GaussianDye(float amp, float sigma, float cx, float cy)

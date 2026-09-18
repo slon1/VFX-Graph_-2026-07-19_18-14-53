@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-09-16 (F2.1 закрыт: VC эксперимент, look интерьера не взят; production Fluid2D без смены)
+**Снимок:** 2026-09-18 (F2.2 закрыт, look не взят — [ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md))
 
 ---
 
@@ -336,11 +336,34 @@
 | **Назначение** | Пассивный tracer: `dye_next = sample(dye, saturate(uv − u·dt/Size)) * Dissipation` (не self-advection) |
 | **Библиотека / kernel** | `FieldPasses` / `AdvectScalar` (`#ifdef KERNEL_ADVECTSCALAR`) |
 | **Fields** | WritePingPong Scalar ×1 Role A (`dye`); Read Velocity ×2 Role B (`velocity`). Слоты `FieldReadA`/`FieldWriteA`/`FieldReadB` |
-| **Параметры** | `scalarField` (`dye`), `velocityField` (`velocity`, не `flockVel`), `dissipationRate` (0 = выкл; CPU `exp(−rate·dt)`) |
+| **Параметры** | `scalarField` (`dye`), `velocityField` (`velocity`, не `flockVel`), `dissipationRate` (0 = выкл; CPU `exp(−rate·dt)`), `reverse` (default false; `Dissipation=1` затем `Δt=−dt`)
 | **dt** | Да (backtrace и dissipation); UV clamp `saturate` (нет wrap; масса может налипать на рамку) |
 | **Единицы** | **world** (ADR-016 §1): `backUv = uv − velocity · dt / Size`. `RequiresSquareTexel` = false |
 | **Хорошо для** | Stam-контур глазами: heatmap dye в пресете Fluid2D после второго SolidWall |
 | **Ограничение** | Bilinear смаз (Techdebt 5). Стен на скаляре нет. F0.5 (dye выше res, чем velocity) нет. Краска тачем — вне скоупа |
+
+### Copy Scalar
+| | |
+|--|--|
+| **Назначение** | Поточечная копия скаляра в scratch (`φ0` для F2.2). WriteInPlace, без swap |
+| **Библиотека / kernel** | `FieldPasses` / `CopyScalar` (`#ifdef KERNEL_COPYSCALAR`) |
+| **Fields** | WriteInPlace Scalar ×1 Role A (`dyeMacScratch`); Read Scalar ×1 Role B (`dye`). Слоты `FieldWriteA` / `FieldReadB` |
+| **Параметры** | `scratchField`, `scalarField`. `RequiresSquareTexel` = false |
+| **dt** | Нет |
+| **Хорошо для** | Снимок dye до MacCormack-цепочки |
+| **Ограничение** | Не Role C. Не копирует velocity |
+
+### Limited MacCormack Combine
+| | |
+|--|--|
+| **Назначение** | `φ* = φ_f + 0.5(φ0 − φ_b)`, clamp к `{φ0,φ_f,φ_b}` в том же `p`, затем `φ*≥0` |
+| **Библиотека / kernel** | `FieldPasses` / `MacCormackCombine` (`#ifdef KERNEL_MACCORMACKCOMBINE`) |
+| **Fields** | WritePingPong Scalar ×1 Role A (`dye`); Read Scalar ×1 Role B (`dyeMacScratch`). `φ_f` — UAV-Load `FieldWriteA[p]` только |
+| **Параметры** | нет. Limiter всегда вкл |
+| **dt** | Нет (коррекция после ±Advect) |
+| **Единицы** | индексный Load, `RequiresSquareTexel` = false |
+| **Хорошо для** | Меньше смаза dye без Role C; пресет `Fluid2D_MacCormackDye` |
+| **Ограничение** | 5-точка φ0 в `p` отклонена (режет перенос). 4 угла backUv — третье имя. Не MacCormack velocity |
 
 ### Divergence
 | | |
@@ -567,6 +590,8 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 **Fluid2D ([ADR-022](ADR/ADR-022-Fluid2D-Preset.md) + [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md); сводка [ADR-019](ADR/ADR-019-Fluid2D-Solver.md)):** `TouchInjectVelocity → SeedScalarDisk(dye) → Divergence → ZeroMeanScalar → Jacobi×40 → SubtractPhiGradient → SolidWallVelocity → Advect velocity → SolidWallVelocity → AdvectScalar` (`Assets/Effects/Fluid2D.asset`, меню Create/Assign, InputRouter=GroundXZ, quads velocity+dye). Порядок **project → advect** измерен в [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7 (λ=8: Harris ~30–45% чище по `max|D|`, ≥2× нет) — production не меняли. Эталон Harris: `Fluid2D_HarrisOrder.asset` (меню Assign, не Demo Effects).
 
 **Fluid2D Vorticity ([ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md), эксперимент, не production):** `Touch → Seed(dye) → Advect velocity → VorticityConfinement → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect dye` (`Assets/Effects/Fluid2D_Vorticity.asset`). Одна стена. `ε_vc=1`, `borderMargin=2`. Visual F2.1b: торнадо рамки нет (clamp-curl); dye-клубы; look не взят — [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md). Create factory `radiusUV=0.08` — не вызывать (на диске 0.16).
+
+**Fluid2D MacCormackDye ([ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md), эксперимент F2.2, закрыт):** клон Vorticity, хвост `CopyScalar → Advect → Advect(reverse) → LimitedMacCormackCombine`, поле `dyeMacScratch`. Не переписывать Vorticity. Visual: клубы как Vorticity, look не взят — [`play-F2.2-touch.md`](last/play-F2.2-touch.md). Create factory `radiusUV=0.08` — не вызывать (на диске 0.16).
 
 ---
 

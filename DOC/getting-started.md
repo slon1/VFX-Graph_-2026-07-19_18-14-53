@@ -2,7 +2,7 @@
 
 Краткий онбординг. Детали — [`capabilities.md`](capabilities.md), архитектура — [`architecture.md`](architecture.md), статус — [`status.md`](status.md).  
 **Каталог пассов** (назначение, dt, Pass Library): [`pass-catalog.md`](pass-catalog.md).  
-Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md), [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md), [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md), [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md), [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md)–[`ADR-027`](ADR/ADR-027-Vorticity-Confinement-Pass.md). План фазы: [`plan-stable-fluid.md`](plan-stable-fluid.md) · [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
+Решения: [`adr-001`](adr-001-field-resources-m2a.md), [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md), [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md), [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md), [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md), [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md), [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md), [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md), [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md), [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md), [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md), [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md), [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md)–[`ADR-028`](ADR/ADR-028-Limited-MacCormack-Dye.md). План фазы: [`plan-stable-fluid.md`](plan-stable-fluid.md) · [`last/roadmap_m2a.md`](last/roadmap_m2a.md).
 
 ---
 
@@ -39,10 +39,10 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **Gray-Scott-Boids** — boids + `agentPresence` P2G → Boost/Erode в U/V (plane 50×50; `flockVel` 64 + Steer/DiffuseVelocity).
    - **Boids_mk1** — kinematic field-flocking (ADR-012: AddNormalized* + HeadingSteer; Speed≈20).
    - **Gray-Scott-Agents** — то же one-way: частицы красят GS, поле их не рулит.
-   - **Fluid2D** — Stam: Touch → Seed(dye) → project → wall → advect(`velocity`) → wall → AdvectScalar (None, XZ, velocity+dye quads). Порядок project→advect оставлен после [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md). Эталон Harris: `Fluid2D_HarrisOrder.asset` (Assign, не Demo Effects). Эксперимент VC: `Fluid2D_Vorticity.asset` (Assign Vorticity Experiment, не production).
+   - **Fluid2D** — Stam: Touch → Seed(dye) → project → wall → advect(`velocity`) → wall → AdvectScalar (None, XZ, velocity+dye quads). Порядок project→advect оставлен после [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md). Эталон Harris: `Fluid2D_HarrisOrder.asset` (Assign, не Demo Effects). Эксперимент VC: `Fluid2D_Vorticity.asset`. Эксперимент F2.2: `Fluid2D_MacCormackDye.asset` (не production; look не взят).
 3. Play. Для hybrid / Gray-Scott / **Fluid2D**: InputRouter = **GroundXZ**.
 
-Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, **`Create Fluid2D Effect`**, **`Create Fluid2D HarrisOrder Experiment`**, **`Create Fluid2D Vorticity Experiment`**, **`ADR-012 Reconfigure Boids_mk1`**, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`, **`Assign Fluid2D To Scene`**, **`Assign Fluid2D HarrisOrder Experiment To Scene`**, **`Assign Fluid2D Vorticity Experiment To Scene`**, **`Setup Post-Processing (HDR + Bloom + ACES)`**.  
+Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, **`Create Fluid2D Effect`**, **`Create Fluid2D HarrisOrder Experiment`**, **`Create Fluid2D Vorticity Experiment`**, **`Create Fluid2D MacCormackDye Experiment`**, **`ADR-012 Reconfigure Boids_mk1`**, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`, **`Assign Fluid2D To Scene`**, **`Assign Fluid2D HarrisOrder Experiment To Scene`**, **`Assign Fluid2D Vorticity Experiment To Scene`**, **`Assign Fluid2D MacCormackDye Experiment To Scene`**, **`Setup Post-Processing (HDR + Bloom + ACES)`**.  
 После смены пассов/полей в Play — **Rebuild** на SimulationWorld.  
 Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFeedbackPasses`.  
 Пост-обработка (desktop, ADR-025): в `Test1` уже есть global `M3D Volume` + `M3DVolumeProfile` (Bloom + ACES). Повторный Setup идемпотентен. На мобилке Volume выключает `M3DVolumeMobileGate`. Не править `DefaultVolumeProfile.asset` (тестовый ассет пакета URP).
@@ -59,7 +59,7 @@ Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFee
 1. Пресет: `Assets/Effects/Fluid2D.asset` (меню `Create Fluid2D Effect` → сразу `Assign Fluid2D To Scene`; InputRouter = GroundXZ).
 2. Цепочка: Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect(velocity) → SolidWall → AdvectScalar.
 3. Debug quads: velocity (`colorScale=0.125`) и dye (heatmap). Play, тач по плоскости XZ. После Create guid часто новый — без Assign слот сцены смотрит в старый ассет.
-4. Эксперимент vorticity (не production): `Tools/M3D/Assign Fluid2D Vorticity Experiment To Scene`. Цепочка Harris + VC до проекции, `ε_vc=1`, `BorderMargin=2`. Visual F2.1b закрыт — [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md): торнадо рамки нет, look интерьера нет. **Create Vorticity не вызывать** (`radiusUV` на диске 0.16). Правка пасса в инспекторе меняет `.asset` сразу (ScriptableObject).
+4. Эксперимент vorticity (не production): `Tools/M3D/Assign Fluid2D Vorticity Experiment To Scene`. Цепочка Harris + VC до проекции, `ε_vc=1`, `BorderMargin=2`. Visual F2.1b закрыт — [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md). **Create Vorticity не вызывать** (`radiusUV` на диске 0.16). F2.2 (limited MacCormack dye) закрыт: `Fluid2D_MacCormackDye.asset`; look не взят — [`play-F2.2-touch.md`](last/play-F2.2-touch.md). Create Vorticity / MacCormackDye не жать (factory `radiusUV=0.08` сотрёт 0.16). Правка пасса в инспекторе меняет `.asset` сразу (ScriptableObject).
 
 ### Boids → Gray-Scott
 
@@ -142,6 +142,7 @@ Hybrid (field + particles):
 - пассивный dye: `AdvectScalarPass` — Transport, dye WritePingPong A + velocity Read B; backtrace `uv − u·dt/Size`; ADR-023;
 - Stam projection: `DivergenceFieldPass` → `ZeroMeanScalarPass` → `JacobiPhiPass` → `SubtractPhiGradientPass` → `SolidWallVelocityPass` (`FluidPasses.compute`);
 - vorticity confinement (эксперимент): `VorticityConfinementPass` — Transport, WritePingPong, `ε_vc`, `borderMargin=2` на ассете, `Fluid2D_Vorticity.asset`, не Fluid2D; ADR-027;
+- limited MacCormack dye (эксперимент F2.2, закрыт, look не взят): Copy + ±AdvectScalar + combine, scratch `dyeMacScratch`, не Role C; `Fluid2D_MacCormackDye.asset`; ADR-028;
 - scalar decay: `DecayFieldScalarPass` — Transport; rate default 1.5;
 - Gray-Scott: `GrayScottPass` + Seed + TouchInject; boids-гибрид: presence P2G → `AgentBoost`/`AgentErode` (`gain`); N=1–4 React; ADR-009;
 - cohesion Replace: ClearField(density) → Scatter → Normalize → Diffuse×mild → SampleGradient;
