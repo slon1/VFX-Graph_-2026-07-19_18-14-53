@@ -41,7 +41,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 ### Multi-field kernel (M2c)
 
 - `FieldSlotRole` A/B на `FieldRequest`; `FieldRequestSets.Pair`.
-- Multi-role: plane always matches (hard error). Resolution — у write и у `Load`; UV-read по контракту может отличаться (ADR-001 §8 / поправка ADR-008). Пока код (`ValidateMatchingFieldGeometry`) ещё требует matching Resolution у всех ролей; снятие для UV-read — F0.5. `RequiresSquareTexel` (ADR-017) оставляет matching для fluid-`Load`. Proof `SwapFieldsPass`.
+- Multi-role: plane always matches (hard error). Resolution — у write и у `Load`; UV-read по контракту может отличаться (ADR-001 §8 / поправка ADR-008). `ValidateMatchingFieldGeometry` по умолчанию всё ещё требует matching Resolution у всех ролей; снятие для UV-read — **точечный opt-in-флаг** `AllowResolutionMismatch` на конкретном запросе (не общее правило для всех Read-ролей — сломало бы изолированные тесты `JacobiPhiPass`/`SubtractPhiGradientPass`). Флаг стоит только на `AdvectScalarPass.velocity` — F0.5, закрыт через [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md) (F3.0). `RequiresSquareTexel` (ADR-017) оставляет matching для fluid-`Load`. Proof `SwapFieldsPass`.
 
 ### Gray-Scott (M2c.1)
 
@@ -115,13 +115,15 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 | **Fluid2D** | Stam: Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect → SolidWall → AdvectScalar (None, GroundXZ, velocity+dye quads) |
 | **Fluid2D_Vorticity** | эксперимент: Advect → VC → Project → Wall → dye (`ε_vc=1`, `borderMargin=2`); не production; look интерьера не взят |
 | **Fluid2D_MacCormackDye** | эксперимент F2.2: VC-цепочка + limited MacCormack dye (`dyeMacScratch`); не production; look не взят (клубы как Vorticity) |
+| **Fluid2D_HighResDye** | эксперимент F3.0: Stam как Fluid2D, `dye` 512² при `velocity` 128² (тот же Size 32); visual: острее, тот же гриб; не production |
 
 ---
 
 ### Fluid projection (Stam)
 
 - Кернелы проекции: Divergence / **ZeroMeanScalar** (`fluidD` zero-mean перед Jacobi) / Jacobi / SubtractPhiGradient / **SolidWallVelocity** (free-slip `u·n=0` на рамке). **VorticityConfinement** — look-тикет F2.1 на `Fluid2D_Vorticity.asset` (Harris + VC до проекции), не в production.
-- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). Порядок project→advect измерен ([ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7) и подтверждён visual F2.3 — Harris на λ=8 чуть чище по D, look-нить не взят; production не меняли. Эталон: `Fluid2D_HarrisOrder.asset`. F2 закрыта: [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md). VC — [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md). F2.2 — [ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md). F0.5 вне F2. Odd-even интерьера на dye **не виден** — MAC не открывали.
+- Пресет `Fluid2D` есть (`Assets/Effects/Fluid2D.asset`, меню Create/Assign): Touch → Seed(dye) → project → wall → advect(velocity) → wall → **AdvectScalar**; quads velocity+dye. Сводка Stam: [ADR-019](ADR/ADR-019-Fluid2D-Solver.md). Порядок project→advect измерен ([ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7) и подтверждён visual F2.3 — Harris на λ=8 чуть чище по D, look-нить не взят; production не меняли. Эталон: `Fluid2D_HarrisOrder.asset`. F2 закрыта: [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md). VC — [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md). F2.2 — [ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md). Odd-even интерьера на dye **не виден** — MAC не открывали.
+- **F3.0 (готово):** `Fluid2D_HighResDye.asset` — тот же Stam-порядок, `dye` 512² при `velocity`/`fluidD`/`fluidPhi` 128² (F0.5 cross-res dye, [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md)). Visual заметно острее `Fluid2D` на том же жесте, макро-силуэт (гриб) не меняется — меньше bilinear-смаз tracer, не новая топология velocity. Production `Fluid2D.asset` не менялся.
 
 ---
 
@@ -129,7 +131,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 
 | Тема | Сейчас |
 | --- | --- |
-| Stable Fluids (Stam-minimum + F2 скоуп) | F1 закрыта ([ADR-019](ADR/ADR-019-Fluid2D-Solver.md)). F2.0–F2.3 закрыты ([ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md)): look не взят, production остаётся `Fluid2D` Project→Advect. MAC / F0.5 / viscosity вне фазы |
+| Stable Fluids (Stam-minimum + F2/F3 скоуп) | F1 закрыта ([ADR-019](ADR/ADR-019-Fluid2D-Solver.md)). F2.0–F2.3 закрыты ([ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md)): look (тонкая нить) не взят VC/MacCormack, production остаётся `Fluid2D` Project→Advect. F3.0 закрыт ([ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md)): cross-res dye (F0.5) численно и визуально острее на `Fluid2D_HighResDye.asset`, эксперимент, не production. MAC / viscosity вне фазы |
 | Texel / UV Laplacian и градиент | Параметры Diffuse / GrayScott / SampleGradient зависят от разрешения и `Size` (ADR-016); не «исправлять» `/h²` |
 | Нет emitters | lifetime/compaction позже |
 | Нет SpatialHash | boids/sand позже |

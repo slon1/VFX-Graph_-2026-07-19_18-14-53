@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-09-20 (F2.3 закрыт, production Fluid2D — [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) § F2.3)
+**Снимок:** 2026-09-20 (F3.0 закрыт — cross-res dye, [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md); production Fluid2D без смены — [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) § F2.3)
 
 ---
 
@@ -339,8 +339,9 @@
 | **Параметры** | `scalarField` (`dye`), `velocityField` (`velocity`, не `flockVel`), `dissipationRate` (0 = выкл; CPU `exp(−rate·dt)`), `reverse` (default false; `Dissipation=1` затем `Δt=−dt`)
 | **dt** | Да (backtrace и dissipation); UV clamp `saturate` (нет wrap; масса может налипать на рамку) |
 | **Единицы** | **world** (ADR-016 §1): `backUv = uv − velocity · dt / Size`. `RequiresSquareTexel` = false |
-| **Хорошо для** | Stam-контур глазами: heatmap dye в пресете Fluid2D после второго SolidWall |
-| **Ограничение** | Bilinear смаз (Techdebt 5). Стен на скаляре нет. F0.5 (dye выше res, чем velocity) нет. Краска тачем — вне скоупа |
+| **Cross-res** | `velocity`-запрос (Role B) — `AllowResolutionMismatch=true`: `ValidateMatchingFieldGeometry` пропускает сравнение `Resolution` в этой паре (plane — всегда). Единственный пасс с этим флагом; F0.5 — [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md) (F3.0) |
+| **Хорошо для** | Stam-контур глазами: heatmap dye в пресете Fluid2D после второго SolidWall; `dye` выше разрешением, чем `velocity` — `Fluid2D_HighResDye.asset` |
+| **Ограничение** | Bilinear смаз (Techdebt 5) остаётся при любом разрешении `dye` — cross-res снижает его, не убирает. Стен на скаляре нет. Краска тачем — вне скоупа |
 
 ### Copy Scalar
 | | |
@@ -592,6 +593,8 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 **Fluid2D Vorticity ([ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md), эксперимент, не production):** `Touch → Seed(dye) → Advect velocity → VorticityConfinement → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect dye` (`Assets/Effects/Fluid2D_Vorticity.asset`). Одна стена. `ε_vc=1`, `borderMargin=2`. Visual F2.1b: торнадо рамки нет (clamp-curl); dye-клубы; look не взят — [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md). Create factory `radiusUV=0.08` — не вызывать (на диске 0.16).
 
 **Fluid2D MacCormackDye ([ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md), эксперимент F2.2, закрыт):** клон Vorticity, хвост `CopyScalar → Advect → Advect(reverse) → LimitedMacCormackCombine`, поле `dyeMacScratch`. Не переписывать Vorticity. Visual: клубы как Vorticity, look не взят — [`play-F2.2-touch.md`](last/play-F2.2-touch.md). Create factory `radiusUV=0.08` — не вызывать (на диске 0.16).
+
+**Fluid2D HighResDye ([ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md), эксперимент F3.0, закрыт):** клон `Fluid2D.asset`, `dye` 512² / остальные 128², тот же Size 32, без VC/MacCormack. Меню Create/Assign HighResDye. Visual: острее Fluid2D, тот же гриб; не production — [`play-F3.0-touch.md`](last/play-F3.0-touch.md). Fluid2D / Harris / Vorticity / MacCormackDye не Create.
 
 ---
 

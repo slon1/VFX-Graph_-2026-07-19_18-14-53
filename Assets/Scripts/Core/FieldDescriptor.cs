@@ -144,25 +144,29 @@ public struct FieldRequest : IEquatable<FieldRequest>
     [SerializeField] private FieldSemantic requiredSemantic;
     [SerializeField] private int channels;
     [SerializeField] private FieldSlotRole role;
+    [SerializeField] private bool allowResolutionMismatch;
 
     public string FieldName => fieldName;
     public FieldAccess Access => access;
     public FieldSemantic RequiredSemantic => requiredSemantic;
     public int Channels => channels;
     public FieldSlotRole Role => role;
+    public bool AllowResolutionMismatch => allowResolutionMismatch;
 
     public FieldRequest(
         string fieldName,
         FieldAccess access,
         FieldSemantic requiredSemantic,
         int channels,
-        FieldSlotRole role = FieldSlotRole.A)
+        FieldSlotRole role = FieldSlotRole.A,
+        bool allowResolutionMismatch = false)
     {
         this.fieldName = fieldName;
         this.access = access;
         this.requiredSemantic = requiredSemantic;
         this.channels = channels;
         this.role = role;
+        this.allowResolutionMismatch = allowResolutionMismatch;
     }
 
     /// <summary>
@@ -181,7 +185,8 @@ public struct FieldRequest : IEquatable<FieldRequest>
         access == other.access &&
         requiredSemantic == other.requiredSemantic &&
         channels == other.channels &&
-        role == other.role;
+        role == other.role &&
+        allowResolutionMismatch == other.allowResolutionMismatch;
 
     public override bool Equals(object obj) => obj is FieldRequest other && Equals(other);
 
@@ -191,5 +196,6 @@ public struct FieldRequest : IEquatable<FieldRequest>
             (int)access,
             (int)requiredSemantic,
             channels,
-            (int)role);
+            (int)role,
+            allowResolutionMismatch);
 }

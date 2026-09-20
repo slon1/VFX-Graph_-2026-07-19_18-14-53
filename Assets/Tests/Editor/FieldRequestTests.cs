@@ -62,11 +62,16 @@ public class FieldRequestTests
         FieldRequest renamed = new FieldRequest("velocity2", FieldAccess.WriteInPlace, FieldSemantic.Velocity, 2);
         FieldRequest channelsChanged = new FieldRequest("velocity", FieldAccess.WriteInPlace, FieldSemantic.Velocity, 1);
         FieldRequest semanticChanged = new FieldRequest("velocity", FieldAccess.WriteInPlace, FieldSemantic.Scalar, 2);
+        FieldRequest flagChanged = new FieldRequest(
+            "velocity", FieldAccess.WriteInPlace, FieldSemantic.Velocity, 2, FieldSlotRole.A, true);
 
         Assert.That(a.Equals(b), Is.True);
         Assert.That(a.Equals(renamed), Is.False);
         Assert.That(a.Equals(channelsChanged), Is.False);
         Assert.That(a.Equals(semanticChanged), Is.False);
+        Assert.That(a.Equals(flagChanged), Is.False);
+        Assert.That(a.AllowResolutionMismatch, Is.False);
+        Assert.That(flagChanged.AllowResolutionMismatch, Is.True);
     }
 
     [Test]

@@ -100,9 +100,11 @@ internal static class FieldRequestSets
         FieldAccess access,
         FieldSemantic requiredSemantic,
         int channels,
-        FieldSlotRole role = FieldSlotRole.A)
+        FieldSlotRole role = FieldSlotRole.A,
+        bool allowResolutionMismatch = false)
     {
-        FieldRequest current = new FieldRequest(fieldName, access, requiredSemantic, channels, role);
+        FieldRequest current = new FieldRequest(
+            fieldName, access, requiredSemantic, channels, role, allowResolutionMismatch);
 
         if (cache == null || cache.Length != 1 || !cache[0].Equals(current))
         {
@@ -417,6 +419,7 @@ public abstract class FieldKernelPass : SimPass
         public string FieldName;
         public FieldAccess Access;
         public FieldSlotRole Role;
+        public bool AllowResolutionMismatch;
         public int ReadId;
         public int WriteId;
     }
@@ -589,6 +592,7 @@ public abstract class FieldKernelPass : SimPass
                 FieldName = request.FieldName,
                 Access = request.Access,
                 Role = request.Role,
+                AllowResolutionMismatch = request.AllowResolutionMismatch,
                 ReadId = 0,
                 WriteId = 0,
             });
@@ -692,19 +696,26 @@ public abstract class FieldKernelPass : SimPass
     {
         FieldDescriptor reference = null;
         string referenceName = null;
+        bool referenceAllowMismatch = false;
 
         for (int i = 0; i < fieldBinds.Count; i++)
         {
-            string name = fieldBinds[i].FieldName;
+            FieldBind bind = fieldBinds[i];
+            string name = bind.FieldName;
             FieldDescriptor descriptor = context.Fields.Get(name).Descriptor;
             if (reference == null)
             {
                 reference = descriptor;
                 referenceName = name;
+                referenceAllowMismatch = bind.AllowResolutionMismatch;
                 continue;
             }
 
-            if (descriptor.Resolution != reference.Resolution ||
+            bool skipResolution =
+                referenceAllowMismatch || bind.AllowResolutionMismatch;
+            bool resolutionDiffers =
+                !skipResolution && descriptor.Resolution != reference.Resolution;
+            if (resolutionDiffers ||
                 descriptor.Origin != reference.Origin ||
                 descriptor.AxisU != reference.AxisU ||
                 descriptor.AxisV != reference.AxisV ||

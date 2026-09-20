@@ -1,7 +1,7 @@
 # План: Stable Fluid (Stam) для M3D Framework
 
 **Дата создания:** 2026-08-24
-**Статус документа:** F0.1–F0.4 и вся F1 закрыты. F2.0–F2.3 **Готово**. Production остаётся `Fluid2D` (Project→Advect). F0.5–F0.7 не входят в F2.
+**Статус документа:** F0.1–F0.5 и вся F1 закрыты. F2.0–F2.3 **Готово**. F3.0 **Готово**. Production остаётся `Fluid2D` (Project→Advect, dye 128²). F0.6–F0.7 не входили в F2. HighResDye — эксперимент, не silent promote ([ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md)).
 **Связанные документы:** [`status.md`](status.md) · [`capabilities.md`](capabilities.md) · [`pass-catalog.md`](pass-catalog.md) · [`last/Techdebt.md`](last/Techdebt.md)
 
 ---
@@ -24,7 +24,7 @@
 | F0.2 | GPU numeric test harness | [ADR-014](ADR/ADR-014-GPU-Numeric-Test-Harness.md) | **Готово** | `FieldTestHarness`, `HarnessProbes.compute` (test-only), миграция ручных MCP-замеров в автотесты (`HarnessSamplerTests`, `HarnessDiffuseTests`, `HarnessAdvectTests`). Обязательная инфраструктура для всех численных DoD фазы F1. |
 | F0.3 | Units by pass family | [ADR-016](ADR/ADR-016-Units-By-Pass-Family.md) | **Готово** | Формализация texel/UV/world конвенций; `fluidD`/`fluidPhi` объявлены как `Scalar` `world/s`, `R32_SFloat`; введён `RequiresSquareTexel`. |
 | F0.4 | Точечные фиксы | — | **Готово** | Четыре красных теста (`VfxParticleBinder`), NaN в `HeadingSteer`/`BoxBounds`, `RenderTexture.active` warning, физическая вилка Advect-теста. Не fluid-специфично, но разблокировало чистый прогон сьюта перед стартом F1. |
-| F0.5 | Снять matching-resolution для read в multi-role (cross-res dye/velocity) | — | **Вне F2** | Dye выше разрешением, чем velocity. Не в этой фазе (остаёмся 128² одно res). |
+| F0.5 | Снять matching-resolution для read в multi-role (cross-res dye/velocity) | [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md) | **Готово (F3.0)** | Opt-in `AllowResolutionMismatch` на `AdvectScalarPass.velocity`. Живой ассет `Fluid2D_HighResDye` (dye 512² / velocity 128²). Visual: острее, production 128² не меняли. |
 | F0.6 | Cross-resolution G2P | — | **Вне F2** | Связано с F0.5. |
 | F0.7 | `deltaTime` clamp в `SimulationWorld` | — | **Не F2** ([Techdebt 1b](last/Techdebt.md)) | Fluid semi-Lagrangian устойчив к `dt`; пункт живёт в группе A, не в таблице Stam-F2. |
 
@@ -65,7 +65,24 @@
 
 ---
 
-## 4. Известные, осознанно принятые ограничения (не блокеры, см. Techdebt)
+## 4. Фаза F3 — тонкая нить через cross-resolution dye
+
+Скоуп F3.0: [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md). Открыта по итогам F2 ([ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md): VC + limited MacCormack не режут пятно в нить; потолок — диссипация **velocity** ([Techdebt 5](last/Techdebt.md)) и авторский `radiusUV=0.16` ([Techdebt 8n](last/Techdebt.md)), не схема dye). Перед тем как переписывать рендер частиц (M2d / [Techdebt 9](last/Techdebt.md)), решили дёшево проверить гипотезу, отложенную в F0.5: dye выше разрешением, чем velocity (приём `paveldogreat/webgl-fluid-simulation`, на который ориентируется этот фреймворк — `SIM_RESOLUTION` ≪ `DYE_RESOLUTION`).
+
+Ключевое отличие от исходной формулировки F0.5 («снять matching-resolution для read в multi-role») — при чтении кода выяснилось, что это уже снято: `SimulationWorld.ValidatePassFieldCoordinates` проверяет только `Origin`/`AxisU`/`AxisV`/`Size` между read/write-полями одного пасса, не `Resolution` ([`SimulationWorld.cs` §440](../Assets/Scripts/Runtime/SimulationWorld.cs)); `AdvectScalarPass` уже читает `velocity` через нормализованный `SampleLevel(uv)`, не `Load`. F3.0 не открывает новый механизм — проверяет числом то, что теоретически уже работает.
+
+| # | Тикет | ADR | Статус | Суть |
+| --- | --- | --- | --- | --- |
+| F3.0 | Cross-res dye, изоляция механизма | [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md) | **Готово** | `Fluid2D_HighResDye.asset` — клон `Fluid2D.asset`, `dye` 512² / `velocity` 128², Size 32, без VC/MacCormack. Оракул: peak256 `0.979` > peak64 `0.744`. Visual: B острее A, тот же гриб; production не меняли. [`play-F3.0-touch.md`](last/play-F3.0-touch.md). ТЗ: [`todo-F3.0.md`](last/todo-F3.0.md). |
+| F3.1 | Продолжительный впрыск dye вдоль жеста | — | Не начат | F3.0 взял чёткость tracer, не нить из клуба. Тонкий след жеста на 512² живёт — впрыск вдоль курсора (аналог `TouchInjectVelocity` в `dye`) теперь имеет смысл. Не открыт этим закрытием. |
+| F3.2 | Non-clamp стенсиль VC у рамки | — | Не начат, вне скоупа ADR-029 | [ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md)/[Techdebt 8l](last/Techdebt.md): маска `f=0` (F2.1b) сняла торнадо, но сам `VorticityAt`/`∇\|ω\|` всё равно клэмпит на границе. Не пробовали заменить клэмп на reflect непосредственно в стенсиле VC (Divergence/Jacobi не трогать). |
+| F3.3 | MacCormack на velocity + вторая проекция | — | Не начат, вне скоупа ADR-029 | Явно названный в [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) триггер («потолок — поле скорости») теперь разрешён явно пользователем. Самый дорогой и самый рискованный тикет фазы — лимитер на `float2`, обязательная повторная проекция после коррекции (иначе висящая `D`). Открывать по факту, что F3.0–F3.2 недостаточно. |
+
+**Вне скоупа F3.0 (см. ADR-029 для деталей):** VC, limited MacCormack dye, `dyeMacScratch`, continuous injection (F3.1), правка VC-стенсиля (F3.2), MacCormack velocity (F3.3), второй Poisson, подъём Jacobi, изменение `Fluid2D.asset`/`Fluid2D_Vorticity.asset`/`Fluid2D_MacCormackDye.asset`, мобильная адаптация, рендер частиц (M2d/Techdebt 9 — отдельный трек).
+
+---
+
+## 5. Известные, осознанно принятые ограничения (не блокеры, см. Techdebt)
 
 Полный список — [`last/Techdebt.md`](last/Techdebt.md) группа C. Кратко, применительно к fluid:
 
@@ -78,9 +95,9 @@
 
 ---
 
-## 5. Как читать этот план
+## 6. Как читать этот план
 
 - Столбец «Статус» — источник истины по факту закрытия; при закрытии тикета обновлять здесь **и** в [`status.md`](status.md) (там — журнал по датам, здесь — план по порядку зависимостей).
-- Порядок F1.1 → … → F1.8b — зависимости, не даты. **F1 закрыта.** F2: F2.0 → F2.1 → (F2.2 можно параллелить после F2.0) → F2.3. Не MAC.
+- Порядок F1.1 → … → F1.8b — зависимости, не даты. **F1 закрыта.** F2: F2.0 → F2.1 → (F2.2 можно параллелить после F2.0) → F2.3. Не MAC. F3: F3.0 → (F3.1/F3.2 по visual-сигналу F3.0) → F3.3 только если F3.0–F3.2 не хватило.
 - Каждый закрытый пункт фазы F1 сопровождается собственным ADR и `todo-*.md` в [`ADR/`](ADR/) и [`last/`](last/) — этот документ не заменяет их, только даёт карту целиком.
 - **Смежный трек, не fluid-specific:** [ADR-025](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) / [`todo-postfx-layer1.md`](last/todo-postfx-layer1.md) — HDR Camera + Bloom + ACES Volume, generic-слой поверх любого `EffectAsset` (в т.ч. Fluid2D). **Реализовано** (2026-09-05): `M3D Volume` + `M3DVolumeProfile` в `Test1`, desktop-only через `M3DVolumeMobileGate`. Не встроен в таблицы F0/F1/F2 по номеру, т.к. не привязан к самому Stam-контуру.

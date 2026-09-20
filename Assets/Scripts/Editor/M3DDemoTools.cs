@@ -21,6 +21,7 @@ public static class M3DDemoTools
     private const string Fluid2DHarrisOrderPath = EffectsFolder + "/Fluid2D_HarrisOrder.asset";
     private const string Fluid2DVorticityPath = EffectsFolder + "/Fluid2D_Vorticity.asset";
     private const string Fluid2DMacCormackDyePath = EffectsFolder + "/Fluid2D_MacCormackDye.asset";
+    private const string Fluid2DHighResDyePath = EffectsFolder + "/Fluid2D_HighResDye.asset";
 
     private static readonly string[] PassLibraryPaths =
     {
@@ -1118,6 +1119,161 @@ public static class M3DDemoTools
         EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
         EditorSceneManager.SaveOpenScenes();
         Debug.Log("M3D: scene assigned Fluid2D MacCormackDye (GroundXZ). visualEffect left in place.");
+    }
+
+    [MenuItem("Tools/M3D/Create Fluid2D HighResDye Experiment")]
+    public static void CreateFluid2DHighResDyeExperiment()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        Vector2Int res128 = new Vector2Int(128, 128);
+        Vector2Int res512 = new Vector2Int(512, 512);
+        Vector2 planeSize = new Vector2(32f, 32f);
+
+        FieldDescriptor velocity = FieldDescriptor.CreateDefault("velocity", FieldSemantic.Velocity);
+        FieldDescriptor fluidD = FieldDescriptor.CreateDefault("fluidD", FieldSemantic.Scalar);
+        FieldDescriptor fluidPhi = FieldDescriptor.CreateDefault("fluidPhi", FieldSemantic.Scalar);
+        FieldDescriptor dye = FieldDescriptor.CreateDefault("dye", FieldSemantic.Scalar);
+
+        DebugFieldQuadSlot velocityQuad = DebugFieldQuadSlot.Velocity();
+        velocityQuad.colorScale = 0.125f;
+
+        CreateEffect(
+            Fluid2DHighResDyePath,
+            cubeResolution: 1,
+            simulationSpeed: 1f,
+            kind: DataSourceKind.None,
+            fields: new[] { velocity, fluidD, fluidPhi, dye },
+            debugQuads: new[] { velocityQuad, DebugFieldQuadSlot.Density("dye") },
+            new TouchInjectVelocityFieldPass(),
+            new SeedScalarDiskPass
+            {
+                FieldName = "dye",
+                CenterUV = new Vector2(0.5f, 0.5f),
+                RadiusUV = 0.08f,
+                Value = 1f,
+            },
+            new DivergenceFieldPass(),
+            new ZeroMeanScalarPass(),
+            new JacobiPhiPass { Iterations = 40 },
+            new SubtractPhiGradientPass(),
+            new SolidWallVelocityPass(),
+            new AdvectVelocityFieldPass
+            {
+                FieldName = "velocity",
+                DissipationRate = 0f,
+            },
+            new SolidWallVelocityPass(),
+            new AdvectScalarPass
+            {
+                ScalarField = "dye",
+                VelocityField = "velocity",
+                DissipationRate = 0f,
+            });
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(Fluid2DHighResDyePath);
+        SerializedObject so = new SerializedObject(asset);
+        SerializedProperty fieldsProp = so.FindProperty("fields");
+        for (int i = 0; i < fieldsProp.arraySize; i++)
+        {
+            SerializedProperty f = fieldsProp.GetArrayElementAtIndex(i);
+            string name = f.FindPropertyRelative("id.name").stringValue;
+            f.FindPropertyRelative("resolution").vector2IntValue =
+                name == "dye" ? res512 : res128;
+            f.FindPropertyRelative("size").vector2Value = planeSize;
+            f.FindPropertyRelative("origin").vector3Value = Vector3.zero;
+            f.FindPropertyRelative("axisU").vector3Value = Vector3.right;
+            f.FindPropertyRelative("axisV").vector3Value = Vector3.forward;
+            f.FindPropertyRelative("clearValue").colorValue = Color.clear;
+            if (name == "velocity")
+            {
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16G16_SFloat;
+            }
+            else if (name == "dye")
+            {
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16_SFloat;
+            }
+            else
+            {
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R32_SFloat;
+            }
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        for (int i = 0; i < asset.Passes.Count; i++)
+        {
+            if (asset.Passes[i] is SeedScalarDiskPass seed)
+            {
+                seed.RadiusUV = 0.16f;
+                break;
+            }
+        }
+
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssets();
+
+        System.Text.StringBuilder log = new System.Text.StringBuilder();
+        log.Append("M3D: created Fluid2D HighResDye. Passes:");
+        for (int i = 0; i < asset.Passes.Count; i++)
+        {
+            log.Append(' ');
+            log.Append(asset.Passes[i].GetType().Name);
+            if (i < asset.Passes.Count - 1)
+            {
+                log.Append(',');
+            }
+        }
+
+        log.Append(" Formats:");
+        for (int i = 0; i < asset.Fields.Count; i++)
+        {
+            log.Append(' ');
+            log.Append(asset.Fields[i].Name);
+            log.Append('=');
+            log.Append(asset.Fields[i].Format);
+            log.Append('@');
+            log.Append(asset.Fields[i].Resolution.x);
+        }
+
+        Debug.Log(log.ToString());
+    }
+
+    [MenuItem("Tools/M3D/Assign Fluid2D HighResDye Experiment To Scene")]
+    public static void AssignFluid2DHighResDyeToScene()
+    {
+        SimulationWorld world = Object.FindAnyObjectByType<SimulationWorld>();
+        EffectAsset fluid = AssetDatabase.LoadAssetAtPath<EffectAsset>(Fluid2DHighResDyePath);
+        if (world == null || fluid == null)
+        {
+            Debug.LogError(
+                "M3D: SimulationWorld or Fluid2D_HighResDye.asset missing — " +
+                "run Tools/M3D/Create Fluid2D HighResDye Experiment.");
+            return;
+        }
+
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = fluid;
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        InputRouter router = world.GetComponent<InputRouter>();
+        if (router != null)
+        {
+            SerializedObject routerSo = new SerializedObject(router);
+            routerSo.FindProperty("planeMode").enumValueIndex = (int)InteractionPlaneMode.GroundXZ;
+            routerSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        SerializedProperty library = worldSo.FindProperty("passLibrary");
+        EnsurePassLibrary(library);
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
+        EditorSceneManager.SaveOpenScenes();
+        Debug.Log("M3D: scene assigned Fluid2D HighResDye (GroundXZ). visualEffect left in place.");
     }
 
     [MenuItem("Tools/M3D/Add F2.3 Scripted Stroke To Scene")]

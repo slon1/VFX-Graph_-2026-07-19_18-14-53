@@ -104,14 +104,14 @@ public class AdvectScalarPassTests
 
     [Test]
     [Category("GPU")]
-    public void Initialize_MismatchedResolution_ThrowsMatchingResolutionAndPlane()
+    public void Initialize_MismatchedPlane_Throws()
     {
         FieldDescriptor dye = FieldTestHarness.Descriptor(
             Dye, FieldSemantic.Scalar, GraphicsFormat.R32_SFloat,
             new Vector2Int(32, 32), new Vector2(32f, 32f), Color.clear);
         FieldDescriptor velocity = FieldTestHarness.Descriptor(
             Velocity, FieldSemantic.Velocity, GraphicsFormat.R32G32_SFloat,
-            new Vector2Int(64, 64), new Vector2(32f, 32f), Color.clear);
+            new Vector2Int(32, 32), new Vector2(64f, 64f), Color.clear);
 
         using (FieldTestHarness harness = new FieldTestHarness(new[] { dye, velocity }))
         {
@@ -121,6 +121,24 @@ public class AdvectScalarPassTests
             TestContext.WriteLine(ex.Message);
             StringAssert.Contains("matching Resolution and plane", ex.Message);
             StringAssert.DoesNotContain("ADR-016 §2.1", ex.Message);
+        }
+    }
+
+    [Test]
+    [Category("GPU")]
+    public void Initialize_MismatchedResolutionSamePlane_DoesNotThrow()
+    {
+        FieldDescriptor dye = FieldTestHarness.Descriptor(
+            Dye, FieldSemantic.Scalar, GraphicsFormat.R32_SFloat,
+            new Vector2Int(32, 32), new Vector2(32f, 32f), Color.clear);
+        FieldDescriptor velocity = FieldTestHarness.Descriptor(
+            Velocity, FieldSemantic.Velocity, GraphicsFormat.R32G32_SFloat,
+            new Vector2Int(64, 64), new Vector2(32f, 32f), Color.clear);
+
+        using (FieldTestHarness harness = new FieldTestHarness(new[] { dye, velocity }, FieldCompute))
+        {
+            AdvectScalarPass pass = new AdvectScalarPass();
+            Assert.DoesNotThrow(() => pass.Initialize(harness.Context));
         }
     }
 
@@ -146,6 +164,7 @@ public class AdvectScalarPassTests
         Assert.AreEqual(FieldSemantic.Scalar, write.RequiredSemantic);
         Assert.AreEqual(1, write.Channels);
         Assert.AreEqual(FieldSlotRole.A, write.Role);
+        Assert.IsFalse(write.AllowResolutionMismatch);
 
         Assert.AreEqual(1, pass.FieldReads.Count);
         FieldRequest read = pass.FieldReads[0];
@@ -154,6 +173,7 @@ public class AdvectScalarPassTests
         Assert.AreEqual(FieldSemantic.Velocity, read.RequiredSemantic);
         Assert.AreEqual(2, read.Channels);
         Assert.AreEqual(FieldSlotRole.B, read.Role);
+        Assert.IsTrue(read.AllowResolutionMismatch);
     }
 
     [Test]

@@ -499,7 +499,8 @@ public sealed class AdvectScalarPass : FieldKernelPass
     public override IReadOnlyList<FieldRequest> FieldReads =>
         FieldRequestSets.Single(
             ref fieldReadsCache, velocityField,
-            FieldAccess.Read, FieldSemantic.Velocity, 2, FieldSlotRole.B);
+            FieldAccess.Read, FieldSemantic.Velocity, 2, FieldSlotRole.B,
+            allowResolutionMismatch: true);
 
     public override IReadOnlyList<FieldRequest> FieldWrites =>
         FieldRequestSets.Single(
