@@ -163,7 +163,7 @@ MonoBehaviour:
         enabled: 1
         fieldName: dye
         centerUV: {x: 0.5, y: 0.5}
-        radiusUV: 0.08
+        radiusUV: 0.16
         value: 1
     - rid: 879766590431953143
       type: {class: AdvectVelocityFieldPass, ns: , asm: Assembly-CSharp}
@@ -207,3 +207,4 @@ MonoBehaviour:
         scalarField: dye
         velocityField: velocity
         dissipationRate: 0
+        reverse: 0

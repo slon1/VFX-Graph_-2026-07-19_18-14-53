@@ -1120,6 +1120,54 @@ public static class M3DDemoTools
         Debug.Log("M3D: scene assigned Fluid2D MacCormackDye (GroundXZ). visualEffect left in place.");
     }
 
+    [MenuItem("Tools/M3D/Add F2.3 Scripted Stroke To Scene")]
+    public static void AddF23ScriptedStrokeToScene()
+    {
+        SimulationWorld world = Object.FindAnyObjectByType<SimulationWorld>();
+        InputRouter router = Object.FindAnyObjectByType<InputRouter>();
+        if (world == null)
+        {
+            Debug.LogError("M3D: SimulationWorld missing — open Test1 and Setup Open Scene.");
+            return;
+        }
+
+        GameObject host = router != null ? router.gameObject : world.gameObject;
+        if (router == null)
+        {
+            router = host.GetComponent<InputRouter>();
+            if (router == null)
+            {
+                router = host.AddComponent<InputRouter>();
+            }
+        }
+
+        ScriptedTouchStroke stroke = host.GetComponent<ScriptedTouchStroke>();
+        if (stroke == null)
+        {
+            stroke = host.AddComponent<ScriptedTouchStroke>();
+        }
+
+        stroke.StartUV = new Vector2(0.5f, 0.25f);
+        stroke.EndUV = new Vector2(0.5f, 0.75f);
+        stroke.Duration = 0.5f;
+        stroke.enabled = true;
+
+        SerializedObject worldSo = new SerializedObject(world);
+        SerializedProperty routerProp = worldSo.FindProperty("inputRouter");
+        if (routerProp.objectReferenceValue == null)
+        {
+            routerProp.objectReferenceValue = router;
+            worldSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        EditorUtility.SetDirty(host);
+        EditorSceneManager.MarkSceneDirty(host.scene);
+        EditorSceneManager.SaveOpenScenes();
+        Debug.Log(
+            "M3D: ScriptedTouchStroke on '" + host.name +
+            "'. After F2.3 visual disable the component, or the next Play will run the script again.");
+    }
+
     private static void EnsurePassLibrary(SerializedProperty library)
     {
         library.arraySize = PassLibraryPaths.Length;

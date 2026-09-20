@@ -16,6 +16,8 @@ public sealed class SimulationWorld : MonoBehaviour
     [SerializeField] private VisualEffect visualEffect;
     [SerializeField] private InputRouter inputRouter;
 
+    public EffectAsset Effect => effect;
+
     private ParticleSet particles;
     private FieldSet fields;
     private SimContext context;

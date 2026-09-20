@@ -31,10 +31,38 @@ public sealed class InputRouter : MonoBehaviour
     private readonly Vector3[] previousWorldPositions = new Vector3[MaxTouches];
     private readonly bool[] activeThisFrame = new bool[MaxTouches];
     private readonly bool[] activeLastFrame = new bool[MaxTouches];
+    private ScriptedTouchStroke scriptedStroke;
+
+    private void OnEnable()
+    {
+        scriptedStroke = GetComponent<ScriptedTouchStroke>();
+    }
 
     /// <summary>Fills output with active pointers, returns their count.</summary>
     public int Sample(TouchForce[] output)
     {
+        if (output == null || output.Length == 0)
+        {
+            return 0;
+        }
+
+        if (scriptedStroke != null && scriptedStroke.isActiveAndEnabled)
+        {
+            int scriptedCount = scriptedStroke.Sample(out Vector3 position, out Vector3 delta);
+            if (scriptedCount > 0)
+            {
+                output[0] = new TouchForce
+                {
+                    Position = position,
+                    Delta = delta,
+                    Radius = touchRadius,
+                    Strength = touchStrength,
+                };
+            }
+
+            return scriptedCount;
+        }
+
         Camera cam = targetCamera != null ? targetCamera : Camera.main;
         if (cam == null)
         {

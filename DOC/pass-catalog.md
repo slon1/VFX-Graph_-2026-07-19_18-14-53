@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-09-18 (F2.2 закрыт, look не взят — [ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md))
+**Снимок:** 2026-09-20 (F2.3 закрыт, production Fluid2D — [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) § F2.3)
 
 ---
 
@@ -587,7 +587,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 
 **Gray-Scott-Agents:** Curl/Drag/Limit/Integrate/Bounds → presence Replace → Seed → GS×N → Boost/Erode → Touch — **без** flock-полей и SampleVelocity/Gradient (поле не рулит частицами)
 
-**Fluid2D ([ADR-022](ADR/ADR-022-Fluid2D-Preset.md) + [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md); сводка [ADR-019](ADR/ADR-019-Fluid2D-Solver.md)):** `TouchInjectVelocity → SeedScalarDisk(dye) → Divergence → ZeroMeanScalar → Jacobi×40 → SubtractPhiGradient → SolidWallVelocity → Advect velocity → SolidWallVelocity → AdvectScalar` (`Assets/Effects/Fluid2D.asset`, меню Create/Assign, InputRouter=GroundXZ, quads velocity+dye). Порядок **project → advect** измерен в [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7 (λ=8: Harris ~30–45% чище по `max|D|`, ≥2× нет) — production не меняли. Эталон Harris: `Fluid2D_HarrisOrder.asset` (меню Assign, не Demo Effects).
+**Fluid2D ([ADR-022](ADR/ADR-022-Fluid2D-Preset.md) + [ADR-023](ADR/ADR-023-Advect-Scalar-Pass.md); сводка [ADR-019](ADR/ADR-019-Fluid2D-Solver.md)):** `TouchInjectVelocity → SeedScalarDisk(dye) → Divergence → ZeroMeanScalar → Jacobi×40 → SubtractPhiGradient → SolidWallVelocity → Advect velocity → SolidWallVelocity → AdvectScalar` (`Assets/Effects/Fluid2D.asset`, меню Create/Assign, InputRouter=GroundXZ, quads velocity+dye). Порядок **project → advect** измерен в [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md) §7 и подтверждён visual F2.3 — production не меняли. Эталон Harris: `Fluid2D_HarrisOrder.asset` (на диске `radiusUV=0.16`, Create не вызывать). F2.3 закрыт: [`play-F2.3-touch.md`](last/play-F2.3-touch.md).
 
 **Fluid2D Vorticity ([ADR-027](ADR/ADR-027-Vorticity-Confinement-Pass.md), эксперимент, не production):** `Touch → Seed(dye) → Advect velocity → VorticityConfinement → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect dye` (`Assets/Effects/Fluid2D_Vorticity.asset`). Одна стена. `ε_vc=1`, `borderMargin=2`. Visual F2.1b: торнадо рамки нет (clamp-curl); dye-клубы; look не взят — [`play-F2.1b-touch.md`](last/play-F2.1b-touch.md). Create factory `radiusUV=0.08` — не вызывать (на диске 0.16).
 

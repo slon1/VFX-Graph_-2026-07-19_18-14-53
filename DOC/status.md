@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-09-18  
-**Итерация:** 5.34 — F2.2 закрыт (limited MacCormack dye, look не взят)  
+**Дата:** 2026-09-20  
+**Итерация:** 5.37 — F2.3 закрыт (production остаётся Fluid2D, look не взят)  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
@@ -35,9 +35,13 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 **Visual (2026-09-18):** B=Vorticity vs C=MacCormackDye, `radiusUV=0.16`, ε=1, m=2, 30 с ×3. Inf/шахматки/новых колец нет. Dye C — клубы как B; нить не тоньше. Look не взят. [`play-F2.2-touch.md`](last/play-F2.2-touch.md). Vorticity / Fluid2D / Harris не трогали. Production нет.
 
-## F2 — F2.0–F2.2 закрыты; F2.3 не начат
+## F2.3 — production decision (готово)
 
-[ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md): F2.2 — limited MacCormack dye, scratch не Role C, look не взят. F2.3 — visual A/B/C/D основной критерий; `Fluid2D.asset` можно сменить (≥2× не гейт). Вне фазы: viscosity, MAC, F0.5, velocity-MacCormack, F0.7.
+`ScriptedTouchStroke` + Harris `radiusUV` 0.16. Visual 2026-09-20: скрипт вертикаль, `_4` wait **10 с**. A/B/C/D — макро-клубы; хребет F1.8b нет. VC: жилки внутри C, не филамент. MacCormack силуэт не сменил. Inf/колец нет. `Fluid2D.asset` **оставлен**. [`play-F2.3-touch.md`](last/play-F2.3-touch.md).
+
+## F2 — F2.0–F2.3 закрыты; production без смены
+
+[ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md): look (тонкая нить) не взят. Stam Project→Advect остаётся. Эксперименты Harris / Vorticity / MacCormackDye не production. Вне фазы: viscosity, MAC, F0.5, velocity-MacCormack, F0.7.
 
 ---
 
@@ -234,9 +238,9 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 
 ```
 Assets/Scripts/Passes/     FieldPasses.cs (… AdvectScalar, CopyScalar, LimitedMacCormackCombine, …), FluidPasses.cs (Divergence, Jacobi, ZeroMeanScalar, SubtractPhiGradient, SolidWallVelocity, VorticityConfinement), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
-Assets/Scripts/Runtime/    SimPass.cs (RepeatCount, RequiresSquareTexel, AttrSets.Heading, SimShaderIds.Dissipation, EpsilonVc), SimulationWorld.cs, RepeatCountValidator.cs, SquareTexelValidator.cs
+Assets/Scripts/Runtime/    SimPass.cs (RepeatCount, RequiresSquareTexel, AttrSets.Heading, SimShaderIds.Dissipation, EpsilonVc), SimulationWorld.cs, ScriptedTouchStroke.cs, RepeatCountValidator.cs, SquareTexelValidator.cs
 Assets/Shaders/GPU/Passes/ DynamicsPasses, FieldPasses, FluidPasses, GradientPasses (AddNormalizedGradient)
-Assets/Tests/Editor/       LimitedMacCormackDyeTests, CopyScalarPassTests, Fluid2DMacCormackDyePresetTests, Fluid2DMacCormackDyeWorldSmokeTests, VorticityConfinementPassTests, Fluid2DVorticityPresetTests, Fluid2DVorticityWorldSmokeTests, Fluid2DProductionProfileTests, Fluid2DWorldSmokeTests, HarrisOrderExperimentTests, AdvectScalarPassTests, Fluid2DPresetTests, …
+Assets/Tests/Editor/       ScriptedTouchStrokeTests, Fluid2DHarrisOrderPresetTests, Fluid2DHarrisOrderWorldSmokeTests, LimitedMacCormackDyeTests, CopyScalarPassTests, Fluid2DMacCormackDyePresetTests, Fluid2DMacCormackDyeWorldSmokeTests, VorticityConfinementPassTests, Fluid2DVorticityPresetTests, Fluid2DVorticityWorldSmokeTests, Fluid2DProductionProfileTests, Fluid2DWorldSmokeTests, HarrisOrderExperimentTests, AdvectScalarPassTests, Fluid2DPresetTests, …
 Assets/Scripts/Editor/     M3DDemoTools.cs, PostProcessingSetup.cs, Adr012BoidsMk1Setup.cs
 Assets/Scripts/Runtime/    …, PostFX/M3DVolumeMobileGate.cs
 Assets/Settings/           M3DVolumeProfile.asset (Bloom + ACES; не DefaultVolumeProfile)
@@ -247,4 +251,4 @@ Assets/Effects/            Fluid2D.asset, Fluid2D_HarrisOrder.asset, Fluid2D_Vor
 
 ## Вне скоупа (далее)
 
-**F2.3** не начат · MAC / Rhie–Chow (триггер — устойчивая шахматка интерьера **после** сравнения с baseline F2.0; F2.0 visual и F1.7 не виден) · F0.5 cross-res dye (вне F2) · Trail/persistence · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)
+MAC / Rhie–Chow (триггер — устойчивая шахматка интерьера **после** сравнения с baseline F2.0; F2.0 visual и F1.7 не виден) · F0.5 cross-res dye (вне F2) · Trail/persistence · spatial hash · AggregationMode enum · dt clamp (Techdebt 1b)
