@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-09-20 (F3.0 закрыт — cross-res dye, [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md); production Fluid2D без смены — [ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md) § F2.3)
+**Снимок:** 2026-09-21 (ADR-030 Primitive render готов — [ADR-030](ADR/ADR-030-Particle-Render-Primitives-Binder.md); F3.0 закрыт — [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md))
 
 ---
 
@@ -595,6 +595,8 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 **Fluid2D MacCormackDye ([ADR-028](ADR/ADR-028-Limited-MacCormack-Dye.md), эксперимент F2.2, закрыт):** клон Vorticity, хвост `CopyScalar → Advect → Advect(reverse) → LimitedMacCormackCombine`, поле `dyeMacScratch`. Не переписывать Vorticity. Visual: клубы как Vorticity, look не взят — [`play-F2.2-touch.md`](last/play-F2.2-touch.md). Create factory `radiusUV=0.08` — не вызывать (на диске 0.16).
 
 **Fluid2D HighResDye ([ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md), эксперимент F3.0, закрыт):** клон `Fluid2D.asset`, `dye` 512² / остальные 128², тот же Size 32, без VC/MacCormack. Меню Create/Assign HighResDye. Visual: острее Fluid2D, тот же гриб; не production — [`play-F3.0-touch.md`](last/play-F3.0-touch.md). Fluid2D / Harris / Vorticity / MacCormackDye не Create.
+
+**Particle Primitive render ([ADR-030](ADR/ADR-030-Particle-Render-Primitives-Binder.md), Techdebt 9, готово):** `PrimitiveParticleBinder` + шейдер `M3D/ParticleBillboard` (`Graphics.RenderPrimitives`). Opt-in `EffectAsset.ParticleRenderMode`. Меню `Enable/Disable Primitive Render On Boids_mk1`, `Register ParticleBillboard Shader`. На диске `Boids_mk1` остаётся `Vfx`. S10: VFX 20–30 → Primitive 40–50 FPS.
 
 ---
 

@@ -1,6 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>Particle present path. Default Vfx keeps existing assets unchanged (ADR-030).</summary>
+public enum ParticleRenderMode
+{
+    Vfx = 0,
+    Primitive = 1,
+}
+
 /// <summary>
 /// One effect = one asset: data source config + field declarations + ordered pass list.
 /// Field resources are declaration-owned (policy C): runtime never auto-creates them.
@@ -17,6 +24,9 @@ public sealed class EffectAsset : ScriptableObject
     [SerializeField] private List<FieldDescriptor> fields = new List<FieldDescriptor>();
     [SerializeReference] private List<SimPass> passes = new List<SimPass>();
     [SerializeField] private List<DebugFieldQuadSlot> debugFieldQuads = new List<DebugFieldQuadSlot>();
+    [SerializeField] private ParticleRenderMode particleRenderMode = ParticleRenderMode.Vfx;
+    [SerializeField, Min(0f)] private float particleSize = 0.05f;
+    [SerializeField] private Color particleColor = Color.white;
 
     // Legacy flags — migrated into debugFieldQuads via OnValidate, then cleared.
     [SerializeField, HideInInspector] private bool showVelocityFieldQuad;
@@ -26,6 +36,9 @@ public sealed class EffectAsset : ScriptableObject
     public IReadOnlyList<FieldDescriptor> Fields => fields;
     public IReadOnlyList<SimPass> Passes => passes;
     public IReadOnlyList<DebugFieldQuadSlot> DebugFieldQuads => debugFieldQuads;
+    public ParticleRenderMode ParticleRenderMode => particleRenderMode;
+    public float ParticleSize => particleSize;
+    public Color ParticleColor => particleColor;
 
     public IDataSource ResolveSource()
     {

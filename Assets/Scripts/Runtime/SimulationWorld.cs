@@ -535,9 +535,26 @@ public sealed class SimulationWorld : MonoBehaviour
 
         if (particles.Count > 0)
         {
-            VfxParticleBinder vfxBinder = new VfxParticleBinder(visualEffect);
-            vfxBinder.Initialize(context);
-            binders.Add(vfxBinder);
+            if (effect.ParticleRenderMode == ParticleRenderMode.Primitive)
+            {
+                PrimitiveParticleBinder primitiveBinder =
+                    new PrimitiveParticleBinder(effect.ParticleSize, effect.ParticleColor);
+                primitiveBinder.Initialize(context);
+                binders.Add(primitiveBinder);
+
+                if (visualEffect.HasFloat("SpawnCount"))
+                {
+                    visualEffect.SetFloat("SpawnCount", 0f);
+                }
+
+                visualEffect.Reinit();
+            }
+            else
+            {
+                VfxParticleBinder vfxBinder = new VfxParticleBinder(visualEffect);
+                vfxBinder.Initialize(context);
+                binders.Add(vfxBinder);
+            }
         }
         else if (visualEffect != null)
         {
@@ -616,9 +633,19 @@ public sealed class SimulationWorld : MonoBehaviour
     {
         built = false;
 
+        for (int i = 0; i < binders.Count; i++)
+        {
+            if (binders[i] is IDisposable disposable &&
+                !ReferenceEquals(binders[i], fieldDebugQuadsBinder))
+            {
+                disposable.Dispose();
+            }
+        }
+
+        binders.Clear();
+
         fieldDebugQuadsBinder?.Dispose();
         fieldDebugQuadsBinder = null;
-        binders.Clear();
 
         if (effect != null)
         {

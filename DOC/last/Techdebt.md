@@ -94,7 +94,7 @@
 
 8j. **Smoke `SimulationWorld.Build` для Fluid2D (coverage, ниже 8i).** `Fluid2DPresetTests` проверяет композицию ассета без GPU — так задумано [ADR-022](../ADR/ADR-022-Fluid2D-Preset.md). **F2.0:** 4a `Fluid2DWorldSmokeTests` — `Rebuild()` на боевом `Fluid2D.asset`, без симуляции; 4b харнес `SeedScalarDisk` + `max(dye)>0`. `Build()` private. EditMode: снятие Collider с debug-quad через `DestroyImmediate` (`FieldDebugQuadsBinder`; в Play по-прежнему `Destroy`).
 
-8k. **GPU-потолок для F2-пассов не установлен.** F2.0 записало wall-clock цепочки 128² Editor: **`elapsedMs/N=0.208`**, `timer=cpu_driver_not_gpu`. F2.1 (Harris + VC, тот же 128²): **`elapsedMs/N=0.272`**, тот же timer (не GPU, порог не ставили). Калибровать, когда мобильная адаптация fluid вернётся в скоуп. Не путать с пунктом 9 (VFX Graph) и 8h (Bloom на мобиле).
+8k. **GPU-потолок для F2-пассов не установлен.** F2.0 записало wall-clock цепочки 128² Editor: **`elapsedMs/N=0.208`**, `timer=cpu_driver_not_gpu`. F2.1 (Harris + VC, тот же 128²): **`elapsedMs/N=0.272`**, тот же timer (не GPU, порог не ставили). F3.0 (`velocity` 128² / `dye` 512², Jacobi×40, Stam-цепочка без VC/MacCormack): **`elapsedMs/N=0.184`**, тот же timer. Калибровать, когда мобильная адаптация fluid вернётся в скоуп. Не путать с пунктом 9 (VFX Graph) и 8h (Bloom на мобиле).
 
 8l. **VC кормит рамку через clamp-curl, не интерьерные филаменты.** F2.1: торнадо у края. **F2.1b закрыт:** `m=2` снял торнадо, на 3-й тексель не съехали; dye остался клубами. **F2.3 visual:** на скриптованном жесте VC даёт жилковатый интерьер жирного пятна (C vs A/B), не макро-нить; рамка без торнадо. Маску на `Fluid2D_Vorticity` оставить. Production не менять.
 
@@ -106,9 +106,9 @@
 
 ## Группа D — roadmap-пункты с повышенным приоритетом по итогам тестов
 
-9. **Переход с VFX Graph на `RenderMeshIndirect`/`RenderMeshInstanced`.** Изначально часть M2d ("рендер"), теперь — подтверждённая причина основной просадки FPS на мобильном устройстве (Samsung S10, Vulkan): отключение только VFX-рендера частиц подняло FPS с <10 до 60 (упор в vsync), без единого изменения в compute-пассах. Приоритет этого пункта стоит поднять, не дожидаясь естественной очереди roadmap. Открытый вопрос перед стартом: деградация от VFX-инфраструктурного оверхеда или от чистого overdraw/fill-rate большого количества частиц — стоит проверить через снижение particle count в текущем VFX-сетапе перед переписыванием рендера, это откалибрует ожидания от перехода.
+9. **Переход с VFX Graph на GPU-driven рендер частиц — закрыто 2026-09-21.** [ADR-030](../ADR/ADR-030-Particle-Render-Primitives-Binder.md). `Graphics.RenderPrimitives` + `PrimitiveParticleBinder`, opt-in `ParticleRenderMode` (дефолт всех ассетов **Vfx**; `Boids_mk1` на диске Vfx, Enable/Disable меню). **Desktop (Windows Editor, fullscreen):** Vfx = Primitive ≈ **20 FPS** — презент не лимитер. Editor Windows→Android ≈20→100 FPS — backend, не этот тикет. **Samsung S10 player (Vulkan, одна сессия):** VFX **20–30 FPS**, Primitive **40–50 FPS** (~×2). Гипотеза «VFX-инфра стоит кадров» подтверждена частично; полный скачок «выключить рисунок → 60» не воспроизведён (остаток — Transparent fill-rate). Не откат. Разбор overdraw — отдельный тикет **по факту нужды**, не открыт здесь. LUT/trail — пункт 10. Старый замер VFX <10 → off=60 не смешивать с 20–30 / 40–50.
 
-10. **LUT-палитра + trail/persistence buffer** (M2d, часть "живого" визуального рендера). Не срочно само по себе, но логично объединить с пунктом 9 в одну задачу, если переписывается рендер-слой целиком.
+10. **LUT-палитра + trail/persistence buffer** (исходный M2d, «живой» вид). Не закрыт пунктом 9: perf-слой уже переписан отдельно; палитра/trail — свой тикет.
 
 10a. **Fluid2D разноцветный dye.** Два скалярных dye-поля / кастомный `FieldDebug` / честный multi-channel dye. Явно отложено из [ADR-025](../ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) §6 — не смешивать со слоем HDR/Bloom/ACES.
 
