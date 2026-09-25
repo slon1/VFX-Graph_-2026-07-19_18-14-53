@@ -1,11 +1,11 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-09-21  
-**Итерация:** 5.41 — ADR-030 Primitive render Готово (S10: VFX 20–30 → Primitive 40–50)  
+**Дата:** 2026-09-25  
+**Итерация:** 5.42 — ADR-031 Primitive-only + LUT по `value` (EditMode). Play-цвета по курсу не закрыты.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-019`](ADR/ADR-019-Fluid2D-Solver.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`ADR-024`](ADR/ADR-024-Harris-Order-Experiment.md) · [`ADR-025`](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) · [`ADR-026`](ADR/ADR-026-F2-Small-Scale-Structure.md) · [`ADR-027`](ADR/ADR-027-Vorticity-Confinement-Pass.md) · [`ADR-028`](ADR/ADR-028-Limited-MacCormack-Dye.md) · [`ADR-029`](ADR/ADR-029-Cross-Resolution-Dye.md) · [`ADR-030`](ADR/ADR-030-Particle-Render-Primitives-Binder.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-019`](ADR/ADR-019-Fluid2D-Solver.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`ADR-024`](ADR/ADR-024-Harris-Order-Experiment.md) · [`ADR-025`](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) · [`ADR-026`](ADR/ADR-026-F2-Small-Scale-Structure.md) · [`ADR-027`](ADR/ADR-027-Vorticity-Confinement-Pass.md) · [`ADR-028`](ADR/ADR-028-Limited-MacCormack-Dye.md) · [`ADR-029`](ADR/ADR-029-Cross-Resolution-Dye.md) · [`ADR-030`](ADR/ADR-030-Particle-Render-Primitives-Binder.md) · [`ADR-031`](ADR/ADR-031-Primitive-Only-And-Value-Palette.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -47,19 +47,19 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 ## ADR-031 — Primitive-only + LUT по `value` (EditMode)
 
-`SetupBinders` всегда ставит `PrimitiveParticleBinder`. `Build()` больше не требует `VisualEffect` (если компонент есть — `SpawnCount=0`+`Reinit()`). `VfxParticleBinder` и меню ADR-030 остаются, из мира не вызываются.
+`SetupBinders` всегда ставит `PrimitiveParticleBinder`. `Build()` больше не требует `VisualEffect` (если компонент есть — `SpawnCount=0`+`Reinit()`). `VfxParticleBinder` остаётся в репозитории и не создаётся. Меню Enable/Disable пишут `ParticleRenderMode` в ассет; мир это поле не читает.
 
 Палитра: `SpeedToValue` / `HeadingToValue` в `DynamicsPasses` (без dt). `TeamToValue` — класс без ядра, `Initialize` падает. На `Boids_mk1` в конец добавлен только `HeadingToValue` (после BoxBounds) и явный fire-градиент; `particleRenderMode` на диске по-прежнему `Vfx` (игнорируется). `_Values` при отсутствии атрибута `value` не биндится (`_UseLut=0`).
 
-**Visual не закрыт:** Play `Boids_mk1` — цвета по курсу, без второго VFX-облака.
+**Visual не закрыт:** Play `Boids_mk1` — цвета по курсу (fire-LUT), без второго VFX-облака.
 
-## ADR-030 — Primitive particle render (готово)
+**Мерцание квада (2026-09-25, коммит до палитры, без `HeadingToValue`):** при `particleSize` 0.05 ленты Primitive реже и мигают относительно VFX Point на тех же пассах. Число инстансов совпало с числом точек. `particleSize` 0.2 почти убрал мигание: квад в мировых единицах, на экране он меньше пикселя, и растеризатор его выбрасывает. VFX Point держит минимум пиксель. Это не солвер и не потерянные инстансы. Размер читается при сборке мира.
 
-`PrimitiveParticleBinder` + `M3D/ParticleBillboard` (`Graphics.RenderPrimitives`). Opt-in `ParticleRenderMode` / `particleSize=0.05` / `particleColor=white`. При Primitive: нет `VfxParticleBinder`, `SpawnCount=0`+`Reinit()`. `Boids_mk1` на диске **Vfx**.
+## ADR-030 — замер Primitive vs VFX (opt-in снят ADR-031)
 
-**Desktop (2026-09-21):** visual ок (рой читается). Fullscreen Windows Editor: Vfx = Primitive ≈ **20 FPS**. Editor switch Windows→Android: ~20→100 — backend, не Primitive.
+Замер 2026-09-21, когда `ParticleRenderMode` ещё выбирал биндер. С ADR-031 поле в инспекторе на кадр не влияет.
 
-**Mobile (Samsung S10, Vulkan, player):** VFX **20–30 FPS**, Primitive **40–50 FPS**. Techdebt 9 частично фактом; до 60 не дошли (fill-rate). LUT/trail и прочие демки не трогали.
+Desktop fullscreen Windows Editor: Vfx = Primitive ≈ **20 FPS**. Editor switch Windows→Android: ~20→100 — backend. Samsung S10 Vulkan: VFX **20–30 FPS**, Primitive **40–50 FPS**. До 60 не дошли (fill-rate).
 
 ## F2 — F2.0–F2.3 закрыты; production без смены
 
@@ -73,11 +73,12 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 EffectAsset (Fields + Passes)
     → ParticleSet + FieldSet (+ FieldAccumBuffer)
     → SimPass pipeline (World-owned ping-pong swap)
-    → Render binders (VFX / FieldQuad)
+    → Render binders (Primitive quads / FieldQuad)
 ```
 
 Доменные симуляции = композиции Pass, не подсистемы.  
-Simulation Resources (`ParticleSet`, `FieldSet`) ≠ services (Input, GPU, binders).
+Simulation Resources (`ParticleSet`, `FieldSet`) ≠ services (Input, GPU, binders).  
+Частицы рисует только `PrimitiveParticleBinder`. `VfxParticleBinder` в репозитории есть, `SetupBinders` его не создаёт. `ParticleRenderMode` пишется в ассет и не читается.
 
 ---
 
@@ -259,10 +260,10 @@ EditMode-харнес `FieldTestHarness`: test-only `HarnessProbes.compute` (н�
 ## Файлы (ключевые)
 
 ```
-Assets/Scripts/Passes/     FieldPasses.cs (… AdvectScalar, CopyScalar, LimitedMacCormackCombine, …), FluidPasses.cs (Divergence, Jacobi, ZeroMeanScalar, SubtractPhiGradient, SolidWallVelocity, VorticityConfinement), DynamicsPasses.cs (ClearVelocity, HeadingSteer), P2GPasses.cs
+Assets/Scripts/Passes/     FieldPasses.cs (… AdvectScalar, CopyScalar, LimitedMacCormackCombine, …), FluidPasses.cs (Divergence, Jacobi, ZeroMeanScalar, SubtractPhiGradient, SolidWallVelocity, VorticityConfinement), DynamicsPasses.cs (ClearVelocity, HeadingSteer, SpeedToValue, HeadingToValue), P2GPasses.cs
 Assets/Scripts/Runtime/    SimPass.cs, SimulationWorld.cs, PrimitiveParticleBinder.cs, VfxParticleBinder.cs, ScriptedTouchStroke.cs, RepeatCountValidator.cs, SquareTexelValidator.cs
 Assets/Shaders/GPU/Passes/ DynamicsPasses, FieldPasses, FluidPasses, GradientPasses (AddNormalizedGradient)
-Assets/Tests/Editor/       PrimitiveParticleBinderTests, BoidsMk1PrimitiveWorldSmokeTests, Fluid2DHighResDyeSmokeTests, Fluid2DHighResDyeCrossResTests, Fluid2DHighResDyePresetTests, Fluid2DHighResDyeWorldSmokeTests, ScriptedTouchStrokeTests, Fluid2DHarrisOrderPresetTests, Fluid2DHarrisOrderWorldSmokeTests, LimitedMacCormackDyeTests, CopyScalarPassTests, Fluid2DMacCormackDyePresetTests, Fluid2DMacCormackDyeWorldSmokeTests, VorticityConfinementPassTests, Fluid2DVorticityPresetTests, Fluid2DVorticityWorldSmokeTests, Fluid2DProductionProfileTests, Fluid2DWorldSmokeTests, HarrisOrderExperimentTests, AdvectScalarPassTests, Fluid2DPresetTests, …
+Assets/Tests/Editor/       ValuePalettePassTests, PrimitiveParticleBinderLutTests, SimulationWorldWithoutVisualEffectTests, PrimitiveParticleBinderTests, BoidsMk1PrimitiveWorldSmokeTests, Fluid2DHighResDyeSmokeTests, Fluid2DHighResDyeCrossResTests, Fluid2DHighResDyePresetTests, Fluid2DHighResDyeWorldSmokeTests, ScriptedTouchStrokeTests, Fluid2DHarrisOrderPresetTests, Fluid2DHarrisOrderWorldSmokeTests, LimitedMacCormackDyeTests, CopyScalarPassTests, Fluid2DMacCormackDyePresetTests, Fluid2DMacCormackDyeWorldSmokeTests, VorticityConfinementPassTests, Fluid2DVorticityPresetTests, Fluid2DVorticityWorldSmokeTests, Fluid2DProductionProfileTests, Fluid2DWorldSmokeTests, HarrisOrderExperimentTests, AdvectScalarPassTests, Fluid2DPresetTests, …
 Assets/Scripts/Editor/     M3DDemoTools.cs, Adr030PrimitiveRenderSetup.cs, PostProcessingSetup.cs, Adr012BoidsMk1Setup.cs
 Assets/Scripts/Runtime/    …, PostFX/M3DVolumeMobileGate.cs
 Assets/Settings/           M3DVolumeProfile.asset (Bloom + ACES; не DefaultVolumeProfile)

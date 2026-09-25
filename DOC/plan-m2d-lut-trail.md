@@ -1,12 +1,19 @@
 # План: LUT + trail (M2d, Techdebt 10)
 
 **Дата:** 2026-09-22
-**Статус:** план. Код не начат. Это не ТЗ программисту — ТЗ режется по одному тикету после согласия на скоуп.
-**Связано:** [ADR-010](ADR/ADR-010-LUT-Palette+HDR-Intensity.md) (LUT debug-квада), [ADR-030](ADR/ADR-030-Particle-Render-Primitives-Binder.md) (present частиц), [Techdebt 10](last/Techdebt.md), [roadmap M2d](last/roadmap_m2a.md).
+**Статус:** исходный план. M2d.1 сделан [ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md) (2026-09-25, EditMode). M2d.2 (trail) не начат. Где текст ниже разошёлся с кодом — блок «Расхождение».
+**Связано:** [ADR-010](ADR/ADR-010-LUT-Palette+HDR-Intensity.md) (LUT debug-квада), [ADR-030](ADR/ADR-030-Particle-Render-Primitives-Binder.md) (present частиц), [ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md), [Techdebt 10](last/Techdebt.md), [roadmap M2d](last/roadmap_m2a.md).
 
 Цель — «живой» вид роя: цвет из палитры и затухающий след, **независимо от алгоритма** (boids — первый потребитель, не единственный). Два тикета, не один: если смешать, непонятно, что дало картинку.
 
 Perf-слой уже есть (`PrimitiveParticleBinder`, S10: VFX 20–30 → Primitive 40–50). Палитра и шлейф садятся **на него**, не в VFX Graph. Дефолт ассетов остаётся `Vfx`.
+
+## Расхождение с кодом (2026-09-25)
+
+- Present безусловный Primitive. `ParticleRenderMode` на диске может быть `Vfx` и игнорируется. Пункт 3 раздела «Порядок» снят ADR-031.
+- Нет атрибута `value` — `_UseLut=0` и плоский `_Color`, не `d = 1`.
+- На `Boids_mk1` писатель — `HeadingToValue`, не `SpeedToValue`.
+- `resolution=50` / `cruiseSpeed=0.3` на диске так и лежат; этот план их не задавал.
 
 ---
 
@@ -63,6 +70,6 @@ Decay **до** штампа: след прошлого кадра тускнее
 
 1. M2d.1 (LUT) → visual → потом M2d.2 (trail).
 2. ТЗ программисту — на один тикет, после того как этот скоуп принят.
-3. `Boids_mk1` на диске остаётся `ParticleRenderMode.Vfx`, пока явно не решим иначе. Грязные `resolution=50` / `cruiseSpeed=0.3` в этот план не входят.
+3. Снято ADR-031: `Boids_mk1` на диске по-прежнему `ParticleRenderMode.Vfx`, но режим не читается. Грязные `resolution=50` / `cruiseSpeed=0.3` в этот план не входят.
 
 **Вне скоупа:** VFX-палитра; per-particle ribbon и буфер истории позиций; emitters / возраст / `RenderMeshIndirect`; spatial hash; heading-billboard; fluid цветной dye (Techdebt 10a); мобильный Bloom; смена дефолта всех ассетов на Primitive; F3.1 (впрыск dye).

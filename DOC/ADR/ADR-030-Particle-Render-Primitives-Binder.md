@@ -1,6 +1,6 @@
 ## ADR-030: Particle render — `Graphics.RenderPrimitives` binder (M2d / Techdebt 9)
 
-**Статус:** **Реализовано** (2026-09-21). Смоук + desktop visual + mobile запись. Дефолт ассетов остаётся `Vfx`; `Boids_mk1` — opt-in через меню, на диске `Vfx`.
+**Статус:** **Реализовано** (2026-09-21). Смоук + desktop visual + mobile запись. Opt-in `ParticleRenderMode` снят [ADR-031](ADR-031-Primitive-Only-And-Value-Palette.md): поле и меню остались, `SetupBinders` их не читает. Замеры ниже — про тот момент, когда переключатель ещё работал.
 **Дата:** 2026-09-21
 **Контекст:** M3D Framework, после закрытия F3.0 (fluid на паузе — [ADR-029](ADR-029-Cross-Resolution-Dye.md)). Скоуп сузили явно: только [Techdebt 9](../last/Techdebt.md) (перформанс рендера частиц), не исходный roadmap-пункт M2d (LUT-палитра + trail/persistence, [Techdebt 10](../last/Techdebt.md)) — тот остаётся отдельным, будущим тикетом.
 **Не меняет:** `SimPass`/`FieldKernelPass`/пассы симуляции (эта работа — только слой рендера, после `commandBuffer` симуляции); `FieldDebugQuadsBinder`; fluid-контур ([ADR-029](ADR-029-Cross-Resolution-Dye.md) и весь `plan-stable-fluid.md`) не трогать.

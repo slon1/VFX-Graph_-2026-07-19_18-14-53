@@ -16,7 +16,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 
 - **Источник** заполняет `restPosition` (куб / mesh / bitmap), либо **None** — без частиц (field-only).
 - **Пассы** меняют particles и/или fields на GPU.
-- **Binders** показывают результат (VFX Graph, debug field quad).
+- **Binders** показывают результат (Primitive-квады частиц, debug field quad). `Particle Render Mode` на эффект не влияет.
 
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
@@ -37,7 +37,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **AgentFieldEcho** — CurlNoise → P2G scatter velocity → field quad (без тача).
    - **Gray-Scott** — field-only RD (`Source Kind = None`, поля на **XZ**, quads U/V; тач после React).
    - **Gray-Scott-Boids** — boids + `agentPresence` P2G → Boost/Erode в U/V (plane 50×50; `flockVel` 64 + Steer/DiffuseVelocity).
-   - **Boids_mk1** — kinematic field-flocking (ADR-012: AddNormalized* + HeadingSteer; Speed≈20) и хвост `HeadingToValue` с fire-LUT ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)). Частицы всегда рисуются Primitive-квадами; `VisualEffect` для сборки мира не нужен. Меню Enable/Disable Primitive остаются, режим не читается.
+   - **Boids_mk1** — kinematic field-flocking (ADR-012: AddNormalized* + HeadingSteer; Speed≈20) и хвост `HeadingToValue` с fire-LUT ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)). Частицы всегда рисуются Primitive-квадами; `VisualEffect` для сборки мира не нужен. Меню Enable/Disable Primitive только пишут `Particle Render Mode` в ассет, картинку не меняют. **Particle Size** — мировые единицы квада (0.05 на весь кадр мигает: квад меньше пикселя); правка применяется после выхода из Play и новой сборки.
    - **Gray-Scott-Agents** — то же one-way: частицы красят GS, поле их не рулит.
    - **Fluid2D** — Stam: Touch → Seed(dye) → project → wall → advect(`velocity`) → wall → AdvectScalar (None, XZ, velocity+dye quads). Порядок project→advect оставлен после [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md). Эталон Harris: `Fluid2D_HarrisOrder.asset` (Assign, не Demo Effects). Эксперимент VC: `Fluid2D_Vorticity.asset`. Эксперимент F2.2: `Fluid2D_MacCormackDye.asset` (не production; look не взят).
 3. Play. Для hybrid / Gray-Scott / **Fluid2D**: InputRouter = **GroundXZ**.
@@ -68,7 +68,7 @@ Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFee
 3. Presence Replace: `ClearField(agentPresence)` → ClearAccum → ScatterDensity → Normalize → … → React → `AgentBoost` / `AgentErode` (`gain`≈0.3).
 4. U/V/`agentPresence` обязаны совпасть по Resolution+plane (M2c); Size 50 как boids, presence/U/V res 128.
 5. One-way без обратной связи: `Assets/Effects/Gray-Scott-Agents.asset` — только Curl/Drag/… + presence→GS (нет flockVel / Sample*/Steer).
-6. Чистые boids: `Assets/Effects/Boids_mk1.asset` (Speed≈20). Порядок: P2G → ClearVelocity → AddNormalized* → HeadingSteer → Integrate → Wrap. Reconfigure: `Tools/M3D/ADR-012 Reconfigure Boids_mk1`.
+6. Чистые boids: `Assets/Effects/Boids_mk1.asset` (Speed≈20). Порядок: P2G → ClearVelocity → AddNormalized* → HeadingSteer → Integrate → Wrap → `HeadingToValue`. Reconfigure: `Tools/M3D/ADR-012 Reconfigure Boids_mk1` (список пассов он собирает сам и хвост `HeadingToValue` сохраняет).
 ### Свой эффект с полями
 
 1. `Create → M3D → Effect Asset`.
@@ -163,4 +163,4 @@ Hybrid (field + particles):
 | Field descriptor / requests | `Core/FieldDescriptor.cs`, `Core/FieldSet.cs`, `Core/FieldAccumBuffer.cs` |
 | Контракт пасса | `Runtime/SimPass.cs` |
 | Field / P2G / Gradient / Fluid kernels | `Passes/FieldPasses.cs`, `Passes/FluidPasses.cs`, `Passes/P2GPasses.cs`, `Shaders/GPU/Passes/` |
-| Binders | `VfxParticleBinder.cs`, `FieldDebugQuadsBinder.cs` |
+| Binders | `PrimitiveParticleBinder.cs` (частицы), `FieldDebugQuadsBinder.cs` (поля). `VfxParticleBinder.cs` мир не создаёт |

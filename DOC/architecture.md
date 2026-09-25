@@ -198,8 +198,7 @@ struct TouchForce { float2 pos; float2 delta; float radius; float strength; };
 - **Bandwidth — главный лимит** (tile-based GPU): только используемые атрибуты (SoA уже
   даёт), поля `R16F/RG16F`, 2D 256×256 достаточно для wow, разрешение полей = параметр качества.
 - **VFX Graph требует compute-capable API** — Vulkan/Metal; на GLES3 не работает.
-  Поэтому **RenderBinder — абстракция**: VFX Graph — одна из реализаций, рядом quad-рендер
-  (для 2D fluid dye) и fallback `Graphics.RenderPrimitives` + шейдер, читающий те же буферы.
+  Текущий present частиц — `Graphics.RenderPrimitives` (`PrimitiveParticleBinder`), безусловно из `SetupBinders` ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)). `VfxParticleBinder` и поле `ParticleRenderMode` остаются в проекте и миром не вызываются (страховка на GLES3). Поля смотрит quad (`FieldDebugQuadsBinder`).
 - **Никаких readback-ов в кадре**; `AsyncGPUReadback`/UniTask только вне горячего пути.
 - Диспатчей на кадр ~10–20; итерации Jacobi pressure-солвера (20–30) = параметр качества №1.
 
@@ -228,7 +227,7 @@ fields — только из деклараций (намеренная асим
 | --- | --- |
 | Только `ParticleSet` | + `FieldSet` (dual RT, World-owned Swap) |
 | `Reads`/`Writes` (attrs) | + `FieldReads`/`FieldWrites` (`FieldRequest`) |
-| VFX bind в World | `IRenderBinder` (VFX + `FieldDebugQuadsBinder`) |
+| VFX bind в World | `IRenderBinder`: частицы всегда `PrimitiveParticleBinder`; `VfxParticleBinder` не вызывается; поля — `FieldDebugQuadsBinder` |
 | Источник всегда с частицами | + `DataSourceKind.None` (field-only) |
 | — | `HybridTouchField` / `Gray-Scott` demos |
 
@@ -237,4 +236,4 @@ fields — только из деклараций (намеренная асим
 **M2b.1 / M2b.1.1 (готово):** P2G scatter + generic `FieldRead`/`FieldWrite` slots.  
 **M2b.2 … M2b.3.1 (готово):** Gradient, Density P2G (sum), Diffuse, Scalar Decay; debug quads — список слотов.  
 **M2c / M2c.1 (готово):** multi-field Role A/B, Gray-Scott + Seed; `Source Kind = None`.  
-**Дальше:** LUT/trail (M2d) → Stable Fluids → spatial hash/boids → emitters → richer hybrids.
+**Дальше:** M2d.1 LUT — EditMode ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)); Play-цвета по курсу не закрыты. M2d.2 trail не начат. Spatial hash — только если снимется гейт Techdebt 11. Emitters — позже.

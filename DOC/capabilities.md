@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-09-16  
+**Снимок:** 2026-09-25  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
@@ -8,7 +8,7 @@
 
 ## Что это
 
-GPU playground / фреймворк: источники → SoA particles + grid fields → compute passes → VFX / debug quad.
+GPU playground / фреймворк: источники → SoA particles + grid fields → compute passes → Primitive-квады / debug quad.
 
 ```
 Source → ParticleSet + FieldSet → SimPass pipeline → Binders
@@ -23,10 +23,12 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 | `DataSourceKind` | Поведение |
 | --- | --- |
 | Cube / Mesh / Bitmap | Заполняют `restPosition`, задают `ParticleSet` capacity |
-| **None** | 0 частиц (`NoneSource`); field-only эффекты; particle-пассы no-op; VFX `SpawnCount=0` |
+| **None** | 0 частиц (`NoneSource`); field-only эффекты; particle-пассы no-op; если на объекте есть `VisualEffect` — `SpawnCount=0` |
 
 Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.  
 Авторегистрация атрибутов по Reads/Writes — **пропускается** при Capacity=0 (None).
+
+Present частиц ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)): при `Count > 0` всегда `PrimitiveParticleBinder` + `M3D/ParticleBillboard`. `VisualEffect` для `Build` не нужен. Инспекторные **Particle Size / Color / Gradient / Value Scale** читаются при сборке мира. **Particle Render Mode** и меню Enable/Disable пишут ассет и на кадр не влияют (`VfxParticleBinder` не создаётся). Есть атрибут `value` — LUT 256×1, `_UseLut=1`; нет — плоский `_Color`, `_UseLut=0`. `particleSize` — мировые единицы квада: при 0.05 и рое на весь кадр квад меньше пикселя и мигает (проверено 2026-09-25 без LUT; 0.2 почти убрало мигание). Писатели `value`: `SpeedToValue`, `HeadingToValue`. `TeamToValue` — класс без ядра, `Initialize` падает.
 
 ### Fields (M2a)
 
@@ -109,7 +111,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 | **HybridTouchField** | touch → velocity field → particles |
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
-| **Boids_mk1** | kinematic heading + fields (ADR-012) + `HeadingToValue` и fire-LUT (ADR-031, EditMode; Play-цвета не закрыты). Primitive безусловный |
+| **Boids_mk1** | kinematic heading + fields (ADR-012) + `HeadingToValue` и fire-LUT (ADR-031, EditMode; Play-цвета не закрыты). Primitive безусловный, `particleRenderMode` на диске `Vfx` и игнорируется |
 | **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |
 | **Gray-Scott-Agents** | agents → GS only (no field feedback) |
 | **Fluid2D** | Stam: Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect → SolidWall → AdvectScalar (None, GroundXZ, velocity+dye quads) |
@@ -139,3 +141,4 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 | Policy C для fields | нет runtime autogen |
 | P2G average only | Sum/Max — позже; overflow суммы — док, не guard |
 | Multi-field kernel ≤2 | Role A/B; Gray-Scott = M2c.1 |
+| Present частиц | Всегда Primitive. `ParticleRenderMode` в инспекторе ничего не переключает. Квад `particleSize` 0.05 легко уходит в субпиксель и мигает |
