@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>Particle present path. Default Vfx keeps existing assets unchanged (ADR-030).</summary>
+/// <summary>Dormant insurance (ADR-031). SetupBinders always uses Primitive and ignores this.</summary>
 public enum ParticleRenderMode
 {
     Vfx = 0,
@@ -27,6 +27,8 @@ public sealed class EffectAsset : ScriptableObject
     [SerializeField] private ParticleRenderMode particleRenderMode = ParticleRenderMode.Vfx;
     [SerializeField, Min(0f)] private float particleSize = 0.05f;
     [SerializeField] private Color particleColor = Color.white;
+    [SerializeField] private Gradient particleGradient;
+    [SerializeField, Min(0f)] private float particleValueScale = 1f;
 
     // Legacy flags — migrated into debugFieldQuads via OnValidate, then cleared.
     [SerializeField, HideInInspector] private bool showVelocityFieldQuad;
@@ -39,6 +41,8 @@ public sealed class EffectAsset : ScriptableObject
     public ParticleRenderMode ParticleRenderMode => particleRenderMode;
     public float ParticleSize => particleSize;
     public Color ParticleColor => particleColor;
+    public Gradient ParticleGradient => particleGradient;
+    public float ParticleValueScale => particleValueScale;
 
     public IDataSource ResolveSource()
     {

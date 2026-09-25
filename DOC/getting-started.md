@@ -37,7 +37,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **AgentFieldEcho** — CurlNoise → P2G scatter velocity → field quad (без тача).
    - **Gray-Scott** — field-only RD (`Source Kind = None`, поля на **XZ**, quads U/V; тач после React).
    - **Gray-Scott-Boids** — boids + `agentPresence` P2G → Boost/Erode в U/V (plane 50×50; `flockVel` 64 + Steer/DiffuseVelocity).
-   - **Boids_mk1** — kinematic field-flocking (ADR-012: AddNormalized* + HeadingSteer; Speed≈20). Opt-in GPU quads: `Tools/M3D/Enable Primitive Render On Boids_mk1` ([ADR-030](ADR/ADR-030-Particle-Render-Primitives-Binder.md)); Disable возвращает VFX. На диске дефолт `Vfx`.
+   - **Boids_mk1** — kinematic field-flocking (ADR-012: AddNormalized* + HeadingSteer; Speed≈20) и хвост `HeadingToValue` с fire-LUT ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)). Частицы всегда рисуются Primitive-квадами; `VisualEffect` для сборки мира не нужен. Меню Enable/Disable Primitive остаются, режим не читается.
    - **Gray-Scott-Agents** — то же one-way: частицы красят GS, поле их не рулит.
    - **Fluid2D** — Stam: Touch → Seed(dye) → project → wall → advect(`velocity`) → wall → AdvectScalar (None, XZ, velocity+dye quads). Порядок project→advect оставлен после [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md). Эталон Harris: `Fluid2D_HarrisOrder.asset` (Assign, не Demo Effects). Эксперимент VC: `Fluid2D_Vorticity.asset`. Эксперимент F2.2: `Fluid2D_MacCormackDye.asset` (не production; look не взят).
 3. Play. Для hybrid / Gray-Scott / **Fluid2D**: InputRouter = **GroundXZ**.

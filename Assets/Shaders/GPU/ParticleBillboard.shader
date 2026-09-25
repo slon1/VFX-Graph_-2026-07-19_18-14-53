@@ -4,6 +4,7 @@ Shader "M3D/ParticleBillboard"
     {
         _Size ("Size", Float) = 0.05
         _Color ("Color", Color) = (1,1,1,1)
+        _Scale ("Value Scale", Float) = 1
     }
 
     SubShader
@@ -21,8 +22,13 @@ Shader "M3D/ParticleBillboard"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             StructuredBuffer<float3> _Positions;
+            StructuredBuffer<float> _Values;
+            Texture2D<float4> _LutTex;
+            SamplerState sampler_LutTex;
             float _Size;
             float4 _Color;
+            float _Scale;
+            float _UseLut;
 
             static const float2 QuadOffsets[6] =
             {
@@ -33,6 +39,7 @@ Shader "M3D/ParticleBillboard"
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
+                nointerpolation uint instanceID : TEXCOORD0;
             };
 
             Varyings vert(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
@@ -45,11 +52,19 @@ Shader "M3D/ParticleBillboard"
 
                 Varyings output;
                 output.positionCS = TransformWorldToHClip(posWS);
+                output.instanceID = instanceID;
                 return output;
             }
 
             half4 frag(Varyings input) : SV_Target
             {
+                if (_UseLut > 0.5)
+                {
+                    float d = saturate(_Values[input.instanceID] * _Scale);
+                    float4 lut = _LutTex.SampleLevel(sampler_LutTex, float2(d, 0.5), 0);
+                    return half4(lut.rgb, lut.a * _Color.a);
+                }
+
                 return half4(_Color.rgb, _Color.a);
             }
             ENDHLSL

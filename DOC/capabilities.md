@@ -81,7 +81,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 - `ClearVelocityPass` — GPU zero `velocity` (force accumulator reset).
 - `AddNormalizedVelocityFieldPass` / `AddNormalizedGradientFieldPass` — unit direction × weight, **без dt**.
 - `HeadingSteerPass` — nlerp `heading`, flatten Y, snap `velocity = heading * CruiseSpeed`.
-- `Boids_mk1`: P2G → Clear → AddNormalized* → HeadingSteer → Integrate → Wrap (Speed=20). **Не** Newton (Curl/Drag/Limit/Steer/SampleGradient).
+- `Boids_mk1`: P2G → Clear → AddNormalized* → HeadingSteer → Integrate → Wrap (Speed=20) → `HeadingToValue` (present, без dt). **Не** Newton (Curl/Drag/Limit/Steer/SampleGradient).
 
 ### Alignment G2P (ADR-011)
 
@@ -109,7 +109,7 @@ Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.
 | **HybridTouchField** | touch → velocity field → particles |
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
-| **Boids_mk1** | kinematic heading + fields (ADR-012): AddNormalized* + HeadingSteer, DiffuseVelocity; opt-in Primitive render (ADR-030, на диске Vfx; S10 ~×2 vs VFX) |
+| **Boids_mk1** | kinematic heading + fields (ADR-012) + `HeadingToValue` и fire-LUT (ADR-031, EditMode; Play-цвета не закрыты). Primitive безусловный |
 | **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |
 | **Gray-Scott-Agents** | agents → GS only (no field feedback) |
 | **Fluid2D** | Stam: Touch → Seed(dye) → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → Advect → SolidWall → AdvectScalar (None, GroundXZ, velocity+dye quads) |

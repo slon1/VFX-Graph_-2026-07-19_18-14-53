@@ -85,6 +85,9 @@ internal static class AttrSets
     public static readonly AttributeId[] PositionRest = { BuiltinAttributes.Position, BuiltinAttributes.RestPosition };
     public static readonly AttributeId[] Heading = { BuiltinAttributes.Heading };
     public static readonly AttributeId[] HeadingVelocity = { BuiltinAttributes.Heading, BuiltinAttributes.Velocity };
+    public static readonly AttributeId[] Value = { BuiltinAttributes.Value };
+    public static readonly AttributeId[] VelocityValue = { BuiltinAttributes.Velocity, BuiltinAttributes.Value };
+    public static readonly AttributeId[] HeadingValue = { BuiltinAttributes.Heading, BuiltinAttributes.Value };
 }
 
 /// <summary>

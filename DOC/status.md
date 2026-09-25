@@ -45,6 +45,14 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 **Visual (2026-09-20):** A=Fluid2D vs B=HighResDye, тот же `ScriptedTouchStroke` F2.3, `radiusUV=0.16`. B безусловно острее; макро-гриб тот же; ножка жеста на 512² читается нитью. Inf/шахматки нет. `Fluid2D.asset` **оставлен**. [`play-F3.0-touch.md`](last/play-F3.0-touch.md).
 
+## ADR-031 — Primitive-only + LUT по `value` (EditMode)
+
+`SetupBinders` всегда ставит `PrimitiveParticleBinder`. `Build()` больше не требует `VisualEffect` (если компонент есть — `SpawnCount=0`+`Reinit()`). `VfxParticleBinder` и меню ADR-030 остаются, из мира не вызываются.
+
+Палитра: `SpeedToValue` / `HeadingToValue` в `DynamicsPasses` (без dt). `TeamToValue` — класс без ядра, `Initialize` падает. На `Boids_mk1` в конец добавлен только `HeadingToValue` (после BoxBounds) и явный fire-градиент; `particleRenderMode` на диске по-прежнему `Vfx` (игнорируется). `_Values` при отсутствии атрибута `value` не биндится (`_UseLut=0`).
+
+**Visual не закрыт:** Play `Boids_mk1` — цвета по курсу, без второго VFX-облака.
+
 ## ADR-030 — Primitive particle render (готово)
 
 `PrimitiveParticleBinder` + `M3D/ParticleBillboard` (`Graphics.RenderPrimitives`). Opt-in `ParticleRenderMode` / `particleSize=0.05` / `particleColor=white`. При Primitive: нет `VfxParticleBinder`, `SpawnCount=0`+`Reinit()`. `Boids_mk1` на диске **Vfx**.

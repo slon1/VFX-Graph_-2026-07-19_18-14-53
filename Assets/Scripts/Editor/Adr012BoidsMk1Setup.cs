@@ -35,6 +35,46 @@ public static class Adr012BoidsMk1Setup
         Debug.Log($"ADR-012: reconfigured {AssetPath} with {passes.Count} passes.");
     }
 
+    /// <summary>
+    /// Appends HeadingToValue and an explicit fire gradient without rebuilding the ADR-012 pass list.
+    /// Called once from the editor; not a menu (ADR-031).
+    /// </summary>
+    public static void EnsureHeadingPaletteOnBoidsMk1()
+    {
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(AssetPath);
+        if (asset == null)
+        {
+            Debug.LogError($"ADR-031: missing {AssetPath}");
+            return;
+        }
+
+        SerializedObject so = new SerializedObject(asset);
+        SerializedProperty passesProp = so.FindProperty("passes");
+        bool hasHeadingToValue = false;
+        for (int i = 0; i < passesProp.arraySize; i++)
+        {
+            if (passesProp.GetArrayElementAtIndex(i).managedReferenceValue is HeadingToValuePass)
+            {
+                hasHeadingToValue = true;
+                break;
+            }
+        }
+
+        if (!hasHeadingToValue)
+        {
+            int index = passesProp.arraySize;
+            passesProp.InsertArrayElementAtIndex(index);
+            passesProp.GetArrayElementAtIndex(index).managedReferenceValue = new HeadingToValuePass();
+        }
+
+        so.FindProperty("particleGradient").gradientValue = DebugFieldQuadSlot.DefaultFireGradient();
+        so.FindProperty("particleValueScale").floatValue = 1f;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"ADR-031: heading palette on {AssetPath}, passes={passesProp.arraySize}.");
+    }
+
     private static List<SimPass> BuildPassList()
     {
         var list = new List<SimPass>();
@@ -79,6 +119,7 @@ public static class Adr012BoidsMk1Setup
             Behaviour = BoundsBehaviour.Wrap,
             Bounce = 0.6f,
         });
+        list.Add(new HeadingToValuePass());
 
         return list;
     }

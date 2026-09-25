@@ -108,7 +108,7 @@
 
 9. **Переход с VFX Graph на GPU-driven рендер частиц — закрыто 2026-09-21.** [ADR-030](../ADR/ADR-030-Particle-Render-Primitives-Binder.md). `Graphics.RenderPrimitives` + `PrimitiveParticleBinder`, opt-in `ParticleRenderMode` (дефолт всех ассетов **Vfx**; `Boids_mk1` на диске Vfx, Enable/Disable меню). **Desktop (Windows Editor, fullscreen):** Vfx = Primitive ≈ **20 FPS** — презент не лимитер. Editor Windows→Android ≈20→100 FPS — backend, не этот тикет. **Samsung S10 player (Vulkan, одна сессия):** VFX **20–30 FPS**, Primitive **40–50 FPS** (~×2). Гипотеза «VFX-инфра стоит кадров» подтверждена частично; полный скачок «выключить рисунок → 60» не воспроизведён (остаток — Transparent fill-rate). Не откат. Разбор overdraw — отдельный тикет **по факту нужды**, не открыт здесь. LUT/trail — пункт 10. Старый замер VFX <10 → off=60 не смешивать с 20–30 / 40–50.
 
-10. **LUT-палитра + trail/persistence buffer** (исходный M2d, «живой» вид). Не закрыт пунктом 9: perf-слой уже переписан отдельно; палитра/trail — свой тикет.
+10. **LUT-палитра — EditMode закрыт [ADR-031](../ADR/ADR-031-Primitive-Only-And-Value-Palette.md) (2026-09-25).** `value` → 256×1 LUT на `PrimitiveParticleBinder`. `HeadingToValue` на хвосте `Boids_mk1`, явный fire-градиент. Play-разноцветность по курсу ещё не смотрели. **Trail/persistence (M2d.2) не начат.** Perf — пункт 9.
 
 10a. **Fluid2D разноцветный dye.** Два скалярных dye-поля / кастомный `FieldDebug` / честный multi-channel dye. Явно отложено из [ADR-025](../ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) §6 — не смешивать со слоем HDR/Bloom/ACES.
 

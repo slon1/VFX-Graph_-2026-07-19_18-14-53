@@ -141,10 +141,10 @@ public sealed class SimulationWorld : MonoBehaviour
             visualEffect = GetComponent<VisualEffect>();
         }
 
-        if (effect == null || visualEffect == null || passLibrary == null || passLibrary.Length == 0)
+        if (effect == null || passLibrary == null || passLibrary.Length == 0)
         {
             Debug.LogError(
-                "SimulationWorld: EffectAsset, VisualEffect and pass library compute shaders must be assigned.",
+                "SimulationWorld: EffectAsset and pass library compute shaders must be assigned.",
                 this);
             enabled = false;
             return;
@@ -535,36 +535,19 @@ public sealed class SimulationWorld : MonoBehaviour
 
         if (particles.Count > 0)
         {
-            if (effect.ParticleRenderMode == ParticleRenderMode.Primitive)
-            {
-                PrimitiveParticleBinder primitiveBinder =
-                    new PrimitiveParticleBinder(effect.ParticleSize, effect.ParticleColor);
-                primitiveBinder.Initialize(context);
-                binders.Add(primitiveBinder);
-
-                if (visualEffect.HasFloat("SpawnCount"))
-                {
-                    visualEffect.SetFloat("SpawnCount", 0f);
-                }
-
-                visualEffect.Reinit();
-            }
-            else
-            {
-                VfxParticleBinder vfxBinder = new VfxParticleBinder(visualEffect);
-                vfxBinder.Initialize(context);
-                binders.Add(vfxBinder);
-            }
+            PrimitiveParticleBinder primitiveBinder = new PrimitiveParticleBinder(
+                effect.ParticleSize,
+                effect.ParticleColor,
+                effect.ParticleGradient,
+                effect.ParticleValueScale);
+            primitiveBinder.Initialize(context);
+            binders.Add(primitiveBinder);
+            StopVfxPlayback();
         }
-        else if (visualEffect != null)
+        else
         {
             // Field-only: stop spawning leftover VFX points from a previous effect.
-            if (visualEffect.HasFloat("SpawnCount"))
-            {
-                visualEffect.SetFloat("SpawnCount", 0f);
-            }
-
-            visualEffect.Reinit();
+            StopVfxPlayback();
         }
 
         IReadOnlyList<DebugFieldQuadSlot> debugQuads = effect.DebugFieldQuads;
@@ -574,6 +557,21 @@ public sealed class SimulationWorld : MonoBehaviour
             fieldDebugQuadsBinder.Initialize(context);
             binders.Add(fieldDebugQuadsBinder);
         }
+    }
+
+    private void StopVfxPlayback()
+    {
+        if (visualEffect == null)
+        {
+            return;
+        }
+
+        if (visualEffect.HasFloat("SpawnCount"))
+        {
+            visualEffect.SetFloat("SpawnCount", 0f);
+        }
+
+        visualEffect.Reinit();
     }
 
     private void AutoRegisterAttributes()

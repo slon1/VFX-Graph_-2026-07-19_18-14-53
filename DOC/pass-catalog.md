@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-09-21 (ADR-030 Primitive render готов — [ADR-030](ADR/ADR-030-Particle-Render-Primitives-Binder.md); F3.0 закрыт — [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md))
+**Снимок:** 2026-09-25 (ADR-031 Primitive-only + LUT по `value`, EditMode — [ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md); ADR-030 visual закрыт)
 
 ---
 
@@ -40,7 +40,7 @@
 
 **Слоты текстур:** single-field → `FieldRead`/`FieldWrite`; multi-field (Role A/B) → `FieldReadA/B`/`FieldWriteA/B`.
 
-**Порядок кадра (типично):** Shape → Force → Dynamics (Integrate → Bounds) → Emit/Transport (fields, P2G, G2P). **Kinematic boids (`Boids_mk1`, ADR-012):** P2G → ClearVelocity → AddNormalized* → HeadingSteer → Integrate → Bounds — G2P **до** Integrate, cruise `velocity` для P2G следующего кадра.
+**Порядок кадра (типично):** Shape → Force → Dynamics (Integrate → Bounds) → Emit/Transport (fields, P2G, G2P). **Kinematic boids (`Boids_mk1`, ADR-012):** P2G → ClearVelocity → AddNormalized* → HeadingSteer → Integrate → Bounds — G2P **до** Integrate, cruise `velocity` для P2G следующего кадра. После Bounds — `HeadingToValue` (present, без dt, калибровку ADR-012 не меняет).
 
 ---
 
@@ -52,7 +52,7 @@
 |------|--------|
 | `ShapePasses.compute` | CopyRest, Twist, SpringToRest |
 | `ForcePasses.compute` | Gravity, Drag, Vortex, Attractor/Repulsor, Noise, CurlNoise, Turbulence, TouchForce |
-| `DynamicsPasses.compute` | Integrate, **ClearVelocity**, **HeadingSteer**, SpeedLimit, Plane/Sphere/BoxBounds |
+| `DynamicsPasses.compute` | Integrate, **ClearVelocity**, **HeadingSteer**, SpeedLimit, Plane/Sphere/BoxBounds, **SpeedToValue**, **HeadingToValue** |
 | `FieldPasses.compute` | TouchInjectVelocity, DecayField (velocity), SampleVelocityField, **SteerToVelocityField**, **AddNormalizedVelocityField**, **DiffuseVelocityField**, **AdvectVelocityField**, **AdvectScalar** |
 | `P2GPasses.compute` | ClearUintBuffer, ScatterVelocity, NormalizeVelocityAccum |
 | `DensityPasses.compute` | ScatterDensity, NormalizeDensityAccum |
@@ -190,6 +190,27 @@
 | **Параметры** | `turnSpeed` (0.15), `cruiseSpeed` (4); калибровать `Speed * turnSpeed ≈ 3` |
 | **dt** | Да (только поворот; скорость — snap, не spring) |
 | **Хорошо для** | `Boids_mk1` после AddNormalized*; не SpeedLimit |
+
+### SpeedToValue
+| | |
+|--|--|
+| **Назначение** | Present-writer: `value = saturate(|velocity| / SpeedRef)`. Не на `Boids_mk1` (после HeadingSteer скорость плоская) |
+| **Библиотека / kernel** | `DynamicsPasses` / `SpeedToValue` |
+| **Particles** | R: `velocity` → W: `value` |
+| **Параметры** | `speedRef` (1) |
+| **dt** | Нет |
+
+### HeadingToValue
+| | |
+|--|--|
+| **Назначение** | Present-writer: угол `heading` в XZ (`atan2(h.z, h.x)`) → `[0,1]`. Шов ±π ожидаем |
+| **Библиотека / kernel** | `DynamicsPasses` / `HeadingToValue` |
+| **Particles** | R: `heading` → W: `value` |
+| **dt** | Нет |
+| **Хорошо для** | Хвост `Boids_mk1` |
+
+### TeamToValue
+Класс в каталоге, **ядра нет**. Случайное подключение валит `Build` на `FindKernel`. Не вешать на ассет.
 
 ### Integrate
 | | |
@@ -596,7 +617,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 
 **Fluid2D HighResDye ([ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md), эксперимент F3.0, закрыт):** клон `Fluid2D.asset`, `dye` 512² / остальные 128², тот же Size 32, без VC/MacCormack. Меню Create/Assign HighResDye. Visual: острее Fluid2D, тот же гриб; не production — [`play-F3.0-touch.md`](last/play-F3.0-touch.md). Fluid2D / Harris / Vorticity / MacCormackDye не Create.
 
-**Particle Primitive render ([ADR-030](ADR/ADR-030-Particle-Render-Primitives-Binder.md), Techdebt 9, готово):** `PrimitiveParticleBinder` + шейдер `M3D/ParticleBillboard` (`Graphics.RenderPrimitives`). Opt-in `EffectAsset.ParticleRenderMode`. Меню `Enable/Disable Primitive Render On Boids_mk1`, `Register ParticleBillboard Shader`. На диске `Boids_mk1` остаётся `Vfx`. S10: VFX 20–30 → Primitive 40–50 FPS.
+**Particle Primitive render ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md), EditMode):** `SetupBinders` всегда `PrimitiveParticleBinder`. `VisualEffect` для `Build` не нужен. Меню Enable/Disable ADR-030 остаются, режим не читается. Если у частиц есть `value`, LUT печётся один раз в `Initialize` и сэмплируется при `_UseLut=1`; иначе плоский `_Color`. Present сам `value` не считает — его пишут `SpeedToValue` / `HeadingToValue`. S10-замер ADR-030: VFX 20–30 → Primitive 40–50 FPS.
 
 ---
 

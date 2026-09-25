@@ -8,13 +8,17 @@
 #pragma kernel PlaneCollider
 #pragma kernel SphereCollider
 #pragma kernel BoxBounds
+#pragma kernel SpeedToValue
+#pragma kernel HeadingToValue
 
 #define THREADS 64
 
 RWStructuredBuffer<float3> position;
 RWStructuredBuffer<float3> velocity;
 RWStructuredBuffer<float3> heading;
+RWStructuredBuffer<float> value;
 uint ParticleCount;
+float SpeedRef;
 float DeltaTime;
 
 float TurnSpeed;
@@ -209,4 +213,31 @@ void BoxBounds(uint3 id : SV_DispatchThreadID)
 
     position[id.x] = p;
     velocity[id.x] = v;
+}
+
+[numthreads(THREADS, 1, 1)]
+void SpeedToValue(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float speed = length(velocity[id.x]);
+    value[id.x] = saturate(speed / max(SpeedRef, 1e-6));
+}
+
+#define TWO_PI 6.28318530718
+
+[numthreads(THREADS, 1, 1)]
+void HeadingToValue(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 h = heading[id.x];
+    float angle = atan2(h.z, h.x);
+    value[id.x] = angle / TWO_PI + 0.5;
 }

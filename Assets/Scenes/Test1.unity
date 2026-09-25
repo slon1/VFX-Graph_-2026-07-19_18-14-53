@@ -533,6 +533,7 @@ GameObject:
   - component: {fileID: 1583680166}
   - component: {fileID: 1583680170}
   - component: {fileID: 1583680169}
+  - component: {fileID: 1583680171}
   m_Layer: 0
   m_Name: ParticleSimulation
   m_TagString: Untagged
@@ -670,7 +671,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40024deb4f1f31e45bc61e845729cb9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationWorld
-  effect: {fileID: 11400000, guid: 24ee52b954a36954ca731d6c826ae3dd, type: 2}
+  effect: {fileID: 11400000, guid: b87bc6b0bfe10934fb29d2f5b5545cec, type: 2}
   passLibrary:
   - {fileID: 7200000, guid: a60dea895cfede043bc140022ff70824, type: 3}
   - {fileID: 7200000, guid: d11bdaf5caad3f14aba4b9f99bf511b7, type: 3}
@@ -688,6 +689,21 @@ MonoBehaviour:
   - {fileID: 7200000, guid: e3b7c1a04f8d2e6b9a5c0d4e8f1a2735, type: 3}
   visualEffect: {fileID: 1583680167}
   inputRouter: {fileID: 1583680169}
+--- !u!114 &1583680171
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1583680164}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a3318279c757ff4a84f0126b97905ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScriptedTouchStroke
+  startUV: {x: 0.5, y: 0.75}
+  endUV: {x: 0.5, y: 0.25}
+  duration: 0.5
 --- !u!1 &1875732627
 GameObject:
   m_ObjectHideFlags: 0

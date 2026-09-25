@@ -254,3 +254,54 @@ public sealed class BoxBoundsPass : ParticleKernelPass
         SetInt(context, BoundsModeId, (int)behaviour);
     }
 }
+
+/// <summary>Present writer: value = saturate(|velocity| / SpeedRef). No dt. Not on Boids_mk1.</summary>
+[Serializable]
+public sealed class SpeedToValuePass : ParticleKernelPass
+{
+    private static readonly int SpeedRefId = Shader.PropertyToID("SpeedRef");
+
+    [SerializeField, Min(1e-4f)] private float speedRef = 1f;
+
+    public float SpeedRef
+    {
+        get => speedRef;
+        set => speedRef = value;
+    }
+
+    public override string DisplayName => "Speed To Value";
+    public override PassCategory Category => PassCategory.Dynamics;
+    protected override string KernelName => "SpeedToValue";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Velocity;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Value;
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, SpeedRefId, speedRef);
+    }
+}
+
+/// <summary>Present writer: value = heading angle in XZ, mapped to [0,1]. No dt.</summary>
+[Serializable]
+public sealed class HeadingToValuePass : ParticleKernelPass
+{
+    public override string DisplayName => "Heading To Value";
+    public override PassCategory Category => PassCategory.Dynamics;
+    protected override string KernelName => "HeadingToValue";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Heading;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Value;
+}
+
+/// <summary>
+/// Reserved for a future teamId ticket. No compute kernel. Initialize throws
+/// because FindKernel("TeamToValue") fails. Do not attach to an asset.
+/// </summary>
+[Serializable]
+public sealed class TeamToValuePass : ParticleKernelPass
+{
+    public override string DisplayName => "Team To Value";
+    public override PassCategory Category => PassCategory.Dynamics;
+    protected override string KernelName => "TeamToValue";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.None;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Value;
+}
