@@ -45,6 +45,12 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 **Visual (2026-09-20):** A=Fluid2D vs B=HighResDye, тот же `ScriptedTouchStroke` F2.3, `radiusUV=0.16`. B безусловно острее; макро-гриб тот же; ножка жеста на 512² читается нитью. Inf/шахматки нет. `Fluid2D.asset` **оставлен**. [`play-F3.0-touch.md`](last/play-F3.0-touch.md).
 
+## ADR-032 — Physarum steer + пресет (EditMode)
+
+`PhysarumSteerPass` / `PhysarumPasses.compute`: три сенсора по `trail`, поворот на фиксированный угол за вызов, без `dt`. Пресет `Assets/Effects/Physarum.asset` (меню `Tools/M3D/Create Physarum Effect`): куб 32³, поле 128², decay 0.8, diffuse ×2, Wrap `(16,0,16)`, `HeadingToValue`. EditMode: контракт, пять GPU-шагов курса, пресет, `Rebuild` без `VisualEffect` (32768 частиц).
+
+**Play-сеть не закрыта.** Стартовые числа не крутили. Квадратный след и столбик по Y — известный старт, не дефект пасса.
+
 ## ADR-031 — Primitive-only + LUT по `value` (EditMode)
 
 `SetupBinders` всегда ставит `PrimitiveParticleBinder`. `Build()` больше не требует `VisualEffect` (если компонент есть — `SpawnCount=0`+`Reinit()`). `VfxParticleBinder` остаётся в репозитории и не создаётся. Меню Enable/Disable пишут `ParticleRenderMode` в ассет; мир это поле не читает.

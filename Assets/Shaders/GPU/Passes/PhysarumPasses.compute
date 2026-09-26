@@ -1,0 +1,94 @@
+// Jones physarum steer. One turn per dispatch, no dt. Trail is sampled, not written.
+#pragma kernel PhysarumSteer
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+
+#define THREADS 64
+#define TWO_PI 6.28318530718
+
+RWStructuredBuffer<float3> position;
+RWStructuredBuffer<float3> heading;
+RWStructuredBuffer<float3> velocity;
+uint ParticleCount;
+
+Texture2D<float> FieldRead;
+SamplerState sampler_linear_repeat;
+
+float SensorAngle;
+float SensorDistance;
+float TurnAngle;
+float MoveSpeed;
+float RandomWiggle;
+uint StepSalt;
+
+uint Hash(uint x)
+{
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
+}
+
+float SampleTrail(float3 world)
+{
+    return FieldRead.SampleLevel(sampler_linear_repeat, WorldToFieldUV(world), 0);
+}
+
+[numthreads(THREADS, 1, 1)]
+void PhysarumSteer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 h = heading[id.x];
+    if (dot(h, h) < 1e-4)
+    {
+        float angle = TWO_PI * (Hash(id.x) / 4294967295.0);
+        h = float3(cos(angle), 0.0, sin(angle));
+    }
+    else
+    {
+        h = normalize(float3(h.x, 0.0, h.z));
+    }
+
+    float3 left = float3(-h.z, 0.0, h.x);
+    float c = cos(SensorAngle);
+    float s = sin(SensorAngle);
+    float3 p = position[id.x];
+    float cF = SampleTrail(p + h * SensorDistance);
+    float cL = SampleTrail(p + (h * c + left * s) * SensorDistance);
+    float cR = SampleTrail(p + (h * c - left * s) * SensorDistance);
+
+    float theta = 0.0;
+    if (cF > cL && cF > cR)
+    {
+        theta = 0.0;
+    }
+    else if (cF < cL && cF < cR)
+    {
+        uint bits = Hash(id.x ^ StepSalt);
+        theta = (bits & 1u) != 0u ? TurnAngle : -TurnAngle;
+    }
+    else if (cL > cR)
+    {
+        theta = TurnAngle;
+    }
+    else if (cR > cL)
+    {
+        theta = -TurnAngle;
+    }
+
+    float hash01 = Hash(id.x + StepSalt * 0x9E3779B9u) / 4294967295.0;
+    theta += (hash01 * 2.0 - 1.0) * RandomWiggle;
+
+    float ct = cos(theta);
+    float st = sin(theta);
+    float x = h.x * ct - h.z * st;
+    float z = h.x * st + h.z * ct;
+    heading[id.x] = float3(x, 0.0, z);
+    velocity[id.x] = heading[id.x] * MoveSpeed;
+}

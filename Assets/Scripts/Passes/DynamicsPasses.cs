@@ -305,3 +305,93 @@ public sealed class TeamToValuePass : ParticleKernelPass
     public override IReadOnlyList<AttributeId> Reads => AttrSets.None;
     public override IReadOnlyList<AttributeId> Writes => AttrSets.Value;
 }
+
+/// <summary>
+/// Jones physarum motor: three trail sensors, one fixed turn per step, snap velocity.
+/// Angle is degrees per Execute, not scaled by dt. Deposit/decay stay on other passes (ADR-032).
+/// </summary>
+[Serializable]
+public sealed class PhysarumSteerPass : ParticleKernelPass
+{
+    private static readonly int SensorAngleId = Shader.PropertyToID("SensorAngle");
+    private static readonly int SensorDistanceId = Shader.PropertyToID("SensorDistance");
+    private static readonly int TurnAngleId = Shader.PropertyToID("TurnAngle");
+    private static readonly int MoveSpeedId = Shader.PropertyToID("MoveSpeed");
+    private static readonly int RandomWiggleId = Shader.PropertyToID("RandomWiggle");
+    private static readonly int StepSaltId = Shader.PropertyToID("StepSalt");
+
+    [SerializeField] private string trailFieldName = "trail";
+    [SerializeField] private float sensorAngle = 22.5f;
+    [SerializeField, Min(0f)] private float sensorDistance = 1f;
+    [SerializeField] private float turnAngle = 45f;
+    [SerializeField, Min(0f)] private float moveSpeed = 15f;
+    [SerializeField, Min(0f)] private float randomWiggle = 10f;
+
+    [NonSerialized] private int stepSalt;
+    [NonSerialized] private FieldRequest[] fieldReadsCache;
+
+    private FieldDescriptor fieldDescriptor;
+    private int fieldReadId;
+
+    public float SensorAngle
+    {
+        get => sensorAngle;
+        set => sensorAngle = value;
+    }
+
+    public float SensorDistance
+    {
+        get => sensorDistance;
+        set => sensorDistance = value;
+    }
+
+    public float TurnAngle
+    {
+        get => turnAngle;
+        set => turnAngle = value;
+    }
+
+    public float MoveSpeed
+    {
+        get => moveSpeed;
+        set => moveSpeed = value;
+    }
+
+    public float RandomWiggle
+    {
+        get => randomWiggle;
+        set => randomWiggle = value;
+    }
+
+    public override string DisplayName => "Physarum Steer";
+    public override PassCategory Category => PassCategory.Dynamics;
+    protected override string KernelName => "PhysarumSteer";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.PositionHeading;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.HeadingVelocity;
+
+    public override IReadOnlyList<FieldRequest> FieldReads =>
+        FieldRequestSets.Single(
+            ref fieldReadsCache, trailFieldName,
+            FieldAccess.Read, FieldSemantic.Scalar, 1);
+
+    public override void Initialize(SimContext context)
+    {
+        base.Initialize(context);
+        fieldDescriptor = context.Fields.Get(trailFieldName).Descriptor;
+        fieldReadId = SimShaderIds.FieldRead;
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        stepSalt++;
+        SimField field = context.Fields.Get(trailFieldName);
+        context.Cmd.SetComputeTextureParam(Kernel.Shader, Kernel.Index, fieldReadId, field.Current);
+        FieldShaderParams.Push(context.Cmd, Kernel.Shader, fieldDescriptor);
+        SetFloat(context, SensorAngleId, sensorAngle * Mathf.Deg2Rad);
+        SetFloat(context, SensorDistanceId, sensorDistance);
+        SetFloat(context, TurnAngleId, turnAngle * Mathf.Deg2Rad);
+        SetFloat(context, MoveSpeedId, moveSpeed);
+        SetFloat(context, RandomWiggleId, randomWiggle * Mathf.Deg2Rad);
+        SetInt(context, StepSaltId, stepSalt);
+    }
+}

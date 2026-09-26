@@ -22,6 +22,7 @@ public static class M3DDemoTools
     private const string Fluid2DVorticityPath = EffectsFolder + "/Fluid2D_Vorticity.asset";
     private const string Fluid2DMacCormackDyePath = EffectsFolder + "/Fluid2D_MacCormackDye.asset";
     private const string Fluid2DHighResDyePath = EffectsFolder + "/Fluid2D_HighResDye.asset";
+    private const string PhysarumPath = EffectsFolder + "/Physarum.asset";
 
     private static readonly string[] PassLibraryPaths =
     {
@@ -39,6 +40,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/FluidPasses.compute",
         "Assets/Shaders/GPU/Passes/TouchGrayScottPasses.compute",
         "Assets/Shaders/GPU/Passes/AgentFieldFeedbackPasses.compute",
+        "Assets/Shaders/GPU/Passes/PhysarumPasses.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]
@@ -1322,6 +1324,84 @@ public static class M3DDemoTools
         Debug.Log(
             "M3D: ScriptedTouchStroke on '" + host.name +
             "'. After F2.3 visual disable the component, or the next Play will run the script again.");
+    }
+
+    [MenuItem("Tools/M3D/Create Physarum Effect")]
+    public static void CreatePhysarumEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        FieldDescriptor trail = FieldDescriptor.CreateDefault("trail", FieldSemantic.Scalar);
+        DebugFieldQuadSlot trailQuad = DebugFieldQuadSlot.Density("trail");
+        trailQuad.colorScale = 0.03f;
+
+        ClearFieldAccumPass clear = new ClearFieldAccumPass();
+        SetPrivate(clear, "fieldName", "trail");
+        SetPrivate(clear, "channels", 1);
+
+        ScatterDensityToFieldPass scatter = new ScatterDensityToFieldPass();
+        SetPrivate(scatter, "targetFieldName", "trail");
+        SetPrivate(scatter, "valueScale", 4096f);
+        SetPrivate(scatter, "valueBias", 0f);
+
+        NormalizeDensityAccumPass normalize = new NormalizeDensityAccumPass();
+        SetPrivate(normalize, "fieldName", "trail");
+        SetPrivate(normalize, "valueScale", 4096f);
+        SetPrivate(normalize, "valueBias", 0f);
+
+        CreateEffect(
+            PhysarumPath,
+            cubeResolution: 32,
+            simulationSpeed: 1f,
+            fields: new[] { trail },
+            debugQuads: new[] { trailQuad },
+            clear,
+            scatter,
+            normalize,
+            new DecayFieldScalarPass { FieldName = "trail", DecayRate = 0.8f },
+            new DiffuseFieldPass { FieldName = "trail", DiffusionRate = 0.15f },
+            new DiffuseFieldPass { FieldName = "trail", DiffusionRate = 0.15f },
+            new PhysarumSteerPass(),
+            new IntegratePass(),
+            new BoxBoundsPass
+            {
+                Center = Vector3.zero,
+                Extents = new Vector3(16f, 0f, 16f),
+                Behaviour = BoundsBehaviour.Wrap,
+            },
+            new HeadingToValuePass());
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(PhysarumPath);
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("cubeSource.cubeSize").floatValue = 32f;
+        SerializedProperty field = so.FindProperty("fields").GetArrayElementAtIndex(0);
+        field.FindPropertyRelative("resolution").vector2IntValue = new Vector2Int(128, 128);
+        field.FindPropertyRelative("size").vector2Value = new Vector2(32f, 32f);
+        so.FindProperty("particleSize").floatValue = 0.2f;
+        so.FindProperty("particleValueScale").floatValue = 1f;
+        so.FindProperty("particleGradient").gradientValue = DebugFieldQuadSlot.DefaultFireGradient();
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssets();
+
+        SimulationWorld world = Object.FindAnyObjectByType<SimulationWorld>();
+        if (world == null)
+        {
+            Debug.LogError("M3D: Physarum.asset created, but no SimulationWorld in the open scene.");
+            return;
+        }
+
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        SerializedProperty library = worldSo.FindProperty("passLibrary");
+        EnsurePassLibrary(library);
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+        EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
+        EditorSceneManager.SaveOpenScenes();
+        Debug.Log("M3D: created Physarum and assigned it to the open scene.");
     }
 
     private static void EnsurePassLibrary(SerializedProperty library)

@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-09-25 (ADR-031 Primitive-only + LUT по `value`, EditMode — [ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md); ADR-030 visual закрыт)
+**Снимок:** 2026-09-26 (ADR-032 Physarum EditMode — [ADR-032](ADR/ADR-032-Physarum-Steer.md); Play-сеть не закрыта)
 
 ---
 
@@ -63,6 +63,7 @@
 | `GrayScottPasses.compute` | GrayScottReact, SeedScalarDisk |
 | `TouchGrayScottPasses.compute` | TouchInjectGrayScott |
 | `AgentFieldFeedbackPasses.compute` | AgentBoostField, AgentErodeField |
+| `PhysarumPasses.compute` | **PhysarumSteer** |
 | `FluidPasses.compute` | Divergence, Jacobi, **Zero Mean Scalar**, **Subtract Phi Gradient**, **Solid Wall Velocity**, **Vorticity Confinement** |
 
 `ClearFieldPass` и `ClearFieldAccumPass` — **без** своих `.compute` (Clear RT / ClearUintBuffer из P2G).
@@ -211,6 +212,17 @@
 
 ### TeamToValue
 Класс в каталоге, **ядра нет**. Случайное подключение валит `Build` на `FindKernel`. Не вешать на ассет.
+
+### PhysarumSteer
+| | |
+|--|--|
+| **Назначение** | Три сенсора по `trail`, один поворот за вызов, `velocity = heading * moveSpeed`. Угол не умножается на `dt` |
+| **Библиотека / kernel** | `PhysarumPasses` / `PhysarumSteer` |
+| **Particles** | R: `position`, `heading` → W: `heading`, `velocity` |
+| **Поле** | R: `trail` (Scalar, 1). Сэмплер `linear_repeat`, UV без `saturate` |
+| **Параметры** | `sensorAngle` 22.5°, `sensorDistance` 1, `turnAngle` 45°, `moveSpeed` 15, `randomWiggle` 10°. В шейдер углы уходят в радианах |
+| **dt** | Нет (шаг позиции делает `Integrate`) |
+| **Пресет `Physarum`** | ClearAccum(channels 1) → ScatterDensity → NormalizeDensity → Decay 0.8 → Diffuse 0.15 ×2 → PhysarumSteer → Integrate → BoxBounds Wrap `(16,0,16)` → HeadingToValue. Куб 32³, поле `trail` 128² size 32. `ClearField` и `CopyRest` в списке нет |
 
 ### Integrate
 | | |
