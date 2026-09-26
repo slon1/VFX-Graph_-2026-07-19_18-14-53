@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-09-26 (ADR-032 Physarum EditMode — [ADR-032](ADR/ADR-032-Physarum-Steer.md); Play-сеть не закрыта)
+**Снимок:** 2026-09-26 (ADR-033 перенос `trail` полем скорости, EditMode — [ADR-033](ADR/ADR-033-Physarum-Trail-Advect.md); Play пальцем не закрыт)
 
 ---
 
@@ -223,6 +223,7 @@
 | **Параметры** | `sensorAngle` 22.5°, `sensorDistance` 1, `turnAngle` 45°, `moveSpeed` 15, `randomWiggle` 10°. В шейдер углы уходят в радианах |
 | **dt** | Нет (шаг позиции делает `Integrate`) |
 | **Пресет `Physarum`** | ClearAccum(channels 1) → ScatterDensity → NormalizeDensity → Decay 0.8 → Diffuse 0.15 ×2 → PhysarumSteer → Integrate → BoxBounds Wrap `(16,0,16)` → HeadingToValue. Куб 32³, поле `trail` 128² size 32. `ClearField` и `CopyRest` в списке нет |
+| **Пресет `Physarum_Fluid`** | TouchInject → DecayField 0.4 на `velocity` → то же осаждение `trail` → AdvectScalar (`wrapUv`, dissipation 0) → Decay 0.8 → Diffuse 0.15 ×2 → PhysarumSteer → Integrate → Wrap → HeadingToValue. Оба поля 128² size 32. Проекции нет. Play пальцем не закрыт |
 
 ### Integrate
 | | |
@@ -366,14 +367,14 @@
 ### Advect Scalar
 | | |
 |--|--|
-| **Назначение** | Пассивный tracer: `dye_next = sample(dye, saturate(uv − u·dt/Size)) * Dissipation` (не self-advection) |
+| **Назначение** | Пассивный tracer: `dye_next = sample(dye, backUv) * Dissipation` (не self-advection). Дефолт зажимает `backUv` через `saturate` |
 | **Библиотека / kernel** | `FieldPasses` / `AdvectScalar` (`#ifdef KERNEL_ADVECTSCALAR`) |
 | **Fields** | WritePingPong Scalar ×1 Role A (`dye`); Read Velocity ×2 Role B (`velocity`). Слоты `FieldReadA`/`FieldWriteA`/`FieldReadB` |
-| **Параметры** | `scalarField` (`dye`), `velocityField` (`velocity`, не `flockVel`), `dissipationRate` (0 = выкл; CPU `exp(−rate·dt)`), `reverse` (default false; `Dissipation=1` затем `Δt=−dt`)
-| **dt** | Да (backtrace и dissipation); UV clamp `saturate` (нет wrap; масса может налипать на рамку) |
+| **Параметры** | `scalarField` (`dye`), `velocityField` (`velocity`, не `flockVel`), `dissipationRate` (0 = выкл; CPU `exp(−rate·dt)`), `reverse` (default false; `Dissipation=1` затем `Δt=−dt`), `wrapUv` (default false)
+| **dt** | Да. `wrapUv` false: `saturate` и `sampler_linear_clamp`. `wrapUv` true: `sampler_linear_repeat`, без `saturate` и без `frac`. Флаг уходит и при `reverse` |
 | **Единицы** | **world** (ADR-016 §1): `backUv = uv − velocity · dt / Size`. `RequiresSquareTexel` = false |
 | **Cross-res** | `velocity`-запрос (Role B) — `AllowResolutionMismatch=true`: `ValidateMatchingFieldGeometry` пропускает сравнение `Resolution` в этой паре (plane — всегда). Единственный пасс с этим флагом; F0.5 — [ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md) (F3.0) |
-| **Хорошо для** | Stam-контур глазами: heatmap dye в пресете Fluid2D после второго SolidWall; `dye` выше разрешением, чем `velocity` — `Fluid2D_HighResDye.asset` |
+| **Хорошо для** | Stam-контур глазами: heatmap dye в пресете Fluid2D после второго SolidWall; `dye` выше разрешением, чем `velocity` — `Fluid2D_HighResDye.asset`. `Physarum_Fluid`: `wrapUv` на `trail`, без проекции |
 | **Ограничение** | Bilinear смаз (Techdebt 5) остаётся при любом разрешении `dye` — cross-res снижает его, не убирает. Стен на скаляре нет. Краска тачем — вне скоупа |
 
 ### Copy Scalar

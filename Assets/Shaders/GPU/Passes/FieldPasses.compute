@@ -217,6 +217,8 @@ void AdvectVelocityField(uint3 id : SV_DispatchThreadID)
 Texture2D<float> FieldReadA;      // dye Current
 RWTexture2D<float> FieldWriteA;   // dye Next
 Texture2D<float2> FieldReadB;     // velocity
+SamplerState sampler_linear_repeat;
+int AdvectWrap;
 
 [numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
 void AdvectScalar(uint3 id : SV_DispatchThreadID)
@@ -227,12 +229,23 @@ void AdvectScalar(uint3 id : SV_DispatchThreadID)
     }
 
     float2 uv = (float2(id.xy) + 0.5) * FieldTexelSize;
-    float2 vel = FieldReadB.SampleLevel(sampler_linear_clamp, uv, 0);
+    float2 vel;
+    float2 backUv;
+    float sampled;
+    if (AdvectWrap == 0)
+    {
+        vel = FieldReadB.SampleLevel(sampler_linear_clamp, uv, 0);
+        backUv = uv - (vel * DeltaTime) / FieldSize;
+        backUv = saturate(backUv);
+        sampled = FieldReadA.SampleLevel(sampler_linear_clamp, backUv, 0);
+    }
+    else
+    {
+        vel = FieldReadB.SampleLevel(sampler_linear_repeat, uv, 0);
+        backUv = uv - (vel * DeltaTime) / FieldSize;
+        sampled = FieldReadA.SampleLevel(sampler_linear_repeat, backUv, 0);
+    }
 
-    float2 backUv = uv - (vel * DeltaTime) / FieldSize;
-    backUv = saturate(backUv);
-
-    float sampled = FieldReadA.SampleLevel(sampler_linear_clamp, backUv, 0);
     FieldWriteA[id.xy] = sampled * Dissipation;
 }
 #endif

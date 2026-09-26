@@ -453,16 +453,20 @@ public sealed class AdvectVelocityFieldPass : FieldKernelPass
 }
 
 /// <summary>
-/// Passive scalar tracer: dye_next = sample(dye, saturate(uv − u·dt/Size)) * Dissipation.
+/// Passive scalar tracer: dye_next = sample(dye, uv − u·dt/Size) * Dissipation.
+/// Default wrapUv false keeps saturate + sampler_linear_clamp. wrapUv samples with repeat and does not frac.
 /// WritePingPong Role A on dye; velocity is Read Role B (not rewritten).
 /// </summary>
 [Serializable]
 public sealed class AdvectScalarPass : FieldKernelPass
 {
+    private static readonly int AdvectWrapId = Shader.PropertyToID("AdvectWrap");
+
     [SerializeField] private string scalarField = "dye";
     [SerializeField] private string velocityField = "velocity";
     [SerializeField, Min(0f)] private float dissipationRate = 0f;
     [SerializeField] private bool reverse;
+    [SerializeField] private bool wrapUv;
 
     [NonSerialized] private FieldRequest[] fieldReadsCache;
     [NonSerialized] private FieldRequest[] fieldWritesCache;
@@ -491,6 +495,12 @@ public sealed class AdvectScalarPass : FieldKernelPass
         set => reverse = value;
     }
 
+    public bool WrapUv
+    {
+        get => wrapUv;
+        set => wrapUv = value;
+    }
+
     public override string DisplayName => "Advect Scalar";
     public override PassCategory Category => PassCategory.Transport;
     protected override string KernelName => "AdvectScalar";
@@ -509,6 +519,7 @@ public sealed class AdvectScalarPass : FieldKernelPass
 
     protected override void SetParams(SimContext context, float deltaTime)
     {
+        SetInt(context, AdvectWrapId, wrapUv ? 1 : 0);
         if (reverse)
         {
             SetFloat(context, SimShaderIds.Dissipation, 1f);

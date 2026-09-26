@@ -1,11 +1,11 @@
 # План реализации: Physarum Polycephalum (Slime Mold / Слизевик)
 
 **Дата:** 2026-09-26  
-**Статус документа:** черновик идеи. Исполнять [ADR-032](ADR/ADR-032-Physarum-Steer.md) и [ТЗ](last/todo-adr-032-physarum.md). Где черновик ниже расходится с ADR, верна ADR.  
+**Статус документа:** черновик идеи. Сенсор и пресет — [ADR-032](ADR/ADR-032-Physarum-Steer.md). Перенос следа скоростью — [ADR-033](ADR/ADR-033-Physarum-Trail-Advect.md) и [ТЗ](last/todo-adr-033-physarum-trail-advect.md). Раздел 5 этого черновика (полный Stam внутри пресета) не исполнять.  
 **Стек:** Unity 6 (`6000.5.9f1`) · URP · Compute Shaders · UniTask  
-**Связанные документы:** [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`capabilities.md`](capabilities.md) · [`pass-catalog.md`](pass-catalog.md) · [`plan-stable-fluid.md`](plan-stable-fluid.md) · [`plan-m2d-lut-trail.md`](plan-m2d-lut-trail.md) · [`ADR-012`](ADR/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-031`](ADR/ADR-031-Primitive-Only-And-Value-Palette.md) · [`ADR-032`](ADR/ADR-032-Physarum-Steer.md)
+**Связанные документы:** [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`capabilities.md`](capabilities.md) · [`pass-catalog.md`](pass-catalog.md) · [`plan-stable-fluid.md`](plan-stable-fluid.md) · [`plan-m2d-lut-trail.md`](plan-m2d-lut-trail.md) · [`ADR-012`](ADR/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-031`](ADR/ADR-031-Primitive-Only-And-Value-Palette.md) · [`ADR-032`](ADR/ADR-032-Physarum-Steer.md) · [`ADR-033`](ADR/ADR-033-Physarum-Trail-Advect.md)
 
-Тикет программиста — P1 и P2. P3 (три режима Джонса в Play) и P4 (гибрид с Fluid2D) не открыты.
+Тикет программиста P1–P2 закрыт ADR-032. P3 (три режима Джонса) не открыт. Урезанный P4 закрыт [ADR-033](ADR/ADR-033-Physarum-Trail-Advect.md): EditMode зелёный, Play пальцем не закрыт. Раздел «Фаза P4» ниже — полный Stam, его не исполнять.
 
 Расхождения черновика с кодом, закрытые в ADR-032:
 
@@ -228,8 +228,11 @@ public sealed class PhysarumSteerPass : ParticleKernelPass
 * **Результат:** Зафиксировать удачные дефолтные параметры в ассете, подключить Bloom/HDR палитру.
 
 ### Фаза P4: Эксперимент `Physarum_Fluid.asset` (Гибрид)
-* **Цель:** Добавить `AdvectScalarPass(trail, velocity)` в пресет с активным Fluid2D солвером.
-* **DoD:** Тач деформирует сеть слизевика; после затухания вихря сеть восстанавливает мосты.
+
+Этот раздел не исполнялся. В коде другой объём: [ADR-033](ADR/ADR-033-Physarum-Trail-Advect.md) переносит `trail` уже существующим `AdvectScalar` (`wrapUv`, dissipation 0) и гасит скорость через `DecayField`. Проекции, вихря и восстановления мостов там нет.
+
+* **Цель черновика:** добавить `AdvectScalarPass(trail, velocity)` в пресет с активным Fluid2D солвером.
+* **DoD черновика:** тач деформирует сеть слизевика; после затухания вихря сеть восстанавливает мосты.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Статус:** EditMode зелёный (2026-09-26). Play-сеть на `Physarum.asset` — оператор, ещё не закрыта.
 **Дата:** 2026-09-26
-**Контекст:** M3D Framework, после [ADR-031](ADR-031-Primitive-Only-And-Value-Palette.md). Исходный черновик — [`plan-physarum.md`](../plan-physarum.md). Этот документ фиксирует фазы P1 и P2: один новый пасс `PhysarumSteerPass` и пресет `Physarum.asset`. P3 (подбор паутины / вихрей / ячеек в Play) и P4 (гибрид с Fluid2D) не открываются.
+**Контекст:** M3D Framework, после [ADR-031](ADR-031-Primitive-Only-And-Value-Palette.md). Исходный черновик — [`plan-physarum.md`](../plan-physarum.md). Этот документ фиксирует фазы P1 и P2: один новый пасс `PhysarumSteerPass` и пресет `Physarum.asset`. P3 (подбор паутины / вихрей / ячеек в Play) не открыт. Урезанный перенос следа без проекции — [ADR-033](ADR-033-Physarum-Trail-Advect.md), EditMode. Полный Stam из плана не делался.
 **Не меняет:** ядра decay / diffuse / density P2G / integrate / bounds; `Boids_mk1`; fluid-пресеты; `ParticleBillboard`; spatial hash.
 **ТЗ:** [`todo-adr-032-physarum.md`](../last/todo-adr-032-physarum.md)
 
@@ -135,7 +135,7 @@ HeadingToValue
 #### 6. Что не входит
 
 - P3: три именованных режима (паутина / вихри / ячейки) и перепись дефолтов после Play.
-- P4: `AdvectScalar` следа полем скорости, `TouchInject`, `Physarum_Fluid.asset`.
+- P4 в этот тикет не входил. Урезанный перенос следа без проекции сделан позже: [ADR-033](ADR-033-Physarum-Trail-Advect.md).
 - Новый `DataSource`, сплющивание Y, spatial hash, правка `ParticleBillboard` (Opaque / AlphaTest).
 - Смена `Boids_mk1`, Fluid2D и ядер density/decay/diffuse.
 

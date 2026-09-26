@@ -184,6 +184,12 @@ public class AdvectScalarPassTests
     }
 
     [Test]
+    public void Contract_WrapUv_DefaultFalse()
+    {
+        Assert.IsFalse(new AdvectScalarPass().WrapUv);
+    }
+
+    [Test]
     [Category("GPU")]
     public void Reverse_IntegerForwardThenReverse_InteriorMatchesSeedBitwise()
     {
