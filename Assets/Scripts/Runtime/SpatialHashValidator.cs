@@ -15,7 +15,7 @@ internal static class SpatialHashValidator
         List<string> warnings = new List<string>();
         if (passes == null)
         {
-            ValidateTeams(effect, null);
+            ValidateTeams(effect, null, null);
             return warnings;
         }
 
@@ -63,7 +63,7 @@ internal static class SpatialHashValidator
                     "SimulationWorld: a spatial hash consumer requires an enabled 'Build Spatial Hash' pass before it.");
             }
 
-            ValidateTeams(effect, null);
+            ValidateTeams(effect, null, passes);
             return warnings;
         }
 
@@ -138,11 +138,11 @@ internal static class SpatialHashValidator
             }
         }
 
-        ValidateTeams(effect, builder);
+        ValidateTeams(effect, builder, passes);
         return warnings;
     }
 
-    private static void ValidateTeams(EffectAsset effect, BuildSpatialHashPass builder)
+    private static void ValidateTeams(EffectAsset effect, BuildSpatialHashPass builder, IReadOnlyList<SimPass> passes)
     {
         if (effect == null)
         {
@@ -193,20 +193,32 @@ internal static class SpatialHashValidator
             }
         }
 
-        if (teams.Count == 0 || builder == null)
+        if (teams.Count > 0 && builder != null)
+        {
+            SpatialHashLayout layout = SpatialHashSet.ComputeLayout(
+                builder.Center, builder.Extents, builder.MinCellSize);
+            float limit = Mathf.Min(layout.CellSize.x, layout.CellSize.y) * (1f + SpatialHashSet.GridEpsilon);
+            for (int i = 0; i < teams.Count; i++)
+            {
+                TeamProfile profile = teams[i];
+                RequireWithinCell(profile.SeparationRadius, "separationRadius", limit);
+                RequireWithinCell(profile.AlignmentRadius, "alignmentRadius", limit);
+                RequireWithinCell(profile.CohesionRadius, "cohesionRadius", limit);
+            }
+        }
+
+        if (passes == null || teams.Count > 0)
         {
             return;
         }
 
-        SpatialHashLayout layout = SpatialHashSet.ComputeLayout(
-            builder.Center, builder.Extents, builder.MinCellSize);
-        float limit = Mathf.Min(layout.CellSize.x, layout.CellSize.y) * (1f + SpatialHashSet.GridEpsilon);
-        for (int i = 0; i < teams.Count; i++)
+        for (int i = 0; i < passes.Count; i++)
         {
-            TeamProfile profile = teams[i];
-            RequireWithinCell(profile.SeparationRadius, "separationRadius", limit);
-            RequireWithinCell(profile.AlignmentRadius, "alignmentRadius", limit);
-            RequireWithinCell(profile.CohesionRadius, "cohesionRadius", limit);
+            if (passes[i] is BoidNeighborForcePass force && force.Enabled)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Boid Neighbor Force requires a non-empty team list.");
+            }
         }
     }
 

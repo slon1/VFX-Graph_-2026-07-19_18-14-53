@@ -47,6 +47,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/AgentFieldFeedbackPasses.compute",
         "Assets/Shaders/GPU/Passes/PhysarumPasses.compute",
         "Assets/Shaders/GPU/Passes/SpatialHashPasses.compute",
+        "Assets/Shaders/GPU/Passes/BoidsPasses.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]

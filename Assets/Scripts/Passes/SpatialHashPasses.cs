@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 /// <summary>Marks passes that read SimContext.SpatialHash; validated to sit after the builder (ADR-034 §1).</summary>
-internal interface ISpatialHashConsumer
+public interface ISpatialHashConsumer
 {
 }
 

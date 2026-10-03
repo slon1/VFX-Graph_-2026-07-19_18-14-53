@@ -1,0 +1,171 @@
+// Neighbor force from the spatial-hash snapshot (ADR-038). Heading is not read.
+#pragma kernel BoidNeighborForce
+#pragma kernel BoidReadTeamParams
+
+#include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
+
+#define THREADS 64
+
+struct TeamParams
+{
+    float4 Radii;
+    float4 Weights;
+    float4 Motion;
+};
+
+RWStructuredBuffer<float3> position;
+RWStructuredBuffer<float3> velocity;
+RWStructuredBuffer<uint> teamId;
+uint ParticleCount;
+
+StructuredBuffer<TeamParams> Teams;
+StructuredBuffer<float2> SortedPositions;
+StructuredBuffer<float2> SortedDirections;
+StructuredBuffer<uint> SortedTeams;
+StructuredBuffer<uint> CellStarts;
+StructuredBuffer<uint> CellCounts;
+
+int MaxNeighbors;
+int CountCapHits;
+RWStructuredBuffer<uint> CapHits;
+
+RWStructuredBuffer<float4> TeamParamsRead;
+
+[numthreads(THREADS, 1, 1)]
+void BoidNeighborForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    uint selfTeam = min(teamId[id.x], 7u);
+    TeamParams team = Teams[selfTeam];
+    float sepR2 = team.Radii.x * team.Radii.x;
+    float alignR2 = team.Radii.y * team.Radii.y;
+    float cohR2 = team.Radii.z * team.Radii.z;
+    float maxR2 = max(sepR2, max(alignR2, cohR2));
+    float inter = team.Radii.w;
+    float wSep = team.Weights.x;
+    float wAlign = team.Weights.y;
+    float wCoh = team.Weights.z;
+
+    float2 self = position[id.x].xz;
+    int2 cell = HashCellCoord(self);
+
+    float2 sep = 0;
+    float2 align = 0;
+    float2 coh = 0;
+    uint sepN = 0;
+    uint alignN = 0;
+    uint cohN = 0;
+    uint visited = 0;
+    bool capped = false;
+
+    int start = (int)(id.x % 9u);
+    [loop]
+    for (int n = 0; n < 9; n++)
+    {
+        if (capped)
+        {
+            break;
+        }
+
+        int k = (start + n) % 9;
+        int dy = k / 3 - 1;
+        int dx = k - (k / 3) * 3 - 1;
+        int2 nc = cell + int2(dx, dy);
+        if (HashWrap != 0)
+        {
+            nc = ((nc % HashRes) + HashRes) % HashRes;
+        }
+        else if (nc.x < 0 || nc.y < 0 || nc.x >= HashRes.x || nc.y >= HashRes.y)
+        {
+            continue;
+        }
+
+        uint cellIndex = HashCellIndex(nc);
+        uint slotStart = CellStarts[cellIndex];
+        uint slotCount = CellCounts[cellIndex];
+        [loop]
+        for (uint s = 0; s < slotCount; s++)
+        {
+            uint slot = slotStart + s;
+            float2 d = MinImage(SortedPositions[slot] - self);
+            float r2 = dot(d, d);
+            if (r2 < 1e-6)
+            {
+                continue;
+            }
+
+            if (MaxNeighbors > 0 && visited >= (uint)MaxNeighbors)
+            {
+                capped = true;
+                break;
+            }
+
+            visited++;
+            if (r2 >= maxR2)
+            {
+                continue;
+            }
+
+            uint neighborTeam = min(SortedTeams[slot], 7u);
+            bool same = neighborTeam == selfTeam;
+            if (r2 < sepR2)
+            {
+                float mul = same ? 1.0 : inter;
+                sep += (-d / (r2 + 1e-3)) * mul;
+                sepN++;
+            }
+
+            if (same && r2 < alignR2)
+            {
+                align += SortedDirections[slot];
+                alignN++;
+            }
+
+            if (same && r2 < cohR2)
+            {
+                coh += d;
+                cohN++;
+            }
+        }
+    }
+
+    if (capped && CountCapHits != 0)
+    {
+        InterlockedAdd(CapHits[0], 1u);
+    }
+
+    float2 force = 0;
+    if (sepN > 0)
+    {
+        force += (sep / (float)sepN) * wSep;
+    }
+
+    if (dot(align, align) > 1e-6)
+    {
+        force += normalize(align) * wAlign;
+    }
+
+    if (cohN > 0)
+    {
+        float2 mean = coh / (float)cohN;
+        if (dot(mean, mean) > 1e-6)
+        {
+            force += normalize(mean) * wCoh;
+        }
+    }
+
+    velocity[id.x] += float3(force.x, 0, force.y);
+}
+
+[numthreads(1, 1, 1)]
+void BoidReadTeamParams(uint3 id : SV_DispatchThreadID)
+{
+    TeamParams team = Teams[0];
+    TeamParamsRead[0] = team.Radii;
+    TeamParamsRead[1] = team.Weights;
+    TeamParamsRead[2] = team.Motion;
+}

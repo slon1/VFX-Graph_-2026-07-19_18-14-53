@@ -172,6 +172,16 @@
 
 ---
 
+### Boid Neighbor Force
+| | |
+|--|--|
+| **Назначение** | Сила соседей по снимку хэша: separation, alignment, cohesion прибавляются к `velocity`. Соседей за пределами 3×3 ячеек не ищет. Steer по командам нет |
+| **Библиотека / kernel** | `BoidsPasses` / `BoidNeighborForce` |
+| **Particles** | R: `position`, `teamId`. W: `velocity` (`+=`) |
+| **Параметры** | `maxNeighbors` (48, 0 = без капа), `countCapHits` (выкл.) |
+| **dt** | Нет |
+| **Хорошо для** | После `Build Spatial Hash`. В меню пасса нет |
+
 ## Dynamics
 
 ### ClearVelocity

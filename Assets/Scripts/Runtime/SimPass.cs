@@ -366,7 +366,13 @@ public abstract class ParticleKernelPass : SimPass
 
         int threadGroups = (count + ThreadGroupSize - 1) / ThreadGroupSize;
         context.Cmd.DispatchCompute(kernel.Shader, kernel.Index, threadGroups, 1, 1);
+        OnDispatched(context);
         LastExecuteDispatched = true;
+    }
+
+    /// <summary>Runs after a real dispatch. Count == 0 and an invalid kernel never get here.</summary>
+    protected virtual void OnDispatched(SimContext context)
+    {
     }
 
     /// <summary>Push per-pass uniforms (and extra buffers) before the dispatch.</summary>

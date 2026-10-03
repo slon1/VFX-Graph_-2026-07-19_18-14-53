@@ -24,6 +24,17 @@ int2 HashCellCoord(float2 xz)
     return c;
 }
 
+// Shortest XZ offset on the torus. Wrap off returns d unchanged (ADR-038).
+float2 MinImage(float2 d)
+{
+    if (HashWrap == 0)
+    {
+        return d;
+    }
+
+    return d - HashSize * round(d / HashSize);
+}
+
 // min() keeps a NaN/huge position inside the buffers.
 uint HashCellIndex(int2 c)
 {

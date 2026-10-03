@@ -33,6 +33,8 @@ public sealed class SimulationWorld : MonoBehaviour
     private GraphicsBuffer touchBuffer;
     private GraphicsBuffer teamBuffer;
     private readonly TeamParams[] teamScratch = new TeamParams[TeamProfile.MaxTeams];
+    private readonly TeamRadiusPlayCheck teamRadiusPlayCheck = new TeamRadiusPlayCheck();
+    private bool neighborForceEnabled;
     private IDataSource source;
     private readonly TouchForce[] touchScratch = new TouchForce[InputRouter.MaxTouches];
     private readonly Dictionary<SimPass, ProfilingSampler> samplers =
@@ -91,6 +93,16 @@ public sealed class SimulationWorld : MonoBehaviour
         if (teamBuffer != null)
         {
             TeamParams.Upload(teamBuffer, effect.Teams, teamScratch);
+        }
+
+        if (neighborForceEnabled && context.SpatialHash != null)
+        {
+            Vector2 cell = context.SpatialHash.Layout.CellSize;
+            string warning = teamRadiusPlayCheck.Check(effect.Teams, Mathf.Min(cell.x, cell.y));
+            if (warning != null)
+            {
+                Debug.LogWarning(warning, this);
+            }
         }
 
         commandBuffer.Clear();
@@ -241,12 +253,18 @@ public sealed class SimulationWorld : MonoBehaviour
         }
 
         IReadOnlyList<SimPass> passes = effect.Passes;
+        neighborForceEnabled = false;
         for (int i = 0; i < passes.Count; i++)
         {
             SimPass pass = passes[i];
             if (pass == null || !pass.Enabled)
             {
                 continue;
+            }
+
+            if (pass is BoidNeighborForcePass)
+            {
+                neighborForceEnabled = true;
             }
 
             try
@@ -697,6 +715,8 @@ public sealed class SimulationWorld : MonoBehaviour
         touchBuffer = null;
         teamBuffer?.Dispose();
         teamBuffer = null;
+        neighborForceEnabled = false;
+        teamRadiusPlayCheck.Forget();
         commandBuffer?.Release();
         commandBuffer = null;
         samplers.Clear();
