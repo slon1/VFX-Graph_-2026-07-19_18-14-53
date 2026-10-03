@@ -24,10 +24,11 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 | --- | --- |
 | Cube / Mesh / Bitmap | Заполняют `restPosition`, задают `ParticleSet` capacity |
 | **None** | 0 частиц (`NoneSource`); field-only эффекты; particle-пассы no-op; если на объекте есть `VisualEffect` — `SpawnCount=0` |
-| **Swarm** | Спавнит диски с `teamId` и курсом. Силы соседей нет |
-| **teams** | Список команд на эффекте, максимум 8. Силы соседей нет |
-| **Boid Neighbor Force** | Сила соседей есть |
-| **Team Heading Steer** | Курс и скорость берутся из команды. Пресета нет |
+| **Swarm** | Спавнит диски с `teamId` и курсом. Сила соседей и курс из команды есть в пресете `Boids_hash` |
+| **teams** | Список команд на эффекте, максимум 8. Буфер читают сила соседей и курс. Пресет `Boids_hash` |
+| **Boid Neighbor Force** | Сила соседей есть. Пресет `Boids_hash` |
+| **Team Heading Steer** | Курс и скорость берутся из команды. Пресет `Boids_hash` |
+| **Hash Counts To Field** | Гистограмма ячеек хэша в скалярное поле `hashCount`. Пресет `Boids_hash`, меню `Tools/M3D/Create Boids Hash Effect` |
 
 Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.  
 Авторегистрация атрибутов по Reads/Writes — **пропускается** при Capacity=0 (None).
@@ -116,6 +117,7 @@ Present частиц ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
 | **Boids_mk1** | kinematic heading + fields (ADR-012) + `HeadingToValue` и fire-LUT (ADR-031, EditMode; Play-цвета не закрыты). Primitive безусловный, `particleRenderMode` на диске `Vfx` и игнорируется |
+| **Boids_hash** | Swarm 3000, хэш, гистограмма `hashCount`, сила соседей и курс из команды. Меню `Tools/M3D/Create Boids Hash Effect`, сцена `Boids_Hash`. Play-гейт cap не пройден: [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md) |
 | **Physarum** | след `trail`: ScatterDensity → Decay 0.8 → Diffuse ×2 → `PhysarumSteer` (угол за шаг, без dt) → Integrate → Wrap. Куб 32³, поле 128². EditMode зелёный; Play-сеть не закрыта |
 | **Physarum_Fluid** | тот же след плюс `TouchInject` → `DecayField` 0.4 на `velocity` → `AdvectScalar` (`wrapUv`, dissipation 0). Без проекции. EditMode зелёный; Play пальцем не закрыт |
 | **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |

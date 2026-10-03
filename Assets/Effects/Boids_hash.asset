@@ -1,0 +1,215 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c53c179a8210264ea3a817857fc19ed, type: 3}
+  m_Name: Boids_hash
+  m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
+  sourceKind: 4
+  cubeSource:
+    resolution: 100
+    cubeSize: 2
+  meshSource:
+    mesh: {fileID: 0}
+    centerPivot: 1
+    normalizeScale: 1
+    targetSize: 2
+  bitmapSource:
+    texture: {fileID: 0}
+    targetWidth: 2
+    heightScale: 1
+  swarmSource:
+    spawns:
+    - teamIndex: 0
+      count: 3000
+      center: {x: 0, y: 0}
+      radius: 44
+      initialDirection: {x: 0, y: 0}
+    seed: 1
+    jitterDegrees: 0
+  simulationSpeed: 1
+  fields:
+  - id:
+      name: hashCount
+      semantic: 2
+    format: 45
+    resolution: {x: 30, y: 30}
+    clearValue: {r: 0, g: 0, b: 0, a: 0}
+    origin: {x: 0, y: -1, z: 0}
+    axisU: {x: 1, y: 0, z: 0}
+    axisV: {x: 0, y: 0, z: 1}
+    size: {x: 90, y: 90}
+  passes:
+  - rid: 5854237596249489729
+  - rid: 5854237596249489730
+  - rid: 5854237596249489731
+  - rid: 5854237596249489732
+  - rid: 5854237596249489733
+  - rid: 5854237596249489734
+  - rid: 5854237596249489735
+  - rid: 5854237596249489736
+  debugFieldQuads:
+  - fieldName: hashCount
+    mode: 1
+    colorScale: 0.05
+    lut:
+      serializedVersion: 2
+      key0: {r: 0, g: 0, b: 0, a: 1}
+      key1: {r: 0.45, g: 0.02, b: 0, a: 1}
+      key2: {r: 1, g: 0.35, b: 0, a: 0}
+      key3: {r: 1, g: 0.95, b: 0.55, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 19661
+      ctime2: 39321
+      ctime3: 65535
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 4
+      m_NumAlphaKeys: 2
+    hdrIntensity: 1
+  teams:
+  - name: Swarm
+    separationRadius: 3
+    alignmentRadius: 3
+    cohesionRadius: 3
+    interGroupSeparationMultiplier: 4
+    separationWeight: 1.2
+    alignmentWeight: 0.8
+    cohesionWeight: 0.6
+    cruise: 6
+    turn: 4
+    color:
+      serializedVersion: 2
+      key0: {r: 1, g: 1, b: 1, a: 1}
+      key1: {r: 1, g: 1, b: 1, a: 1}
+      key2: {r: 0, g: 0, b: 0, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 65535
+      ctime2: 0
+      ctime3: 0
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 2
+      m_NumAlphaKeys: 2
+  particleRenderMode: 0
+  particleSize: 0.5
+  particleColor: {r: 1, g: 1, b: 1, a: 1}
+  particleGradient:
+    serializedVersion: 2
+    key0: {r: 0, g: 0, b: 0, a: 1}
+    key1: {r: 0.45, g: 0.02, b: 0, a: 1}
+    key2: {r: 1, g: 0.35, b: 0, a: 0}
+    key3: {r: 1, g: 0.95, b: 0.55, a: 0}
+    key4: {r: 0, g: 0, b: 0, a: 0}
+    key5: {r: 0, g: 0, b: 0, a: 0}
+    key6: {r: 0, g: 0, b: 0, a: 0}
+    key7: {r: 0, g: 0, b: 0, a: 0}
+    ctime0: 0
+    ctime1: 19661
+    ctime2: 39321
+    ctime3: 65535
+    ctime4: 0
+    ctime5: 0
+    ctime6: 0
+    ctime7: 0
+    atime0: 0
+    atime1: 65535
+    atime2: 0
+    atime3: 0
+    atime4: 0
+    atime5: 0
+    atime6: 0
+    atime7: 0
+    m_Mode: 0
+    m_ColorSpace: -1
+    m_NumColorKeys: 4
+    m_NumAlphaKeys: 2
+  particleValueScale: 1
+  showVelocityFieldQuad: 0
+  showDensityFieldQuad: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 5854237596249489729
+      type: {class: BuildSpatialHashPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        center: {x: 0, y: 0, z: 0}
+        extents: {x: 45, y: 0, z: 45}
+        minCellSize: 3
+        wrap: 1
+    - rid: 5854237596249489730
+      type: {class: HashCountsToFieldPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        fieldName: hashCount
+    - rid: 5854237596249489731
+      type: {class: ClearVelocityPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+    - rid: 5854237596249489732
+      type: {class: BoidNeighborForcePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        maxNeighbors: 48
+        countCapHits: 0
+    - rid: 5854237596249489733
+      type: {class: TeamHeadingSteerPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+    - rid: 5854237596249489734
+      type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+    - rid: 5854237596249489735
+      type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        center: {x: 0, y: 0, z: 0}
+        extents: {x: 45, y: 0, z: 45}
+        behaviour: 1
+        bounce: 0.6
+    - rid: 5854237596249489736
+      type: {class: HeadingToValuePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1

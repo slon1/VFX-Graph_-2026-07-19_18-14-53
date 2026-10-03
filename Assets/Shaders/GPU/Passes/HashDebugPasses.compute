@@ -1,0 +1,32 @@
+// Cell histogram of the spatial-hash snapshot.
+// FieldWrite matches FieldKernelPass. The scalar slot pattern comes from
+// DecayFieldScalar, which lives in DecayPasses.compute (not FieldPasses.compute).
+// FieldRead and DecayFactor are not used: this kernel overwrites every texel.
+
+#pragma kernel HashCountsToField
+
+#include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
+#include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
+
+#define FIELD_THREADS 8
+
+StructuredBuffer<uint> CellCounts;
+RWTexture2D<float> FieldWrite;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void HashCountsToField(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    uint index = id.y * (uint)HashRes.x + id.x;
+    float count = 0.0;
+    if (index < HashCellCount)
+    {
+        count = (float)CellCounts[index];
+    }
+
+    FieldWrite[id.xy] = count;
+}

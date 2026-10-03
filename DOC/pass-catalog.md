@@ -587,13 +587,23 @@
 ### Build Spatial Hash
 | | |
 |--|--|
-| **Назначение** | Сетка XZ и снимок `position` / `heading` / `teamId`, отсортированный по ячейке. Потребителей в P1 нет |
+| **Назначение** | Сетка XZ и снимок `position` / `heading` / `teamId`, отсортированный по ячейке. Снимок читает `Hash Counts To Field` |
 | **Категория** | Emit |
 | **Библиотека** | `SpatialHashPasses.compute`: `HashClear`, `HashCount`, `HashScanBlocks`, `HashScanBlockSums`, `HashAddOffsets`, `HashScatter` |
 | **Particles** | R: `position`, `heading`, `teamId`. Не пишет атрибуты |
 | **dt** | Нет |
 | **Инварианты** | Один включённый билдер на эффект. `wrap` требует `BoxBounds` Wrap с теми же center/extents по XZ (допуск 1e-3) и не меньше 3 ячеек на ось. Без wrap и без `BoxBounds` — предупреждение: частицы могут сгрудиться в крайних ячейках. Порядок внутри ячейки недетерминирован |
 | **Пробник** | `HashProbe_30k` / `HashProbe_100k`: Build Spatial Hash → ClearVelocity → HeadingSteer → Integrate → BoxBounds Wrap `(16,0,16)`. Сетка 16×16 |
+
+### Hash Counts To Field
+| | |
+|--|--|
+| **Назначение** | Пишет число частиц в каждой ячейке хэша в скалярное поле. Значение заменяется, не копится. Ось U поля — X мира, ось V — Z |
+| **Категория** | Emit |
+| **Библиотека / kernel** | `HashDebugPasses` / `HashCountsToField` |
+| **Fields** | WriteInPlace Scalar, по умолчанию `hashCount`. Разрешение и размер поля совпадают с сеткой |
+| **dt** | Нет |
+| **Хорошо для** | Сразу после `Build Spatial Hash`. В меню пасса нет. Поля в пресете ещё нет |
 
 ## P2G (частица → поле)
 

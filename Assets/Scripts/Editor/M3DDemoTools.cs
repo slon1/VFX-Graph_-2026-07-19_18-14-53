@@ -28,6 +28,8 @@ public static class M3DDemoTools
     private const string HashProbe100kPath = EffectsFolder + "/HashProbe_100k.asset";
     private const string HashProbe30kScene = "Assets/Scenes/HashProbe_30k.unity";
     private const string HashProbe100kScene = "Assets/Scenes/HashProbe_100k.unity";
+    private const string BoidsHashPath = EffectsFolder + "/Boids_hash.asset";
+    private const string BoidsHashScene = "Assets/Scenes/Boids_Hash.unity";
 
     private static readonly string[] PassLibraryPaths =
     {
@@ -47,6 +49,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/AgentFieldFeedbackPasses.compute",
         "Assets/Shaders/GPU/Passes/PhysarumPasses.compute",
         "Assets/Shaders/GPU/Passes/SpatialHashPasses.compute",
+        "Assets/Shaders/GPU/Passes/HashDebugPasses.compute",
         "Assets/Shaders/GPU/Passes/BoidsPasses.compute",
     };
 
@@ -1583,6 +1586,147 @@ public static class M3DDemoTools
         controlsSo.ApplyModifiedPropertiesWithoutUndo();
 
         EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    [MenuItem("Tools/M3D/Create Boids Hash Effect")]
+    public static void CreateBoidsHashEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashAsset(BoidsHashPath);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Boids Hash scene cancelled; the asset was still written.");
+            return;
+        }
+
+        CreateBoidsHashScene(BoidsHashScene, BoidsHashPath);
+        Debug.Log("M3D: created Boids_hash asset and Boids_Hash scene.");
+    }
+
+    private static void CreateBoidsHashAsset(string path)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        FieldDescriptor hashCount = FieldDescriptor.CreateDefault("hashCount", FieldSemantic.Scalar);
+        SetField(hashCount, "resolution", new Vector2Int(30, 30));
+        SetField(hashCount, "size", new Vector2(90f, 90f));
+        SetField(hashCount, "origin", new Vector3(0f, -1f, 0f));
+
+        DebugFieldQuadSlot hashQuad = DebugFieldQuadSlot.Density("hashCount");
+        hashQuad.colorScale = 0.05f;
+
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            1f,
+            new SimPass[]
+            {
+                new BuildSpatialHashPass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    MinCellSize = 3f,
+                    Wrap = true,
+                },
+                new HashCountsToFieldPass { FieldName = "hashCount" },
+                new ClearVelocityPass(),
+                new BoidNeighborForcePass { MaxNeighbors = 48, CountCapHits = false },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                new BoxBoundsPass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    Behaviour = BoundsBehaviour.Wrap,
+                },
+                new HeadingToValuePass(),
+            },
+            new[] { hashCount },
+            new[] { hashQuad });
+
+        SwarmSource swarm = (SwarmSource)asset.ResolveSource();
+        swarm.Seed = 1;
+        swarm.Spawns = new System.Collections.Generic.List<SwarmSource.Spawn>
+        {
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 0,
+                Count = 3000,
+                Center = Vector2.zero,
+                Radius = 44f,
+                InitialDirection = Vector2.zero,
+            },
+        };
+        asset.SetTeams(new[]
+        {
+            new TeamProfile
+            {
+                Name = "Swarm",
+                SeparationRadius = 3f,
+                AlignmentRadius = 3f,
+                CohesionRadius = 3f,
+                InterGroupSeparationMultiplier = 4f,
+                SeparationWeight = 1.2f,
+                AlignmentWeight = 0.8f,
+                CohesionWeight = 0.6f,
+                Cruise = 6f,
+                Turn = 4f,
+            },
+        });
+
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("particleSize").floatValue = 0.5f;
+        so.FindProperty("particleValueScale").floatValue = 1f;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        SetField(asset, "particleGradient", DebugFieldQuadSlot.DefaultFireGradient());
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void CreateBoidsHashScene(string scenePath, string assetPath)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera != null)
+        {
+            camera.orthographic = true;
+            camera.orthographicSize = 46f;
+            camera.transform.SetPositionAndRotation(new Vector3(0f, 40f, 0f), Quaternion.Euler(90f, 0f, 0f));
+        }
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject("M3D Boids Hash");
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    private static void SetField(object target, string name, object value)
+    {
+        FieldInfo field = target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+        if (field == null)
+        {
+            throw new System.InvalidOperationException("M3D: field '" + name + "' was not found.");
+        }
+
+        field.SetValue(target, value);
     }
 
     private static void EnsurePassLibrary(SerializedProperty library)
