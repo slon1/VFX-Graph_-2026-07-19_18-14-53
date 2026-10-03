@@ -53,7 +53,7 @@ public class PhysarumWorldSmokeTests
     {
         if (host != null)
         {
-            Object.DestroyImmediate(host);
+            SimulationWorldTestCleanup.DestroyHost(host);
             host = null;
         }
     }

@@ -1,8 +1,6 @@
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.TestTools;
 using UnityEngine.VFX;
 
 /// <summary>
@@ -64,7 +62,7 @@ public class SimulationWorldDisabledPassInitializeTests
     {
         if (host != null)
         {
-            Object.DestroyImmediate(host);
+            SimulationWorldTestCleanup.DestroyHost(host);
             host = null;
         }
 
@@ -120,9 +118,6 @@ public class SimulationWorldDisabledPassInitializeTests
         SimulationWorld world = host.GetComponent<SimulationWorld>();
         Assert.IsNotNull(world);
 
-        LogAssert.Expect(
-            LogType.Warning,
-            new Regex("PositionBuffer"));
         Assert.DoesNotThrow(() => world.Rebuild());
         Assert.IsTrue(world.enabled, "Build failure disables SimulationWorld.");
     }

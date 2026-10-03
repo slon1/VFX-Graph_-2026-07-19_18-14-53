@@ -69,7 +69,7 @@ public class BoidsMk1PrimitiveWorldSmokeTests
     {
         if (host != null)
         {
-            Object.DestroyImmediate(host);
+            SimulationWorldTestCleanup.DestroyHost(host);
             host = null;
         }
 

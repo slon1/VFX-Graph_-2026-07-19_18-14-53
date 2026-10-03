@@ -60,7 +60,7 @@ public class Fluid2DHarrisOrderWorldSmokeTests
     {
         if (host != null)
         {
-            Object.DestroyImmediate(host);
+            SimulationWorldTestCleanup.DestroyHost(host);
             host = null;
         }
     }

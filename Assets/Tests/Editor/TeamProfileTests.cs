@@ -312,7 +312,7 @@ public class TeamProfileWorldTests
     {
         if (host != null)
         {
-            UnityEngine.Object.DestroyImmediate(host);
+            SimulationWorldTestCleanup.DestroyHost(host);
             host = null;
         }
 

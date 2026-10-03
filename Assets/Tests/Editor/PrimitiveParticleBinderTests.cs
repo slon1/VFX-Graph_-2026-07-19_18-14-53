@@ -34,6 +34,8 @@ public class PrimitiveParticleBinderTests
         Assume.That(Shader.Find("M3D/ParticleBillboard") != null, "shader M3D/ParticleBillboard must be imported");
 
         SimContext context = new SimContext(particles, fields, Array.Empty<ComputeShader>(), null);
+        int materialsBefore = CountAlive<Material>("M3D_ParticleBillboard");
+        int dummyLutsBefore = CountAlive<Texture2D>("M3D_ParticleBillboard_DummyLut");
         PrimitiveParticleBinder binder = new PrimitiveParticleBinder(0.05f, Color.white, null, 1f);
         Assert.DoesNotThrow(() => binder.Initialize(context));
         Assert.DoesNotThrow(() => binder.Execute(context));
@@ -50,23 +52,14 @@ public class PrimitiveParticleBinderTests
         binder.Dispose();
         Assert.DoesNotThrow(() => binder.Dispose());
 
-        Material[] leftover = Resources.FindObjectsOfTypeAll<Material>();
-        for (int i = 0; i < leftover.Length; i++)
-        {
-            if (leftover[i] != null && leftover[i].name == "M3D_ParticleBillboard")
-            {
-                Assert.Fail("Dispose left M3D_ParticleBillboard material alive (expected DestroyImmediate).");
-            }
-        }
-
-        Texture2D[] leftoverTextures = Resources.FindObjectsOfTypeAll<Texture2D>();
-        for (int i = 0; i < leftoverTextures.Length; i++)
-        {
-            if (leftoverTextures[i] != null && leftoverTextures[i].name == "M3D_ParticleBillboard_DummyLut")
-            {
-                Assert.Fail("Dispose left M3D_ParticleBillboard_DummyLut alive.");
-            }
-        }
+        AssertSameCount(
+            materialsBefore,
+            CountAlive<Material>("M3D_ParticleBillboard"),
+            "M3D_ParticleBillboard");
+        AssertSameCount(
+            dummyLutsBefore,
+            CountAlive<Texture2D>("M3D_ParticleBillboard_DummyLut"),
+            "M3D_ParticleBillboard_DummyLut");
     }
 
     [Test]
@@ -76,6 +69,8 @@ public class PrimitiveParticleBinderTests
 
         particles.RegisterAttribute(BuiltinAttributes.Value);
         SimContext context = new SimContext(particles, fields, Array.Empty<ComputeShader>(), null);
+        int materialsBefore = CountAlive<Material>("M3D_ParticleBillboard");
+        int lutsBefore = CountAlive<Texture2D>("M3D_ParticleBillboard_LUT");
         PrimitiveParticleBinder binder = new PrimitiveParticleBinder(
             0.05f,
             Color.white,
@@ -96,14 +91,34 @@ public class PrimitiveParticleBinderTests
         Assert.IsNull(GetField<GraphicsBuffer>(binder, "dummyValues"));
         binder.Dispose();
 
-        Texture2D[] leftover = Resources.FindObjectsOfTypeAll<Texture2D>();
-        for (int i = 0; i < leftover.Length; i++)
+        AssertSameCount(
+            lutsBefore,
+            CountAlive<Texture2D>("M3D_ParticleBillboard_LUT"),
+            "M3D_ParticleBillboard_LUT");
+        AssertSameCount(
+            materialsBefore,
+            CountAlive<Material>("M3D_ParticleBillboard"),
+            "M3D_ParticleBillboard");
+    }
+
+    private static int CountAlive<T>(string objectName) where T : UnityEngine.Object
+    {
+        T[] found = Resources.FindObjectsOfTypeAll<T>();
+        int count = 0;
+        for (int i = 0; i < found.Length; i++)
         {
-            if (leftover[i] != null && leftover[i].name == "M3D_ParticleBillboard_LUT")
+            if (found[i] != null && found[i].name == objectName)
             {
-                Assert.Fail("Dispose left M3D_ParticleBillboard_LUT alive.");
+                count++;
             }
         }
+
+        return count;
+    }
+
+    private static void AssertSameCount(int before, int after, string objectName)
+    {
+        Assert.AreEqual(before, after, objectName + ": было " + before + ", стало " + after + ".");
     }
 
     private static MaterialPropertyBlock GetProps(PrimitiveParticleBinder binder)

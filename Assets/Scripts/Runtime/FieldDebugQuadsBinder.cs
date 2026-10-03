@@ -182,23 +182,29 @@ public sealed class FieldDebugQuadsBinder : IRenderBinder
     {
         for (int i = 0; i < quads.Count; i++)
         {
-            if (quads[i].LutTexture != null)
-            {
-                Object.Destroy(quads[i].LutTexture);
-            }
-
-            if (quads[i].Material != null)
-            {
-                Object.Destroy(quads[i].Material);
-            }
+            DestroyOwned(quads[i].LutTexture);
+            DestroyOwned(quads[i].Material);
         }
 
         quads.Clear();
+        DestroyOwned(root);
+        root = null;
+    }
 
-        if (root != null)
+    private static void DestroyOwned(Object obj)
+    {
+        if (obj == null)
         {
-            Object.Destroy(root);
-            root = null;
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Object.Destroy(obj);
+        }
+        else
+        {
+            Object.DestroyImmediate(obj);
         }
     }
 

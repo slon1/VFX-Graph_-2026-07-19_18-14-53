@@ -465,7 +465,7 @@ public class TeamHeadingSteerWorldTests
     {
         if (host != null)
         {
-            UnityEngine.Object.DestroyImmediate(host);
+            SimulationWorldTestCleanup.DestroyHost(host);
             host = null;
         }
 

@@ -725,7 +725,7 @@ public class BoidNeighborForceWorldTests
     {
         if (host != null)
         {
-            UnityEngine.Object.DestroyImmediate(host);
+            SimulationWorldTestCleanup.DestroyHost(host);
             host = null;
         }
 
