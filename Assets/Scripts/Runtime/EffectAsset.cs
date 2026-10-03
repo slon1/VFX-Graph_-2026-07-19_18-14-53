@@ -20,6 +20,7 @@ public sealed class EffectAsset : ScriptableObject
     [SerializeField] private MeshSource meshSource = new MeshSource();
     [SerializeField] private BitmapSource bitmapSource = new BitmapSource();
     [SerializeField] private NoneSource noneSource = new NoneSource();
+    [SerializeField] private SwarmSource swarmSource = new SwarmSource();
     [SerializeField, Min(0f)] private float simulationSpeed = 1f;
     [SerializeField] private List<FieldDescriptor> fields = new List<FieldDescriptor>();
     [SerializeReference] private List<SimPass> passes = new List<SimPass>();
@@ -56,6 +57,13 @@ public sealed class EffectAsset : ScriptableObject
                 return bitmapSource;
             case DataSourceKind.None:
                 return noneSource;
+            case DataSourceKind.Swarm:
+                if (swarmSource == null)
+                {
+                    swarmSource = new SwarmSource();
+                }
+
+                return swarmSource;
             default:
                 throw new System.ArgumentOutOfRangeException(
                     nameof(sourceKind), sourceKind, "Unknown data source kind.");

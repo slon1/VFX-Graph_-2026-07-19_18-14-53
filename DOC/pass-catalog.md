@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-10-03 (ADR-034 P1 spatial hash, EditMode и замер S10 — [ADR-034](ADR/ADR-034-Spatial-Hash-And-Teams.md), цифры в [status.md](status.md))
+**Снимок:** 2026-10-03 (ADR-036 SwarmSource, EditMode — [ADR-036](ADR/ADR-036-Swarm-Source.md); стаи на экране нет)
 
 ---
 
@@ -653,6 +653,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 | Kind | Назначение |
 |------|------------|
 | Cube / Mesh / Bitmap | Заполняют `restPosition` (и capacity) |
+| **Swarm** | Диски на XZ: `restPosition`, `heading`, `teamId`. Силы соседей нет |
 | **None** | 0 частиц — field-only (Gray-Scott, **Fluid2D**); particle-пассы no-op; VFX SpawnCount=0 |
 
 ---

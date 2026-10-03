@@ -15,6 +15,7 @@ public sealed class EffectAssetEditor : Editor
     private SerializedProperty cubeSourceProperty;
     private SerializedProperty meshSourceProperty;
     private SerializedProperty bitmapSourceProperty;
+    private SerializedProperty swarmSourceProperty;
     private SerializedProperty simulationSpeedProperty;
     private SerializedProperty fieldsProperty;
     private SerializedProperty passesProperty;
@@ -29,6 +30,7 @@ public sealed class EffectAssetEditor : Editor
         cubeSourceProperty = serializedObject.FindProperty("cubeSource");
         meshSourceProperty = serializedObject.FindProperty("meshSource");
         bitmapSourceProperty = serializedObject.FindProperty("bitmapSource");
+        swarmSourceProperty = serializedObject.FindProperty("swarmSource");
         simulationSpeedProperty = serializedObject.FindProperty("simulationSpeed");
         fieldsProperty = serializedObject.FindProperty("fields");
         passesProperty = serializedObject.FindProperty("passes");
@@ -76,6 +78,9 @@ public sealed class EffectAssetEditor : Editor
                 break;
             case DataSourceKind.Bitmap:
                 EditorGUILayout.PropertyField(bitmapSourceProperty, true);
+                break;
+            case DataSourceKind.Swarm:
+                EditorGUILayout.PropertyField(swarmSourceProperty, true);
                 break;
             case DataSourceKind.None:
                 EditorGUILayout.HelpBox(
