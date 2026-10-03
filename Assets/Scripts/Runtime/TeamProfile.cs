@@ -75,13 +75,13 @@ public sealed class TeamProfile
     public float Cruise
     {
         get => cruise;
-        set => cruise = value;
+        set => cruise = NonNegative(value, nameof(value));
     }
 
     public float Turn
     {
         get => turn;
-        set => turn = value;
+        set => turn = NonNegative(value, nameof(value));
     }
 
     public Gradient Color

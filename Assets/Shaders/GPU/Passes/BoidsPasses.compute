@@ -1,6 +1,7 @@
 // Neighbor force from the spatial-hash snapshot (ADR-038). Heading is not read.
 #pragma kernel BoidNeighborForce
 #pragma kernel BoidReadTeamParams
+#pragma kernel TeamHeadingSteer
 
 #include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
 
@@ -15,8 +16,10 @@ struct TeamParams
 
 RWStructuredBuffer<float3> position;
 RWStructuredBuffer<float3> velocity;
+RWStructuredBuffer<float3> heading;
 RWStructuredBuffer<uint> teamId;
 uint ParticleCount;
+float DeltaTime;
 
 StructuredBuffer<TeamParams> Teams;
 StructuredBuffer<float2> SortedPositions;
@@ -168,4 +171,40 @@ void BoidReadTeamParams(uint3 id : SV_DispatchThreadID)
     TeamParamsRead[0] = team.Radii;
     TeamParamsRead[1] = team.Weights;
     TeamParamsRead[2] = team.Motion;
+}
+
+// Finite-only unit vector. Zero (180° lerp) takes fallback. Does not detect NaN:
+// fast-math may fold isnan / (x != x), and Show compiled code already evaluates
+// both ternary sides (unconditional div). rsqrt arg is clamped off zero.
+float3 UnitOr(float3 v, float3 fallback)
+{
+    float lenSq = dot(v, v);
+    return (lenSq > 1e-12) ? (v * rsqrt(max(lenSq, 1e-12))) : fallback;
+}
+
+[numthreads(THREADS, 1, 1)]
+void TeamHeadingSteer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    uint team = min(teamId[id.x], 7u);
+    float turn = Teams[team].Motion.y;
+    float cruise = Teams[team].Motion.x;
+
+    float3 force = velocity[id.x];
+    float3 h = heading[id.x];
+    float3 desired = UnitOr(force, UnitOr(h, float3(1, 0, 0)));
+    h = UnitOr(h, desired);
+
+    float k = saturate(turn * DeltaTime);
+    float3 blended = lerp(h, desired, k);
+    h = UnitOr(blended, desired);
+    h.y = 0.0;
+    h = UnitOr(h, float3(1, 0, 0));
+
+    heading[id.x] = h;
+    velocity[id.x] = h * cruise;
 }

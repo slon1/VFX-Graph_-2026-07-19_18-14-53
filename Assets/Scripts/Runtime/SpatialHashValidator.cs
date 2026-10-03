@@ -170,6 +170,8 @@ internal static class SpatialHashValidator
             RequireNonNegative(profile.AlignmentRadius, "alignmentRadius");
             RequireNonNegative(profile.CohesionRadius, "cohesionRadius");
             RequireNonNegative(profile.InterGroupSeparationMultiplier, "interGroupSeparationMultiplier");
+            RequireNonNegative(profile.Cruise, "cruise");
+            RequireNonNegative(profile.Turn, "turn");
         }
 
         if (effect.ResolveSource() is SwarmSource swarm && swarm.Spawns != null)
@@ -218,6 +220,12 @@ internal static class SpatialHashValidator
             {
                 throw new InvalidOperationException(
                     "SimulationWorld: Boid Neighbor Force requires a non-empty team list.");
+            }
+
+            if (passes[i] is TeamHeadingSteerPass steer && steer.Enabled)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Team Heading Steer requires a non-empty team list.");
             }
         }
     }

@@ -182,6 +182,15 @@
 | **dt** | Нет |
 | **Хорошо для** | После `Build Spatial Hash`. В меню пасса нет |
 
+### Team Heading Steer
+| | |
+|--|--|
+| **Назначение** | Как `HeadingSteer`, но `cruise` и `turn` из слота команды. Ставится после `ClearVelocity` и силы: `velocity` на входе считается силой, порядок валидатор не проверяет |
+| **Библиотека / kernel** | `BoidsPasses` / `TeamHeadingSteer` |
+| **Particles** | R: `heading`, `velocity`, `teamId`. W: `heading`, `velocity` |
+| **dt** | Да (только поворот; скорость — `heading * cruise`) |
+| **Хорошо для** | Две команды с разной скоростью. В меню пасса нет. Хэш не нужен |
+
 ## Dynamics
 
 ### ClearVelocity

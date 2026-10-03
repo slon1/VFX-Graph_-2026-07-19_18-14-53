@@ -197,3 +197,49 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         }
     }
 }
+
+/// <summary>
+/// HeadingSteer with per-team cruise and turn from TeamParams.Motion (ADR-039).
+/// Does not read the spatial hash.
+/// </summary>
+[Serializable]
+public sealed class TeamHeadingSteerPass : ParticleKernelPass
+{
+    private static readonly AttributeId[] ReadHeadingVelocityTeam =
+    {
+        BuiltinAttributes.Heading,
+        BuiltinAttributes.Velocity,
+        BuiltinAttributes.TeamId,
+    };
+
+    private static readonly AttributeId[] WriteHeadingVelocity =
+    {
+        BuiltinAttributes.Heading,
+        BuiltinAttributes.Velocity,
+    };
+
+    private static readonly int TeamsId = Shader.PropertyToID("Teams");
+
+    public override string DisplayName => "Team Heading Steer";
+    public override PassCategory Category => PassCategory.Dynamics;
+    protected override string KernelName => "TeamHeadingSteer";
+    public override IReadOnlyList<AttributeId> Reads => ReadHeadingVelocityTeam;
+    public override IReadOnlyList<AttributeId> Writes => WriteHeadingVelocity;
+
+    public override void Initialize(SimContext context)
+    {
+        if (context.Teams == null)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: Team Heading Steer requires a non-empty team list.");
+        }
+
+        base.Initialize(context);
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        BindBuffer(context, TeamsId, context.Teams);
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+    }
+}
