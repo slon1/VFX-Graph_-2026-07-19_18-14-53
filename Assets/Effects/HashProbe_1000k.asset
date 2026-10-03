@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c53c179a8210264ea3a817857fc19ed, type: 3}
+  m_Name: HashProbe_1000k
+  m_EditorClassIdentifier: Assembly-CSharp::EffectAsset
+  sourceKind: 0
+  cubeSource:
+    resolution: 100
+    cubeSize: 32
+  meshSource:
+    mesh: {fileID: 0}
+    centerPivot: 1
+    normalizeScale: 1
+    targetSize: 2
+  bitmapSource:
+    texture: {fileID: 0}
+    targetWidth: 2
+    heightScale: 1
+  simulationSpeed: 1
+  fields: []
+  passes:
+  - rid: 5854237590992715975
+  - rid: 5854237590992715976
+  - rid: 5854237590992715977
+  - rid: 5854237590992715978
+  - rid: 5854237590992715979
+  debugFieldQuads: []
+  particleRenderMode: 0
+  particleSize: 0.2
+  particleColor: {r: 1, g: 1, b: 1, a: 1}
+  particleGradient:
+    serializedVersion: 2
+    key0: {r: 1, g: 1, b: 1, a: 1}
+    key1: {r: 1, g: 1, b: 1, a: 1}
+    key2: {r: 0, g: 0, b: 0, a: 0}
+    key3: {r: 0, g: 0, b: 0, a: 0}
+    key4: {r: 0, g: 0, b: 0, a: 0}
+    key5: {r: 0, g: 0, b: 0, a: 0}
+    key6: {r: 0, g: 0, b: 0, a: 0}
+    key7: {r: 0, g: 0, b: 0, a: 0}
+    ctime0: 0
+    ctime1: 65535
+    ctime2: 0
+    ctime3: 0
+    ctime4: 0
+    ctime5: 0
+    ctime6: 0
+    ctime7: 0
+    atime0: 0
+    atime1: 65535
+    atime2: 0
+    atime3: 0
+    atime4: 0
+    atime5: 0
+    atime6: 0
+    atime7: 0
+    m_Mode: 0
+    m_ColorSpace: -1
+    m_NumColorKeys: 2
+    m_NumAlphaKeys: 2
+  particleValueScale: 1
+  showVelocityFieldQuad: 0
+  showDensityFieldQuad: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 5854237590992715975
+      type: {class: BuildSpatialHashPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        center: {x: 0, y: 0, z: 0}
+        extents: {x: 16, y: 0, z: 16}
+        minCellSize: 2
+        wrap: 1
+    - rid: 5854237590992715976
+      type: {class: ClearVelocityPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+    - rid: 5854237590992715977
+      type: {class: HeadingSteerPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        turnSpeed: 0.15
+        cruiseSpeed: 4
+    - rid: 5854237590992715978
+      type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+    - rid: 5854237590992715979
+      type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
+        center: {x: 0, y: 0, z: 0}
+        extents: {x: 16, y: 0, z: 16}
+        behaviour: 1
+        bounce: 0.6

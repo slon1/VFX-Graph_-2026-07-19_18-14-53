@@ -209,6 +209,8 @@ struct TouchForce { float2 pos; float2 delta; float radius; float strength; };
 1. **Доменные симуляции = композиции Pass**, не отдельные подсистемы (Fluid/Boids).
 2. **Унификация на Resource Registry / FieldRequest**, не на общем compute-kernel.
 3. **Simulation Resources** (`ParticleSet`, `FieldSet`) ≠ **services** (TouchBuffer, CommandBuffer, Render binders).
+
+`SpatialHashSet` (ADR-034) — ресурс, которым владеет `BuildSpatialHashPass`. Другие пассы читают его через `SimContext.SpatialHash`. Это не третий ресурс мира рядом с `ParticleSet` и `FieldSet`.
 4. **Field ownership (C):** EffectAsset декларирует поля; пассы только ссылаются; runtime не автосоздаёт. Editor: Materialize missing fields.
 5. **FieldAccess:** `Read` / `WriteInPlace` (splat, без swap) / `WritePingPong` (World вызывает `Swap` после пасса — но только если пасс реально записал dispatch, см. `SimPass.LastExecuteDispatched`; пассы про ping-pong не знают).
 6. **Field texture slots (M2b.1.1):** HLSL биндит фиксированные `FieldRead`/`FieldWrite` (`SimShaderIds`), не `{fieldName}Read/Write`. Один distinct `FieldName` на `FieldKernelPass`; multi-field-per-kernel — M2c (ADR-003).
@@ -236,4 +238,4 @@ fields — только из деклараций (намеренная асим
 **M2b.1 / M2b.1.1 (готово):** P2G scatter + generic `FieldRead`/`FieldWrite` slots.  
 **M2b.2 … M2b.3.1 (готово):** Gradient, Density P2G (sum), Diffuse, Scalar Decay; debug quads — список слотов.  
 **M2c / M2c.1 (готово):** multi-field Role A/B, Gray-Scott + Seed; `Source Kind = None`.  
-**Дальше:** M2d.1 LUT — EditMode ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)); Play-цвета по курсу не закрыты. M2d.2 trail не начат. Spatial hash — только если снимется гейт Techdebt 11. Emitters — позже.
+**Дальше:** M2d.1 LUT — EditMode ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)); Play-цвета по курсу не закрыты. M2d.2 trail не начат. Spatial hash P1 закрыт ([ADR-034](ADR/ADR-034-Spatial-Hash-And-Teams.md)): EditMode и замер S10. Потребители соседей не начаты. Emitters — позже.

@@ -11,5 +11,17 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Test1.unity
     guid: db5ff7e6f97114a458cbee8d39d7498f
+  - enabled: 0
+    path: Assets/Scenes/HashProbe_30k.unity
+    guid: dcc07f3b5bdce484ab6ce32cd1614d9c
+  - enabled: 0
+    path: Assets/Scenes/HashProbe_100k.unity
+    guid: 345599f5ae87f6e4b9204b825dd9a09a
+  - enabled: 0
+    path: Assets/Scenes/HashProbe_500k.unity
+    guid: 03e92e5af76939346888dacd8f6bc2df
+  - enabled: 0
+    path: Assets/Scenes/HashProbe_1000k.unity
+    guid: d6eeb942ae0f574468c2f7c70f24bc99
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

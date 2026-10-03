@@ -48,6 +48,9 @@ public sealed class SimContext
     /// <summary>Accumulated simulation time (scaled by EffectAsset.SimulationSpeed).</summary>
     public float Time { get; internal set; }
 
+    /// <summary>Set by BuildSpatialHashPass.Initialize (ADR-034). Null when the effect has no builder.</summary>
+    public SpatialHashSet SpatialHash { get; internal set; }
+
     public SimContext(
         ParticleSet particles,
         FieldSet fields,

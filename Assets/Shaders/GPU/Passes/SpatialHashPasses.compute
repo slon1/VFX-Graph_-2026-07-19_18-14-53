@@ -1,0 +1,163 @@
+// Spatial hash build over the XZ plane (ADR-034 §3). Six kernels per Execute.
+#pragma kernel HashClear
+#pragma kernel HashCount
+#pragma kernel HashScanBlocks
+#pragma kernel HashScanBlockSums
+#pragma kernel HashAddOffsets
+#pragma kernel HashScatter
+
+#include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
+
+#define THREADS 64
+#define SCAN_BLOCK_SIZE 256
+
+StructuredBuffer<float3> position;
+StructuredBuffer<float3> heading;
+StructuredBuffer<uint> teamId;
+uint ParticleCount;
+uint HashBlockCount;
+
+RWStructuredBuffer<uint> CellCounts;
+RWStructuredBuffer<uint> CellStarts;
+RWStructuredBuffer<uint> CellCursors;
+RWStructuredBuffer<uint> BlockSums;
+RWStructuredBuffer<uint> BlockOffsets;
+RWStructuredBuffer<uint> ParticleCells;
+RWStructuredBuffer<uint> SortedIndices;
+RWStructuredBuffer<float2> SortedPositions;
+RWStructuredBuffer<float2> SortedDirections;
+RWStructuredBuffer<uint> SortedTeams;
+
+groupshared uint ScanTemp[SCAN_BLOCK_SIZE];
+
+// Blelloch exclusive scan of ScanTemp (port of Rivalry GridUtils PrefixSum_ScanBlocks).
+// Must be called from uniform control flow by all SCAN_BLOCK_SIZE threads.
+uint ExclusiveScanBlock(uint tid)
+{
+    GroupMemoryBarrierWithGroupSync();
+
+    for (uint up = 1u; up < SCAN_BLOCK_SIZE; up <<= 1u)
+    {
+        uint idx = (tid + 1u) * up * 2u - 1u;
+        if (idx < SCAN_BLOCK_SIZE)
+        {
+            ScanTemp[idx] += ScanTemp[idx - up];
+        }
+
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    uint total = ScanTemp[SCAN_BLOCK_SIZE - 1u];
+    GroupMemoryBarrierWithGroupSync();
+
+    if (tid == 0u)
+    {
+        ScanTemp[SCAN_BLOCK_SIZE - 1u] = 0u;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    for (uint down = SCAN_BLOCK_SIZE >> 1u; down > 0u; down >>= 1u)
+    {
+        uint idx = (tid + 1u) * down * 2u - 1u;
+        if (idx < SCAN_BLOCK_SIZE)
+        {
+            uint t = ScanTemp[idx - down];
+            ScanTemp[idx - down] = ScanTemp[idx];
+            ScanTemp[idx] += t;
+        }
+
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    return total;
+}
+
+[numthreads(THREADS, 1, 1)]
+void HashClear(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= HashCellCount)
+    {
+        return;
+    }
+
+    CellCounts[id.x] = 0u;
+}
+
+[numthreads(THREADS, 1, 1)]
+void HashCount(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    uint cell = HashCellIndex(HashCellCoord(position[id.x].xz));
+    ParticleCells[id.x] = cell;
+    InterlockedAdd(CellCounts[cell], 1u);
+}
+
+[numthreads(SCAN_BLOCK_SIZE, 1, 1)]
+void HashScanBlocks(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID)
+{
+    uint tid = groupThreadId.x;
+    uint cell = groupId.x * SCAN_BLOCK_SIZE + tid;
+    ScanTemp[tid] = (cell < HashCellCount) ? CellCounts[cell] : 0u;
+
+    uint total = ExclusiveScanBlock(tid);
+
+    if (tid == 0u)
+    {
+        BlockSums[groupId.x] = total;
+    }
+
+    if (cell < HashCellCount)
+    {
+        CellStarts[cell] = ScanTemp[tid];
+    }
+}
+
+[numthreads(SCAN_BLOCK_SIZE, 1, 1)]
+void HashScanBlockSums(uint3 groupThreadId : SV_GroupThreadID)
+{
+    uint tid = groupThreadId.x;
+    ScanTemp[tid] = (tid < HashBlockCount) ? BlockSums[tid] : 0u;
+
+    ExclusiveScanBlock(tid);
+
+    if (tid < HashBlockCount)
+    {
+        BlockOffsets[tid] = ScanTemp[tid];
+    }
+}
+
+[numthreads(SCAN_BLOCK_SIZE, 1, 1)]
+void HashAddOffsets(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID)
+{
+    uint cell = groupId.x * SCAN_BLOCK_SIZE + groupThreadId.x;
+    if (cell >= HashCellCount)
+    {
+        return;
+    }
+
+    uint start = CellStarts[cell] + BlockOffsets[groupId.x];
+    CellStarts[cell] = start;
+    CellCursors[cell] = start;
+}
+
+[numthreads(THREADS, 1, 1)]
+void HashScatter(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    uint slot;
+    InterlockedAdd(CellCursors[ParticleCells[id.x]], 1u, slot);
+
+    SortedIndices[slot] = id.x;
+    SortedPositions[slot] = position[id.x].xz;
+    SortedDirections[slot] = heading[id.x].xz;
+    SortedTeams[slot] = teamId[id.x];
+}

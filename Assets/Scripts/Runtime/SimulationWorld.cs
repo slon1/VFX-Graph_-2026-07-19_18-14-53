@@ -15,6 +15,14 @@ public sealed class SimulationWorld : MonoBehaviour
     [SerializeField] private ComputeShader[] passLibrary;
     [SerializeField] private VisualEffect visualEffect;
     [SerializeField] private InputRouter inputRouter;
+    [SerializeField] private bool renderParticles = true;
+
+    /// <summary>Probe switch (ADR-034 P1): false skips PrimitiveParticleBinder.Execute. No Rebuild needed.</summary>
+    public bool RenderParticles
+    {
+        get => renderParticles;
+        set => renderParticles = value;
+    }
 
     public EffectAsset Effect => effect;
 
@@ -112,6 +120,11 @@ public sealed class SimulationWorld : MonoBehaviour
 
         for (int i = 0; i < binders.Count; i++)
         {
+            if (!renderParticles && binders[i] is PrimitiveParticleBinder)
+            {
+                continue;
+            }
+
             binders[i].Execute(context);
         }
     }
@@ -182,6 +195,11 @@ public sealed class SimulationWorld : MonoBehaviour
         {
             RepeatCountValidator.Validate(effect.Passes);
             SquareTexelValidator.Validate(effect.Passes, fields);
+            IReadOnlyList<string> hashWarnings = SpatialHashValidator.Validate(effect.Passes);
+            for (int i = 0; i < hashWarnings.Count; i++)
+            {
+                Debug.LogWarning(hashWarnings[i], this);
+            }
         }
         catch (Exception exception)
         {

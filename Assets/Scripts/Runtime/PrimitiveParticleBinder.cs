@@ -27,6 +27,8 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
     private RenderParams renderParams;
     private Texture2D lutTexture;
     private GraphicsBuffer valuesBuffer;
+    private Texture2D dummyLut;
+    private GraphicsBuffer dummyValues;
     private bool hasValueAttribute;
     private int instanceCount;
 
@@ -55,6 +57,16 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
         if (hasValueAttribute)
         {
             lutTexture = BakeLutTexture(gradient ?? DebugFieldQuadSlot.DefaultFireGradient());
+        }
+        else
+        {
+            dummyValues = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float));
+            dummyLut = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+            {
+                name = "M3D_ParticleBillboard_DummyLut",
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            dummyLut.Apply(false, true);
         }
 
         renderParams = new RenderParams(material)
@@ -86,6 +98,8 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
         }
         else
         {
+            props.SetBuffer(ValuesId, dummyValues);
+            props.SetTexture(LutTexId, dummyLut);
             props.SetFloat(UseLutId, 0f);
         }
 
@@ -96,6 +110,12 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
     {
         DestroyObject(ref material);
         DestroyObject(ref lutTexture);
+        DestroyObject(ref dummyLut);
+        if (dummyValues != null)
+        {
+            dummyValues.Release();
+            dummyValues = null;
+        }
     }
 
     internal static Color[] BuildLutPixels(Gradient gradient, int width)

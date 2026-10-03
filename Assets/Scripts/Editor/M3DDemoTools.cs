@@ -24,6 +24,10 @@ public static class M3DDemoTools
     private const string Fluid2DHighResDyePath = EffectsFolder + "/Fluid2D_HighResDye.asset";
     private const string PhysarumPath = EffectsFolder + "/Physarum.asset";
     private const string PhysarumFluidPath = EffectsFolder + "/Physarum_Fluid.asset";
+    private const string HashProbe30kPath = EffectsFolder + "/HashProbe_30k.asset";
+    private const string HashProbe100kPath = EffectsFolder + "/HashProbe_100k.asset";
+    private const string HashProbe30kScene = "Assets/Scenes/HashProbe_30k.unity";
+    private const string HashProbe100kScene = "Assets/Scenes/HashProbe_100k.unity";
 
     private static readonly string[] PassLibraryPaths =
     {
@@ -42,6 +46,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/TouchGrayScottPasses.compute",
         "Assets/Shaders/GPU/Passes/AgentFieldFeedbackPasses.compute",
         "Assets/Shaders/GPU/Passes/PhysarumPasses.compute",
+        "Assets/Shaders/GPU/Passes/SpatialHashPasses.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]
@@ -1499,6 +1504,84 @@ public static class M3DDemoTools
         EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
         EditorSceneManager.SaveOpenScenes();
         Debug.Log("M3D: created Physarum_Fluid and assigned it to the open scene.");
+    }
+
+    [MenuItem("Tools/M3D/Create Spatial Hash Probe")]
+    public static void CreateSpatialHashProbe()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateHashProbeAsset(HashProbe30kPath, 31);
+        CreateHashProbeAsset(HashProbe100kPath, 46);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: spatial hash probe scenes cancelled; assets were still written.");
+            return;
+        }
+
+        CreateHashProbeScene(HashProbe30kScene, HashProbe30kPath, "30k");
+        CreateHashProbeScene(HashProbe100kScene, HashProbe100kPath, "100k");
+        Debug.Log("M3D: created HashProbe_30k / HashProbe_100k assets and scenes.");
+    }
+
+    private static void CreateHashProbeAsset(string path, int cubeResolution)
+    {
+        CreateEffect(
+            path,
+            cubeResolution,
+            simulationSpeed: 1f,
+            fields: null,
+            debugQuads: null,
+            new BuildSpatialHashPass(),
+            new ClearVelocityPass(),
+            new HeadingSteerPass(),
+            new IntegratePass(),
+            new BoxBoundsPass
+            {
+                Center = Vector3.zero,
+                Extents = new Vector3(16f, 0f, 16f),
+                Behaviour = BoundsBehaviour.Wrap,
+            });
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("cubeSource.cubeSize").floatValue = 32f;
+        so.FindProperty("particleSize").floatValue = 0.2f;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void CreateHashProbeScene(string scenePath, string assetPath, string label)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera != null)
+        {
+            camera.transform.SetPositionAndRotation(new Vector3(0f, 40f, 0f), Quaternion.Euler(90f, 0f, 0f));
+        }
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject("M3D Probe");
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        HashProbeControls controls = host.AddComponent<HashProbeControls>();
+        SerializedObject controlsSo = new SerializedObject(controls);
+        controlsSo.FindProperty("world").objectReferenceValue = world;
+        controlsSo.FindProperty("label").stringValue = label;
+        controlsSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
     }
 
     private static void EnsurePassLibrary(SerializedProperty library)

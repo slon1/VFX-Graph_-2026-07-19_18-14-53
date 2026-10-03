@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [TestFixture]
 public class PrimitiveParticleBinderTests
@@ -39,7 +40,15 @@ public class PrimitiveParticleBinderTests
 
         MaterialPropertyBlock props = GetProps(binder);
         Assert.AreEqual(0f, props.GetFloat("_UseLut"));
+        Texture2D dummyLut = GetField<Texture2D>(binder, "dummyLut");
+        GraphicsBuffer dummyValues = GetField<GraphicsBuffer>(binder, "dummyValues");
+        Assert.IsNotNull(dummyLut);
+        Assert.AreEqual(1, dummyLut.width);
+        Assert.AreEqual(1, dummyLut.height);
+        Assert.IsNotNull(dummyValues);
+        Assert.AreEqual(1, dummyValues.count);
         binder.Dispose();
+        Assert.DoesNotThrow(() => binder.Dispose());
 
         Material[] leftover = Resources.FindObjectsOfTypeAll<Material>();
         for (int i = 0; i < leftover.Length; i++)
@@ -47,6 +56,15 @@ public class PrimitiveParticleBinderTests
             if (leftover[i] != null && leftover[i].name == "M3D_ParticleBillboard")
             {
                 Assert.Fail("Dispose left M3D_ParticleBillboard material alive (expected DestroyImmediate).");
+            }
+        }
+
+        Texture2D[] leftoverTextures = Resources.FindObjectsOfTypeAll<Texture2D>();
+        for (int i = 0; i < leftoverTextures.Length; i++)
+        {
+            if (leftoverTextures[i] != null && leftoverTextures[i].name == "M3D_ParticleBillboard_DummyLut")
+            {
+                Assert.Fail("Dispose left M3D_ParticleBillboard_DummyLut alive.");
             }
         }
     }
@@ -74,6 +92,8 @@ public class PrimitiveParticleBinderTests
 
         binder.Execute(context);
         Assert.AreSame(baked, GetLut(binder));
+        Assert.IsNull(GetField<Texture2D>(binder, "dummyLut"));
+        Assert.IsNull(GetField<GraphicsBuffer>(binder, "dummyValues"));
         binder.Dispose();
 
         Texture2D[] leftover = Resources.FindObjectsOfTypeAll<Texture2D>();
@@ -88,17 +108,19 @@ public class PrimitiveParticleBinderTests
 
     private static MaterialPropertyBlock GetProps(PrimitiveParticleBinder binder)
     {
-        FieldInfo field = typeof(PrimitiveParticleBinder).GetField(
-            "props", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.IsNotNull(field);
-        return (MaterialPropertyBlock)field.GetValue(binder);
+        return GetField<MaterialPropertyBlock>(binder, "props");
     }
 
     private static Texture2D GetLut(PrimitiveParticleBinder binder)
     {
+        return GetField<Texture2D>(binder, "lutTexture");
+    }
+
+    private static T GetField<T>(PrimitiveParticleBinder binder, string name)
+    {
         FieldInfo field = typeof(PrimitiveParticleBinder).GetField(
-            "lutTexture", BindingFlags.Instance | BindingFlags.NonPublic);
+            name, BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.IsNotNull(field);
-        return (Texture2D)field.GetValue(binder);
+        return (T)field.GetValue(binder);
     }
 }

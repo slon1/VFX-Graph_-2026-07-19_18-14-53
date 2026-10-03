@@ -14,4 +14,7 @@ public static class BuiltinAttributes
     public static readonly AttributeId Heading = new AttributeId("heading", AttributeType.Float3, true);
 
     public static readonly AttributeId Value = new AttributeId("value", AttributeType.Float1, true);
+
+    /// <summary>Swarm membership (ADR-034). Zero when no source writes it.</summary>
+    public static readonly AttributeId TeamId = new AttributeId("teamId", AttributeType.UInt, true);
 }

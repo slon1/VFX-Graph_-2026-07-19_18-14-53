@@ -21,7 +21,7 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
 Один эффект = один `EffectAsset`: источник + **декларации полей** + список пассов.
 
 Есть: particle passes, field foundation, **P2G velocity + density**, **G2P gradient**, **Diffuse** / **DiffuseVelocity**, **AdvectVelocityField** (self-advection, ADR-013), **AdvectScalar** (пассивный dye, ADR-023), **SteerToVelocityField** (Reynolds alignment), **AddNormalized*** + **HeadingSteer** (kinematic boids), **Scalar Decay**, **multi-field Role A/B**, **Gray-Scott** (+ SeedScalarDisk), **Source Kind = None**, hybrid touch demo, тач/мышь, **кернелы Stam-проекции** (Divergence / ZeroMean / Jacobi / SubtractPhiGradient / SolidWallVelocity) и **пресет Fluid2D** (меню Create/Assign, InputRouter = GroundXZ, quads velocity+dye). Эксперимент VC: **VorticityConfinement** + `Fluid2D_Vorticity.asset` (`BorderMargin=2`, не production; look интерьера не взят, торнадо рамки сняты).  
-Пока нет: trail/persistence buffer, spatial hash / emitters с lifetime.
+Пока нет: trail/persistence buffer, emitters с lifetime. Spatial hash P1 — пробник без сил соседей ([ADR-034](ADR/ADR-034-Spatial-Hash-And-Teams.md)). Замер S10 записан в [status.md](status.md).
 
 ---
 
@@ -40,11 +40,12 @@ EffectAsset → ParticleSet + FieldSet → SimPass pipeline → Render binders
    - **Boids_mk1** — kinematic field-flocking (ADR-012: AddNormalized* + HeadingSteer; Speed≈20) и хвост `HeadingToValue` с fire-LUT ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)). Частицы всегда рисуются Primitive-квадами; `VisualEffect` для сборки мира не нужен. Меню Enable/Disable Primitive только пишут `Particle Render Mode` в ассет, картинку не меняют. **Particle Size** — мировые единицы квада (0.05 на весь кадр мигает: квад меньше пикселя); правка применяется после выхода из Play и новой сборки.
    - **Physarum** — след `trail` и сенсорный поворот ([ADR-032](ADR/ADR-032-Physarum-Steer.md)). Меню `Tools/M3D/Create Physarum Effect` создаёт ассет и, если в сцене есть `SimulationWorld`, назначает его и Pass Library. Картинка сети в Play не калибровалась.
    - **Physarum_Fluid** — тот же след, снос полем `velocity` ([ADR-033](ADR/ADR-033-Physarum-Trail-Advect.md)). Меню `Tools/M3D/Create Physarum Fluid Effect`. В `Test1` сейчас назначен этот эффект. В Play InputRouter = **GroundXZ**. Толчок пальцем не калибровался.
+   - **HashProbe_30k / HashProbe_100k** — замер spatial hash, не демо. Сцены `Assets/Scenes/HashProbe_30k.unity` и `HashProbe_100k.unity`. Меню `Tools/M3D/Create Spatial Hash Probe` создаёт оба ассета и обе сцены и не трогает `Test1`. В Play кнопки Hash и Render переключают билдер и рисование частиц без Rebuild. Замер: четыре режима по 10 с (хэш вкл/выкл × рендер вкл/выкл). Если все четыре упёрлись в 60 FPS, смотреть `100k`.
    - **Gray-Scott-Agents** — то же one-way: частицы красят GS, поле их не рулит.
    - **Fluid2D** — Stam: Touch → Seed(dye) → project → wall → advect(`velocity`) → wall → AdvectScalar (None, XZ, velocity+dye quads). Порядок project→advect оставлен после [ADR-024](ADR/ADR-024-Harris-Order-Experiment.md). Эталон Harris: `Fluid2D_HarrisOrder.asset` (Assign, не Demo Effects). Эксперимент VC: `Fluid2D_Vorticity.asset`. Эксперимент F2.2: `Fluid2D_MacCormackDye.asset` (не production; look не взят).
 3. Play. Для hybrid / Gray-Scott / **Fluid2D** / **Physarum_Fluid**: InputRouter = **GroundXZ**.
 
-Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, **`Create Physarum Effect`**, **`Create Physarum Fluid Effect`**, **`Create Fluid2D Effect`**, **`Create Fluid2D HarrisOrder Experiment`**, **`Create Fluid2D Vorticity Experiment`**, **`Create Fluid2D MacCormackDye Experiment`**, **`Add F2.3 Scripted Stroke To Scene`**, **`ADR-012 Reconfigure Boids_mk1`**, **`Enable/Disable Primitive Render On Boids_mk1`**, **`Register ParticleBillboard Shader`**, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`, **`Assign Fluid2D To Scene`**, **`Assign Fluid2D HarrisOrder Experiment To Scene`**, **`Assign Fluid2D Vorticity Experiment To Scene`**, **`Assign Fluid2D MacCormackDye Experiment To Scene`**, **`Setup Post-Processing (HDR + Bloom + ACES)`**.  
+Меню: `Tools/M3D/Create Demo Effects`, `Create Gray-Scott-Boids Effect`, `Create Gray-Scott-Agents Effect`, **`Create Physarum Effect`**, **`Create Physarum Fluid Effect`**, **`Create Spatial Hash Probe`**, **`Create Fluid2D Effect`**, **`Create Fluid2D HarrisOrder Experiment`**, **`Create Fluid2D Vorticity Experiment`**, **`Create Fluid2D MacCormackDye Experiment`**, **`Add F2.3 Scripted Stroke To Scene`**, **`ADR-012 Reconfigure Boids_mk1`**, **`Enable/Disable Primitive Render On Boids_mk1`**, **`Register ParticleBillboard Shader`**, `Setup Open Scene`, `Assign HybridTouchField To Scene`, `Assign AgentFieldEcho To Scene`, **`Assign Fluid2D To Scene`**, **`Assign Fluid2D HarrisOrder Experiment To Scene`**, **`Assign Fluid2D Vorticity Experiment To Scene`**, **`Assign Fluid2D MacCormackDye Experiment To Scene`**, **`Setup Post-Processing (HDR + Bloom + ACES)`**.  
 После смены пассов/полей в Play — **Rebuild** на SimulationWorld.  
 Pass Library: GS — `GrayScottPasses` + `TouchGrayScottPasses` + `AgentFieldFeedbackPasses`.  
 Пост-обработка (desktop, ADR-025): в `Test1` уже есть global `M3D Volume` + `M3DVolumeProfile` (Bloom + ACES). Повторный Setup идемпотентен. На мобилке Volume выключает `M3DVolumeMobileGate`. Не править `DefaultVolumeProfile.asset` (тестовый ассет пакета URP).
@@ -160,7 +161,7 @@ Hybrid (field + particles):
 | Задача | Путь |
 | --- | --- |
 | Цикл / Swap / валидация полей | `Runtime/SimulationWorld.cs` |
-| Источники (Cube/Mesh/Bitmap/**None**) | `Sources/DataSourceKind.cs`, `Sources/NoneSource.cs` |
+| Источники (Cube/Mesh/Bitmap/**None**/**Swarm**) | `Sources/DataSourceKind.cs`, `Sources/SwarmSource.cs`, `Sources/NoneSource.cs` |
 | P2G SM / Channels validation | `Runtime/FieldAccumPassValidator.cs` |
 | Field descriptor / requests | `Core/FieldDescriptor.cs`, `Core/FieldSet.cs`, `Core/FieldAccumBuffer.cs` |
 | Контракт пасса | `Runtime/SimPass.cs` |
