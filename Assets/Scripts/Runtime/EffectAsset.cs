@@ -25,6 +25,7 @@ public sealed class EffectAsset : ScriptableObject
     [SerializeField] private List<FieldDescriptor> fields = new List<FieldDescriptor>();
     [SerializeReference] private List<SimPass> passes = new List<SimPass>();
     [SerializeField] private List<DebugFieldQuadSlot> debugFieldQuads = new List<DebugFieldQuadSlot>();
+    [SerializeField] private List<TeamProfile> teams = new List<TeamProfile>();
     [SerializeField] private ParticleRenderMode particleRenderMode = ParticleRenderMode.Vfx;
     [SerializeField, Min(0f)] private float particleSize = 0.05f;
     [SerializeField] private Color particleColor = Color.white;
@@ -39,6 +40,26 @@ public sealed class EffectAsset : ScriptableObject
     public IReadOnlyList<FieldDescriptor> Fields => fields;
     public IReadOnlyList<SimPass> Passes => passes;
     public IReadOnlyList<DebugFieldQuadSlot> DebugFieldQuads => debugFieldQuads;
+
+    public IReadOnlyList<TeamProfile> Teams
+    {
+        get
+        {
+            if (teams == null)
+            {
+                teams = new List<TeamProfile>();
+            }
+
+            return teams;
+        }
+    }
+
+    public void SetTeams(IReadOnlyList<TeamProfile> value)
+    {
+        teams = value == null
+            ? new List<TeamProfile>()
+            : new List<TeamProfile>(value);
+    }
     public ParticleRenderMode ParticleRenderMode => particleRenderMode;
     public float ParticleSize => particleSize;
     public Color ParticleColor => particleColor;

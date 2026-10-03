@@ -31,6 +31,8 @@ public sealed class SimulationWorld : MonoBehaviour
     private SimContext context;
     private CommandBuffer commandBuffer;
     private GraphicsBuffer touchBuffer;
+    private GraphicsBuffer teamBuffer;
+    private readonly TeamParams[] teamScratch = new TeamParams[TeamProfile.MaxTeams];
     private IDataSource source;
     private readonly TouchForce[] touchScratch = new TouchForce[InputRouter.MaxTouches];
     private readonly Dictionary<SimPass, ProfilingSampler> samplers =
@@ -85,6 +87,11 @@ public sealed class SimulationWorld : MonoBehaviour
 
         context.TouchCount = touchCount;
         source.Tick(particles);
+
+        if (teamBuffer != null)
+        {
+            TeamParams.Upload(teamBuffer, effect.Teams, teamScratch);
+        }
 
         commandBuffer.Clear();
         IReadOnlyList<SimPass> passes = effect.Passes;
@@ -195,7 +202,7 @@ public sealed class SimulationWorld : MonoBehaviour
         {
             RepeatCountValidator.Validate(effect.Passes);
             SquareTexelValidator.Validate(effect.Passes, fields);
-            IReadOnlyList<string> hashWarnings = SpatialHashValidator.Validate(effect.Passes);
+            IReadOnlyList<string> hashWarnings = SpatialHashValidator.Validate(effect.Passes, effect);
             for (int i = 0; i < hashWarnings.Count; i++)
             {
                 Debug.LogWarning(hashWarnings[i], this);
@@ -225,6 +232,13 @@ public sealed class SimulationWorld : MonoBehaviour
 
         context = new SimContext(particles, fields, passLibrary, touchBuffer);
         context.Cmd = commandBuffer;
+        if (effect.Teams.Count > 0)
+        {
+            teamBuffer = new GraphicsBuffer(
+                GraphicsBuffer.Target.Structured, TeamProfile.MaxTeams, TeamParams.Stride);
+            TeamParams.Upload(teamBuffer, effect.Teams, teamScratch);
+            context.Teams = teamBuffer;
+        }
 
         IReadOnlyList<SimPass> passes = effect.Passes;
         for (int i = 0; i < passes.Count; i++)
@@ -681,6 +695,8 @@ public sealed class SimulationWorld : MonoBehaviour
         particles = null;
         touchBuffer?.Dispose();
         touchBuffer = null;
+        teamBuffer?.Dispose();
+        teamBuffer = null;
         commandBuffer?.Release();
         commandBuffer = null;
         samplers.Clear();

@@ -169,6 +169,8 @@ ADR и ТЗ: [ADR-036](ADR/ADR-036-Swarm-Source.md), [`todo-adr-034-p3-swarm-sou
 
 ### P4. Команды (без палитры)
 
+ADR и ТЗ: [ADR-037](ADR/ADR-037-Team-Profile.md), [`todo-adr-034-p4-teams.md`](last/todo-adr-034-p4-teams.md). Где этот раздел короче ТЗ, делать по ТЗ.
+
 - `TeamProfile` на `EffectAsset` (`teams`, максимум 8; поле `Gradient color` заводится сразу, но в P4 не используется), `TeamParams` и `GraphicsBuffer` в `SimulationWorld` (создание после `AutoRegisterAttributes`, заливка каждый кадр, `Dispose` в `Teardown`), `context.Teams`.
 - Валидатор: `teams.Count <= 8`; `SwarmSource.teamIndex < teams.Count`; радиусы `<= cell * (1 + 1e-5)` (дополнение к P1).
 - Палитра сюда **не входит** (см. P6a): сила и steer нуждаются только в буфере команд, не в шейдере. Одно-командный пресет в P5c красится существующим `HeadingToValue`.

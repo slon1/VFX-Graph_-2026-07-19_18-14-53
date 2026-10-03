@@ -382,6 +382,11 @@ public class SwarmSourceWorldTests
         library.GetArrayElementAtIndex(0).objectReferenceValue = dynamics;
         worldSo.ApplyModifiedPropertiesWithoutUndo();
 
+        effect.SetTeams(new[]
+        {
+            new TeamProfile(),
+            new TeamProfile(),
+        });
         Assert.DoesNotThrow(() => world.Rebuild());
         Assert.IsTrue(world.enabled);
 

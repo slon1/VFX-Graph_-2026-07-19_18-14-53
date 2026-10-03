@@ -17,6 +17,7 @@ public sealed class EffectAssetEditor : Editor
     private SerializedProperty bitmapSourceProperty;
     private SerializedProperty swarmSourceProperty;
     private SerializedProperty simulationSpeedProperty;
+    private SerializedProperty teamsProperty;
     private SerializedProperty fieldsProperty;
     private SerializedProperty passesProperty;
     private SerializedProperty debugFieldQuadsProperty;
@@ -32,6 +33,7 @@ public sealed class EffectAssetEditor : Editor
         bitmapSourceProperty = serializedObject.FindProperty("bitmapSource");
         swarmSourceProperty = serializedObject.FindProperty("swarmSource");
         simulationSpeedProperty = serializedObject.FindProperty("simulationSpeed");
+        teamsProperty = serializedObject.FindProperty("teams");
         fieldsProperty = serializedObject.FindProperty("fields");
         passesProperty = serializedObject.FindProperty("passes");
         debugFieldQuadsProperty = serializedObject.FindProperty("debugFieldQuads");
@@ -89,6 +91,7 @@ public sealed class EffectAssetEditor : Editor
                 break;
         }
 
+        EditorGUILayout.PropertyField(teamsProperty, true);
         EditorGUILayout.PropertyField(simulationSpeedProperty);
 
         EditorGUILayout.Space();

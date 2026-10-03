@@ -25,6 +25,7 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 | Cube / Mesh / Bitmap | Заполняют `restPosition`, задают `ParticleSet` capacity |
 | **None** | 0 частиц (`NoneSource`); field-only эффекты; particle-пассы no-op; если на объекте есть `VisualEffect` — `SpawnCount=0` |
 | **Swarm** | Спавнит диски с `teamId` и курсом. Силы соседей нет |
+| **teams** | Список команд на эффекте, максимум 8. Силы соседей нет |
 
 Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.  
 Авторегистрация атрибутов по Reads/Writes — **пропускается** при Capacity=0 (None).

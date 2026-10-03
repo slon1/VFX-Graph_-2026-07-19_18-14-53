@@ -69,7 +69,7 @@ cell   = size / res                                       // >= minCellSize с �
 
 #### 4. Команды — список на `EffectAsset` (P4)
 
-`TeamProfile` (до 8): радиусы и веса separation / alignment / cohesion, `interGroupSeparationMultiplier`, `cruise`, `turn`, градиент цвета. Один источник правды для силы, steer и палитры. Мир каждый кадр заливает маленький `GraphicsBuffer<TeamParams>` (3 × float4) и отдаёт его через `context.Teams`, как `touchBuffer`. Межроевая модель — паритет с Rivalry: чужие участвуют только в separation с множителем. Матрица пар — опциональная фаза P9.
+`TeamProfile` (до 8): радиусы и веса separation / alignment / cohesion, `interGroupSeparationMultiplier`, `cruise`, `turn`, градиент цвета. Один источник правды для силы, steer и палитры. Мир каждый кадр заливает маленький `GraphicsBuffer<TeamParams>` (3 × float4) и отдаёт его через `context.Teams`, как `touchBuffer`. Межроевая модель — паритет с Rivalry: чужие участвуют только в separation с множителем. Матрица пар — опциональная фаза P9. Реализация списка и буфера — [ADR-037](ADR-037-Team-Profile.md), не эта фаза хэша.
 
 #### 5. Кинематика первой
 

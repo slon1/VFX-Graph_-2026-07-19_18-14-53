@@ -10,11 +10,12 @@ internal static class SpatialHashValidator
     private const float BoundsTolerance = 1e-3f;
 
     /// <summary>Throws InvalidOperationException on errors; returns warnings for the caller to log.</summary>
-    public static IReadOnlyList<string> Validate(IReadOnlyList<SimPass> passes)
+    public static IReadOnlyList<string> Validate(IReadOnlyList<SimPass> passes, EffectAsset effect = null)
     {
         List<string> warnings = new List<string>();
         if (passes == null)
         {
+            ValidateTeams(effect, null);
             return warnings;
         }
 
@@ -62,6 +63,7 @@ internal static class SpatialHashValidator
                     "SimulationWorld: a spatial hash consumer requires an enabled 'Build Spatial Hash' pass before it.");
             }
 
+            ValidateTeams(effect, null);
             return warnings;
         }
 
@@ -136,6 +138,92 @@ internal static class SpatialHashValidator
             }
         }
 
+        ValidateTeams(effect, builder);
         return warnings;
+    }
+
+    private static void ValidateTeams(EffectAsset effect, BuildSpatialHashPass builder)
+    {
+        if (effect == null)
+        {
+            return;
+        }
+
+        IReadOnlyList<TeamProfile> teams = effect.Teams;
+        if (teams.Count > TeamProfile.MaxTeams)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: team list has " + teams.Count + " entries; the maximum is " +
+                TeamProfile.MaxTeams + ".");
+        }
+
+        for (int i = 0; i < teams.Count; i++)
+        {
+            TeamProfile profile = teams[i];
+            if (profile == null)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: team list entry " + i + " is null.");
+            }
+
+            RequireNonNegative(profile.SeparationRadius, "separationRadius");
+            RequireNonNegative(profile.AlignmentRadius, "alignmentRadius");
+            RequireNonNegative(profile.CohesionRadius, "cohesionRadius");
+            RequireNonNegative(profile.InterGroupSeparationMultiplier, "interGroupSeparationMultiplier");
+        }
+
+        if (effect.ResolveSource() is SwarmSource swarm && swarm.Spawns != null)
+        {
+            IReadOnlyList<SwarmSource.Spawn> spawns = swarm.Spawns;
+            for (int i = 0; i < spawns.Count; i++)
+            {
+                SwarmSource.Spawn spawn = spawns[i];
+                if (spawn == null)
+                {
+                    throw new InvalidOperationException(
+                        "SimulationWorld: swarm spawn " + i + " is null.");
+                }
+
+                if (spawn.TeamIndex >= teams.Count)
+                {
+                    throw new InvalidOperationException(
+                        "SimulationWorld: swarm spawn " + i + " teamIndex " + spawn.TeamIndex +
+                        " is outside the team list of length " + teams.Count + ".");
+                }
+            }
+        }
+
+        if (teams.Count == 0 || builder == null)
+        {
+            return;
+        }
+
+        SpatialHashLayout layout = SpatialHashSet.ComputeLayout(
+            builder.Center, builder.Extents, builder.MinCellSize);
+        float limit = Mathf.Min(layout.CellSize.x, layout.CellSize.y) * (1f + SpatialHashSet.GridEpsilon);
+        for (int i = 0; i < teams.Count; i++)
+        {
+            TeamProfile profile = teams[i];
+            RequireWithinCell(profile.SeparationRadius, "separationRadius", limit);
+            RequireWithinCell(profile.AlignmentRadius, "alignmentRadius", limit);
+            RequireWithinCell(profile.CohesionRadius, "cohesionRadius", limit);
+        }
+    }
+
+    private static void RequireNonNegative(float value, string name)
+    {
+        if (value < 0f)
+        {
+            throw new ArgumentOutOfRangeException(name, value, name + " must be >= 0.");
+        }
+    }
+
+    private static void RequireWithinCell(float value, string name, float limit)
+    {
+        if (value > limit)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: team " + name + " " + value + " exceeds the hash cell limit " + limit + ".");
+        }
     }
 }

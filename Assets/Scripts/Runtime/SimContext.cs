@@ -51,6 +51,9 @@ public sealed class SimContext
     /// <summary>Set by BuildSpatialHashPass.Initialize (ADR-034). Null when the effect has no builder.</summary>
     public SpatialHashSet SpatialHash { get; internal set; }
 
+    /// <summary>Eight team slots (ADR-037). Null when the effect has no teams. Not disposed here.</summary>
+    public GraphicsBuffer Teams { get; internal set; }
+
     public SimContext(
         ParticleSet particles,
         FieldSet fields,
