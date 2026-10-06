@@ -117,7 +117,7 @@ Present частиц ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
 | **Boids_mk1** | kinematic heading + fields (ADR-012) + `HeadingToValue` и fire-LUT (ADR-031, EditMode; Play-цвета не закрыты). Primitive безусловный, `particleRenderMode` на диске `Vfx` и игнорируется |
-| **Boids_hash** | Swarm 3000, хэш, гистограмма `hashCount`, сила соседей и курс из команды. Меню `Tools/M3D/Create Boids Hash Effect`, сцена `Boids_Hash`. Play-гейт cap не пройден: [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md) |
+| **Boids_hash** | Swarm 3000, хэш, гистограмма `hashCount`, сила соседей и курс из команды. Меню `Tools/M3D/Create Boids Hash Effect`, сцена `Boids_Hash`. 5c закрыт, порог доли cap снят: [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md) |
 | **Physarum** | след `trail`: ScatterDensity → Decay 0.8 → Diffuse ×2 → `PhysarumSteer` (угол за шаг, без dt) → Integrate → Wrap. Куб 32³, поле 128². EditMode зелёный; Play-сеть не закрыта |
 | **Physarum_Fluid** | тот же след плюс `TouchInject` → `DecayField` 0.4 на `velocity` → `AdvectScalar` (`wrapUv`, dissipation 0). Без проекции. EditMode зелёный; Play пальцем не закрыт |
 | **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |
