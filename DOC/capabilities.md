@@ -117,7 +117,7 @@ Present частиц ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
 | **Boids_mk1** | kinematic heading + fields (ADR-012) + `HeadingToValue` и fire-LUT (ADR-031, EditMode; Play-цвета не закрыты). Primitive безусловный, `particleRenderMode` на диске `Vfx` и игнорируется |
-| **Boids_hash** | Swarm 3000, хэш, гистограмма `hashCount`, сила соседей и курс из команды. Меню `Tools/M3D/Create Boids Hash Effect`, сцена `Boids_Hash`. 5c закрыт, порог доли cap снят: [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md) |
+| **Boids_hash** | Swarm 3000, хэш, гистограмма `hashCount`, сила соседей и курс из команды. Меню `Tools/M3D/Create Boids Hash Effect`, сцена `Boids_Hash`. 5c закрыт, порог доли cap снят: [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md). S10 (Mali-G76, Vulkan): 30 000 частиц при nn48 держат 60 fps на 1520×720, 2280×1080 и 3040×1440; 100 000 при nn32 только на 1520×720 (см. [`status.md`](status.md), ADR-040 errata). Цвет по команде ждёт ADR-041 |
 | **Physarum** | след `trail`: ScatterDensity → Decay 0.8 → Diffuse ×2 → `PhysarumSteer` (угол за шаг, без dt) → Integrate → Wrap. Куб 32³, поле 128². EditMode зелёный; Play-сеть не закрыта |
 | **Physarum_Fluid** | тот же след плюс `TouchInject` → `DecayField` 0.4 на `velocity` → `AdvectScalar` (`wrapUv`, dissipation 0). Без проекции. EditMode зелёный; Play пальцем не закрыт |
 | **Gray-Scott-Boids** | boids → agentPresence → Boost/Erode U/V (+ field→boids) |
@@ -144,7 +144,7 @@ Present частиц ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)
 | Stable Fluids (Stam-minimum + F2/F3 скоуп) | F1 закрыта ([ADR-019](ADR/ADR-019-Fluid2D-Solver.md)). F2.0–F2.3 закрыты ([ADR-026](ADR/ADR-026-F2-Small-Scale-Structure.md)): look (тонкая нить) не взят VC/MacCormack, production остаётся `Fluid2D` Project→Advect. F3.0 закрыт ([ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md)): cross-res dye (F0.5) численно и визуально острее на `Fluid2D_HighResDye.asset`, эксперимент, не production. MAC / viscosity вне фазы |
 | Texel / UV Laplacian и градиент | Параметры Diffuse / GrayScott / SampleGradient зависят от разрешения и `Size` (ADR-016); не «исправлять» `/h²` |
 | Нет emitters | lifetime/compaction позже |
-| Нет SpatialHash | boids/sand позже |
+| SpatialHash | Есть (ADR-034): сетка XZ, снимок, сила и steer по командам в `Boids_hash`. Нет стабильного отбора соседей при капе (план §5); цвет команды не читается до ADR-041 |
 | Fields только 2D | R16 / RG16 |
 | Policy C для fields | нет runtime autogen |
 | P2G average only | Sum/Max — позже; overflow суммы — док, не guard |

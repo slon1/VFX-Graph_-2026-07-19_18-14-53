@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-10-03 (ADR-036 SwarmSource, EditMode — [ADR-036](ADR/ADR-036-Swarm-Source.md); стаи на экране нет)
+**Снимок:** 2026-10-07 (5c закрыт: пресет `Boids_hash`, [ADR-040](ADR/ADR-040-Boids-Hash-Preset-And-Play-Gate.md); замеры S10 в [`status.md`](status.md); палитра по командам — [ADR-041](ADR/ADR-041-Team-Palette.md), предложено, кода нет)
 
 ---
 
@@ -175,12 +175,12 @@
 ### Boid Neighbor Force
 | | |
 |--|--|
-| **Назначение** | Сила соседей по снимку хэша: separation, alignment, cohesion прибавляются к `velocity`. Соседей за пределами 3×3 ячеек не ищет. Steer по командам нет |
+| **Назначение** | Сила соседей по снимку хэша: separation, alignment, cohesion прибавляются к `velocity`. Соседей за пределами 3×3 ячеек не ищет. Курс из команды даёт `Team Heading Steer` |
 | **Библиотека / kernel** | `BoidsPasses` / `BoidNeighborForce` |
 | **Particles** | R: `position`, `teamId`. W: `velocity` (`+=`) |
 | **Параметры** | `maxNeighbors` (48, 0 = без капа), `countCapHits` (выкл.) |
 | **dt** | Нет |
-| **Хорошо для** | После `Build Spatial Hash`. В меню пасса нет |
+| **Хорошо для** | После `Build Spatial Hash`. В меню пасса нет. Стоимость на S10 растёт с `maxNeighbors` (кап срабатывает почти у всех частиц): 100 000 частиц, 1520×720, доля пропущенных vsync 0% / 19,9% / 48,3% при nn32 / 48 / 64. Линейность и миллисекунды не доказаны (ADR-040 errata 1 и 4) |
 
 ### Team Heading Steer
 | | |
@@ -603,7 +603,7 @@
 | **Библиотека / kernel** | `HashDebugPasses` / `HashCountsToField` |
 | **Fields** | WriteInPlace Scalar, по умолчанию `hashCount`. Разрешение и размер поля совпадают с сеткой |
 | **dt** | Нет |
-| **Хорошо для** | Сразу после `Build Spatial Hash`. В меню пасса нет. Поля в пресете ещё нет |
+| **Хорошо для** | Сразу после `Build Spatial Hash`. В меню пасса нет. Стоит в пресете `Boids_hash` (поле 30×30, размер 90×90, показ через `DebugFieldQuads`). Для замеров на устройстве отключается: шейдер `M3D/FieldDebug` должен попасть в билд, иначе квад не рисуется |
 
 ## P2G (частица → поле)
 
@@ -682,7 +682,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 | Kind | Назначение |
 |------|------------|
 | Cube / Mesh / Bitmap | Заполняют `restPosition` (и capacity) |
-| **Swarm** | Диски на XZ: `restPosition`, `heading`, `teamId`. Силы соседей нет |
+| **Swarm** | Диски на XZ: `restPosition`, `heading`, `teamId`. Сила соседей и курс из команды собраны в пресете `Boids_hash` |
 | **None** | 0 частиц — field-only (Gray-Scott, **Fluid2D**); particle-пассы no-op; VFX SpawnCount=0 |
 
 ---

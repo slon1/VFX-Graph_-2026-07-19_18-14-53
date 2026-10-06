@@ -1,12 +1,12 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-10-07  
-**Итерация:** 5c закрыт. Пресет `Boids_hash` (3000/48). Порог доли cap снят замером, числа в [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md).  
+**Итерация:** 5c закрыт. Пресет `Boids_hash` (3000/48). Порог доли cap снят замером, числа в [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md). Замеры S10 полной цепочки (2026-10-06) в разделе «ADR-040 — замеры S10» ниже, сырые логи в `DOC/MEASURE/`. Дальше P6a: [`ADR-041`](ADR/ADR-041-Team-Palette.md) предложен, ТЗ [`todo-adr-041-p6a-team-palette.md`](last/todo-adr-041-p6a-team-palette.md) готово, кода нет.  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`capabilities.md`](capabilities.md)  
-**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-019`](ADR/ADR-019-Fluid2D-Solver.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`ADR-024`](ADR/ADR-024-Harris-Order-Experiment.md) · [`ADR-025`](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) · [`ADR-026`](ADR/ADR-026-F2-Small-Scale-Structure.md) · [`ADR-027`](ADR/ADR-027-Vorticity-Confinement-Pass.md) · [`ADR-028`](ADR/ADR-028-Limited-MacCormack-Dye.md) · [`ADR-029`](ADR/ADR-029-Cross-Resolution-Dye.md) · [`ADR-030`](ADR/ADR-030-Particle-Render-Primitives-Binder.md) · [`ADR-031`](ADR/ADR-031-Primitive-Only-And-Value-Palette.md) · [`ADR-032`](ADR/ADR-032-Physarum-Steer.md) · [`ADR-033`](ADR/ADR-033-Physarum-Trail-Advect.md) · [`ADR-034`](ADR/ADR-034-Spatial-Hash-And-Teams.md) · [`ADR-035`](ADR/ADR-035-Vulkan-Dummy-Lut-Bind.md) · [`ADR-036`](ADR/ADR-036-Swarm-Source.md) · [`ADR-037`](ADR/ADR-037-Team-Profile.md) · [`ADR-038`](ADR/ADR-038-Boid-Neighbor-Force.md) · [`ADR-039`](ADR/ADR-039-Team-Heading-Steer.md) · [`ADR-040`](ADR/ADR-040-Boids-Hash-Preset-And-Play-Gate.md) · [`roadmap`](last/roadmap_m2a.md)
+**ADR / roadmap:** [`adr-001`](adr-001-field-resources-m2a.md) · [`ADR-002`](last/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](last/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](last/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](last/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](last/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](last/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](last/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](last/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](last/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](last/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-019`](ADR/ADR-019-Fluid2D-Solver.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`ADR-024`](ADR/ADR-024-Harris-Order-Experiment.md) · [`ADR-025`](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) · [`ADR-026`](ADR/ADR-026-F2-Small-Scale-Structure.md) · [`ADR-027`](ADR/ADR-027-Vorticity-Confinement-Pass.md) · [`ADR-028`](ADR/ADR-028-Limited-MacCormack-Dye.md) · [`ADR-029`](ADR/ADR-029-Cross-Resolution-Dye.md) · [`ADR-030`](ADR/ADR-030-Particle-Render-Primitives-Binder.md) · [`ADR-031`](ADR/ADR-031-Primitive-Only-And-Value-Palette.md) · [`ADR-032`](ADR/ADR-032-Physarum-Steer.md) · [`ADR-033`](ADR/ADR-033-Physarum-Trail-Advect.md) · [`ADR-034`](ADR/ADR-034-Spatial-Hash-And-Teams.md) · [`ADR-035`](ADR/ADR-035-Vulkan-Dummy-Lut-Bind.md) · [`ADR-036`](ADR/ADR-036-Swarm-Source.md) · [`ADR-037`](ADR/ADR-037-Team-Profile.md) · [`ADR-038`](ADR/ADR-038-Boid-Neighbor-Force.md) · [`ADR-039`](ADR/ADR-039-Team-Heading-Steer.md) · [`ADR-040`](ADR/ADR-040-Boids-Hash-Preset-And-Play-Gate.md) · [`ADR-041`](ADR/ADR-041-Team-Palette.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
 
@@ -80,6 +80,31 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 | `HashProbe_1000k` | 100³ = 1 000 000 | 21 / 25 |
 
 30k и 100k упёрлись в 60, стоимость хэша на них не видна. На 500k хэш стоит около 6 FPS, на 1M около 4 FPS. Гипотеза «20–30k и не ниже 50 FPS» проходит с запасом: 100k ещё на потолке. Режимы с выключенным рендером не снимались.
+
+**Errata (2026-10-07) к абзацу выше.** Фраза «гипотеза проходит с запасом: 100k ещё на потолке» относилась к проходу хэша без силы, steer и пресета. Для полной цепочки `Boids_hash` (хэш, сила, steer, рендер) это неверно для 100k: на 1520×720 кадр 20,04 мс (nn48) и 16,72 мс только при nn32; на 2280×1080 28,72 мс (nn32) и 33,80 мс (nn48); на 3040×1440 31,59 мс (nn32). Для 30k при nn48 запас подтверждён на всех трёх разрешениях (16,72–16,80 мс). Старый текст оставлен выше. Полная таблица и errata к выводам про nn48/nn64, `gpuMs` и цену рендера: ADR-040, «Замеры S10 пресета `Boids_hash`».
+
+## ADR-040 — замеры S10 полной цепочки `Boids_hash` (2026-10-06)
+
+Samsung SM-G973F, Mali-G76, Vulkan, ландшафт, `Render Scale` 0,8, отладочное поле выкл, `thermal` 0 (два прогона 30k стартовали при 1). Кадр, мс, среднее за 30 с после прогрева (`frameAvg`); потолок 16,7. Исходные строки: `DOC/MEASURE/`.
+
+| Частиц | nn | Рендер | 1520×720 | 2280×1080 | 3040×1440 |
+| --- | --- | --- | --- | --- | --- |
+| 3000 | 48 | вкл | 16,72 | 16,75 | 16,74 |
+| 30 000 | 48 | вкл | 16,72 | 16,80 | 16,74 |
+| 100 000 | 32 | вкл | 16,72 | 28,72 | 31,59 |
+| 100 000 | 48 | вкл | 20,04 | 33,80 | |
+| 100 000 | 64 | вкл | 24,85 | | |
+| 100 000 | 48 | без рендера | 17,52 | 18,37 | |
+
+**Итог.** 30k при nn48 держат 60 fps на всех разрешениях, включая 3040×1440; пятиминутный прогон 100k на 1520×720 троттлинга не показал (`thermalMax` 0, кадр 19,7 → 20,6 мс). `maxNeighbors` — рабочий рычаг: на 100k доля пропущенных vsync растёт с соседями (1520×720: 0% → 19,9% → 48,3% при nn32 / 48 / 64). Выключение рендера на 2280×1080 заметно снижает долю пропущенных vsync; причина не выяснена (P7). **Исправление (2026-10-07, ADR-040 errata 4):** прежние формулировки этого абзаца «+16 соседей добавляют 3–5 мс» и «рендер 100k стоит около 15 мс против 2,5 мс» неверны: средний кадр выше 16,7 мс при frame pacing — доля кадров по 33,3 мс, а не время GPU. Размер эффекта в мс не определён.
+
+**Исправление прежних выводов (не стирать).** Утверждения «48 и 64 не различаются» (обсуждение 2026-10-05), «`gpuMs` как мера цены на S10» и «пиксельная часть рендера мала» опровергнуты замером. Трактовка и причины ошибок: ADR-040, errata 1–3.
+
+**Инструмент замера.** `Assets/Scripts/FPSDisplay.cs` — экранное окно для билдов на устройстве: 30 с прогрева и 30 с замера (поля `warmupSeconds`, `measureSeconds`), среднее, p95, максимум и доля длинных кадров, `cpuMain` / `cpuRender` / `gpu` из `FrameTimingManager`, статус троттлинга Android, бакеты по 10 с. Кнопки `MaxN 32/48/64`, сила, рендер, отладочное поле, перезапуск окна и сцены; смена конфигурации сбрасывает окно. Строки `M3D_PERF` идут в `adb logcat -s Unity` и в `m3d_perf.csv` (`persistentDataPath`). `CountCapHits` не включает. Правки значений в редакторе возвращаются при выходе. `gpu` на S10 равен кадру, пока тот упирается в vsync (ADR-040, errata 2). Для замеров использовались копии `Boids_hash30k.asset` (30 000, nn48) и `Boids_hash100k.asset` (100 000, nn32), созданные вручную, не меню.
+
+## ADR-041 — палитра по командам (предложено)
+
+ADR и ТЗ написаны 2026-10-07, кода нет. `TeamProfile.Color` по-прежнему хранится и нигде не читается. Начинать после коммита 5c и приёмки её кода. После реализации владелец повторяет два прогона S10 (30 000, nn48, 3040×1440 и 2280×1080; база 16,74 и 16,80 мс).
 
 ## ADR-035 — пустая привязка LUT
 
