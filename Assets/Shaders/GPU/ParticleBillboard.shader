@@ -43,7 +43,7 @@ Shader "M3D/ParticleBillboard"
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
-                nointerpolation uint instanceID : TEXCOORD0;
+                nointerpolation float4 color : TEXCOORD0;
             };
 
             Varyings vert(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
@@ -54,24 +54,24 @@ Shader "M3D/ParticleBillboard"
                 float3 up = UNITY_MATRIX_I_V._m01_m11_m21;
                 float3 posWS = centerWS + right * offset.x + up * offset.y;
 
+                // Dummy _Values and _TeamIds are length 1. Read only the buffer the flag turns on.
+                float value = 0.0;
+                uint team = 0;
+                if (_UseLut > 0.5)
+                    value = _Values[instanceID];
+                if (_UseTeams > 0.5)
+                    team = _TeamIds[instanceID];
+
                 Varyings output;
                 output.positionCS = TransformWorldToHClip(posWS);
-                output.instanceID = instanceID;
+                output.color = ParticlePaletteColor(
+                    value, team, _UseLut, _UseTeams, _TeamCount, _Scale, _Color, _LutTex, sampler_LutTex);
                 return output;
             }
 
             half4 frag(Varyings input) : SV_Target
             {
-                // Dummy _Values and _TeamIds are length 1. Read only the buffer the flag turns on.
-                float value = 0.0;
-                uint team = 0;
-                if (_UseLut > 0.5)
-                    value = _Values[input.instanceID];
-                if (_UseTeams > 0.5)
-                    team = _TeamIds[input.instanceID];
-
-                return (half4)ParticlePaletteColor(
-                    value, team, _UseLut, _UseTeams, _TeamCount, _Scale, _Color, _LutTex, sampler_LutTex);
+                return (half4)input.color;
             }
             ENDHLSL
         }

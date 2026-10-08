@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-10-08  
-**Итерация:** A1 на проверке. Формула палитры вынесена в `ParticlePalette.hlsl`. EditMode до правки 298/298, после 307/307. Warning билборда 0 до и 0 после на D3D и Vulkan. GLES3 в Player Settings нет. Снимки `DOC/last/play-a1-*`.  
+**Дата:** 2026-10-09  
+**Итерация:** A2 на проверке. Цвет билборда считается в вершине. Тест стадии зелёный до переноса и после без правок. EditMode 308/308. Warning D3D/Vulkan не выросли. Замер S10 за владельцем. Снимки `DOC/last/play-a2-*`.  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  
