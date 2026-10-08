@@ -1,0 +1,34 @@
+#pragma kernel PaletteAddressing
+
+#include "Assets/Shaders/GPU/Includes/ParticlePalette.hlsl"
+
+Texture2D<float4> _LutTex;
+SamplerState sampler_LutTex;
+
+StructuredBuffer<float> _InValue;
+StructuredBuffer<uint> _InTeam;
+StructuredBuffer<float> _InUseLut;
+StructuredBuffer<float> _InUseTeams;
+StructuredBuffer<float> _InTeamCount;
+StructuredBuffer<float> _InScale;
+StructuredBuffer<float4> _InColor;
+RWStructuredBuffer<float4> _OutColor;
+uint _CaseCount;
+
+[numthreads(64, 1, 1)]
+void PaletteAddressing(uint id : SV_DispatchThreadID)
+{
+    if (id >= _CaseCount)
+        return;
+
+    _OutColor[id] = ParticlePaletteColor(
+        _InValue[id],
+        _InTeam[id],
+        _InUseLut[id],
+        _InUseTeams[id],
+        _InTeamCount[id],
+        _InScale[id],
+        _InColor[id],
+        _LutTex,
+        sampler_LutTex);
+}

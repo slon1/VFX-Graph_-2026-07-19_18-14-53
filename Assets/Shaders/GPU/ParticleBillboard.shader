@@ -20,6 +20,7 @@ Shader "M3D/ParticleBillboard"
             #pragma vertex vert
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Assets/Shaders/GPU/Includes/ParticlePalette.hlsl"
 
             StructuredBuffer<float3> _Positions;
             StructuredBuffer<float> _Values;
@@ -61,23 +62,16 @@ Shader "M3D/ParticleBillboard"
 
             half4 frag(Varyings input) : SV_Target
             {
-                bool useValue = _UseLut > 0.5;
-                bool useTeam = _UseTeams > 0.5;
-                if (useValue || useTeam)
-                {
-                    float d = useValue ? saturate(_Values[input.instanceID] * _Scale) : 0.0;
-                    float row = 0.5;
-                    if (useTeam)
-                    {
-                        uint t = min(_TeamIds[input.instanceID], (uint)max(_TeamCount - 1.0, 0.0));
-                        row = (t + 0.5) / max(_TeamCount, 1.0);
-                    }
+                // Dummy _Values and _TeamIds are length 1. Read only the buffer the flag turns on.
+                float value = 0.0;
+                uint team = 0;
+                if (_UseLut > 0.5)
+                    value = _Values[input.instanceID];
+                if (_UseTeams > 0.5)
+                    team = _TeamIds[input.instanceID];
 
-                    float4 lut = _LutTex.SampleLevel(sampler_LutTex, float2(d, row), 0);
-                    return half4(lut.rgb, lut.a * _Color.a);
-                }
-
-                return half4(_Color.rgb, _Color.a);
+                return (half4)ParticlePaletteColor(
+                    value, team, _UseLut, _UseTeams, _TeamCount, _Scale, _Color, _LutTex, sampler_LutTex);
             }
             ENDHLSL
         }
