@@ -30,6 +30,8 @@ public static class M3DDemoTools
     private const string HashProbe100kScene = "Assets/Scenes/HashProbe_100k.unity";
     private const string BoidsHashPath = EffectsFolder + "/Boids_hash.asset";
     private const string BoidsHashScene = "Assets/Scenes/Boids_Hash.unity";
+    private const string BoidsHashTwoTeamsPath = EffectsFolder + "/Boids_hash_2teams.asset";
+    private const string BoidsHashTwoTeamsScene = "Assets/Scenes/Boids_Hash_2Teams.unity";
 
     private static readonly string[] PassLibraryPaths =
     {
@@ -1708,6 +1710,178 @@ public static class M3DDemoTools
 
         EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
         GameObject host = new GameObject("M3D Boids Hash");
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    [MenuItem("Tools/M3D/Create Boids Hash 2 Teams Effect")]
+    public static void CreateBoidsHashTwoTeamsEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashTwoTeamsAsset(BoidsHashTwoTeamsPath);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Boids Hash 2 Teams scene cancelled; the asset was still written.");
+            return;
+        }
+
+        CreateBoidsHashTwoTeamsScene(BoidsHashTwoTeamsScene, BoidsHashTwoTeamsPath);
+        Debug.Log("M3D: created Boids_hash_2teams asset and Boids_Hash_2Teams scene.");
+    }
+
+    private static void CreateBoidsHashTwoTeamsAsset(string path)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        FieldDescriptor hashCount = FieldDescriptor.CreateDefault("hashCount", FieldSemantic.Scalar);
+        SetField(hashCount, "resolution", new Vector2Int(30, 30));
+        SetField(hashCount, "size", new Vector2(90f, 90f));
+        SetField(hashCount, "origin", new Vector3(0f, -1f, 0f));
+
+        DebugFieldQuadSlot hashQuad = DebugFieldQuadSlot.Density("hashCount");
+        hashQuad.colorScale = 0.05f;
+
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            1f,
+            new SimPass[]
+            {
+                new BuildSpatialHashPass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    MinCellSize = 3f,
+                    Wrap = true,
+                },
+                new HashCountsToFieldPass { FieldName = "hashCount" },
+                new ClearVelocityPass(),
+                new BoidNeighborForcePass { MaxNeighbors = 48, CountCapHits = false },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                new BoxBoundsPass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    Behaviour = BoundsBehaviour.Wrap,
+                },
+                new HeadingToValuePass(),
+            },
+            new[] { hashCount },
+            new[] { hashQuad });
+
+        SwarmSource swarm = (SwarmSource)asset.ResolveSource();
+        swarm.Seed = 1;
+        swarm.JitterDegrees = 0f;
+        swarm.Spawns = new System.Collections.Generic.List<SwarmSource.Spawn>
+        {
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 0,
+                Count = 1500,
+                Center = new Vector2(-22f, 0f),
+                Radius = 12f,
+                InitialDirection = new Vector2(1f, 0f),
+            },
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 1,
+                Count = 1500,
+                Center = new Vector2(22f, 0f),
+                Radius = 12f,
+                InitialDirection = new Vector2(-1f, 0f),
+            },
+        };
+        asset.SetTeams(new[]
+        {
+            new TeamProfile
+            {
+                Name = "Fire",
+                SeparationRadius = 3f,
+                AlignmentRadius = 3f,
+                CohesionRadius = 3f,
+                InterGroupSeparationMultiplier = 4f,
+                SeparationWeight = 1.2f,
+                AlignmentWeight = 0.8f,
+                CohesionWeight = 0.6f,
+                Cruise = 6f,
+                Turn = 4f,
+                Color = DebugFieldQuadSlot.DefaultFireGradient(),
+            },
+            new TeamProfile
+            {
+                Name = "Ice",
+                SeparationRadius = 3f,
+                AlignmentRadius = 3f,
+                CohesionRadius = 3f,
+                InterGroupSeparationMultiplier = 4f,
+                SeparationWeight = 1.2f,
+                AlignmentWeight = 0.8f,
+                CohesionWeight = 0.6f,
+                Cruise = 6f,
+                Turn = 4f,
+                Color = IceGradient(),
+            },
+        });
+
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("particleSize").floatValue = 0.5f;
+        so.FindProperty("particleValueScale").floatValue = 1f;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        SetField(asset, "particleGradient", DebugFieldQuadSlot.DefaultFireGradient());
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static Gradient IceGradient()
+    {
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new[]
+            {
+                new GradientColorKey(new Color(0.02f, 0.08f, 0.35f), 0f),
+                new GradientColorKey(new Color(0.10f, 0.45f, 0.90f), 0.45f),
+                new GradientColorKey(new Color(0.75f, 0.95f, 1f), 1f),
+            },
+            new[]
+            {
+                new GradientAlphaKey(1f, 0f),
+                new GradientAlphaKey(1f, 1f),
+            });
+        return gradient;
+    }
+
+    private static void CreateBoidsHashTwoTeamsScene(string scenePath, string assetPath)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera != null)
+        {
+            camera.orthographic = true;
+            camera.orthographicSize = 46f;
+            camera.transform.SetPositionAndRotation(new Vector3(0f, 40f, 0f), Quaternion.Euler(90f, 0f, 0f));
+        }
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject("M3D Boids Hash 2 Teams");
         SimulationWorld world = host.AddComponent<SimulationWorld>();
         SerializedObject worldSo = new SerializedObject(world);
         worldSo.FindProperty("effect").objectReferenceValue = asset;

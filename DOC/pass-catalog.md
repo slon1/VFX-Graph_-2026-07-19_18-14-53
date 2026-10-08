@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-10-08 (6a принята: цвет команды в билборде, [ADR-041](ADR/ADR-041-Team-Palette.md); `Boids_hash` красится огнём команды. 5c закрыт, замеры S10 в [`status.md`](status.md))
+**Снимок:** 2026-10-08 (6b принята: две стаи `Boids_hash_2teams`, [ADR-042](ADR/ADR-042-Two-Team-Preset.md). 6a: цвет команды в билборде, [ADR-041](ADR/ADR-041-Team-Palette.md). Замеры S10 в [`status.md`](status.md))
 
 ---
 
@@ -682,7 +682,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 | Kind | Назначение |
 |------|------------|
 | Cube / Mesh / Bitmap | Заполняют `restPosition` (и capacity) |
-| **Swarm** | Диски на XZ: `restPosition`, `heading`, `teamId`. Сила соседей и курс из команды собраны в пресете `Boids_hash` |
+| **Swarm** | Диски на XZ: `restPosition`, `heading`, `teamId`. Одна стая — `Boids_hash`, две — `Boids_hash_2teams` |
 | **None** | 0 частиц — field-only (Gray-Scott, **Fluid2D**); particle-пассы no-op; VFX SpawnCount=0 |
 
 ---
