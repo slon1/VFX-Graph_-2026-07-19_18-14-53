@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-10-07 (5c закрыт: пресет `Boids_hash`, [ADR-040](ADR/ADR-040-Boids-Hash-Preset-And-Play-Gate.md); замеры S10 в [`status.md`](status.md); палитра по командам — [ADR-041](ADR/ADR-041-Team-Palette.md), предложено, кода нет)
+**Снимок:** 2026-10-08 (6a принята: цвет команды в билборде, [ADR-041](ADR/ADR-041-Team-Palette.md); `Boids_hash` красится огнём команды. 5c закрыт, замеры S10 в [`status.md`](status.md))
 
 ---
 
@@ -673,7 +673,7 @@ Normalize делает **`FieldWrite += decoded`** (не replace) — без Dec
 
 **Fluid2D HighResDye ([ADR-029](ADR/ADR-029-Cross-Resolution-Dye.md), эксперимент F3.0, закрыт):** клон `Fluid2D.asset`, `dye` 512² / остальные 128², тот же Size 32, без VC/MacCormack. Меню Create/Assign HighResDye. Visual: острее Fluid2D, тот же гриб; не production — [`play-F3.0-touch.md`](last/play-F3.0-touch.md). Fluid2D / Harris / Vorticity / MacCormackDye не Create.
 
-**Particle Primitive render ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md), EditMode):** `SetupBinders` всегда `PrimitiveParticleBinder`. `VisualEffect` для `Build` не нужен. **Particle Render Mode** и меню Enable/Disable ADR-030 пишут ассет и не читаются. **Particle Size / Color / Gradient / Value Scale** читаются при сборке мира. `particleSize` — мировые единицы: 0.05 на весь кадр даёт субпиксельный квад и мигание (2026-09-25, без LUT; 0.2 почти убрало). Если у частиц есть `value`, LUT печётся один раз в `Initialize` и сэмплируется при `_UseLut=1`; иначе плоский `_Color` и `_UseLut=0`. Без атрибута `value` биндер всё равно привязывает буфер из одного float и текстуру 1×1, иначе Vulkan пропускает кадр. Present сам `value` не считает — его пишут `SpeedToValue` / `HeadingToValue`. S10-замер ADR-030: VFX 20–30 → Primitive 40–50 FPS.
+**Particle Primitive render ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md), EditMode):** `SetupBinders` всегда `PrimitiveParticleBinder`. `VisualEffect` для `Build` не нужен. **Particle Render Mode** и меню Enable/Disable ADR-030 пишут ассет и не читаются. **Particle Size / Color / Gradient / Value Scale** читаются при сборке мира. `particleSize` — мировые единицы: 0.05 на весь кадр даёт субпиксельный квад и мигание (2026-09-25, без LUT; 0.2 почти убрало). Если у частиц есть `value`, LUT печётся один раз в `Initialize` и сэмплируется при `_UseLut=1`; иначе плоский `_Color` и `_UseLut=0`. Если список команд непустой и есть `teamId`, LUT становится `256 × teamCount` из `TeamProfile.Color` ([ADR-041](ADR/ADR-041-Team-Palette.md)); без команд остаётся полоса `256×1`. Без атрибута `value` биндер всё равно привязывает буфер из одного float и текстуру 1×1, иначе Vulkan пропускает кадр. Present сам `value` не считает — его пишут `SpeedToValue` / `HeadingToValue`. S10-замер ADR-030: VFX 20–30 → Primitive 40–50 FPS.
 
 ---
 

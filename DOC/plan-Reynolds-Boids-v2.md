@@ -210,7 +210,7 @@ ADR и ТЗ: [ADR-037](ADR/ADR-037-Team-Profile.md), [`todo-adr-034-p4-teams.md`
 
 ### P6. Палитра по командам и две команды (Rivalry-пресет)
 
-**6a Палитра** (после «принято» 5c, чтобы шейдерная работа не блокировала путь хэш → сила → steer). Решения и границы: [ADR-041](ADR/ADR-041-Team-Palette.md), ТЗ [`todo-adr-041-p6a-team-palette.md`](last/todo-adr-041-p6a-team-palette.md), статус на 2026-10-07: предложено, кода нет. Где этот абзац короче ТЗ, делать по ТЗ (в нём также правка цвета команды в создателе `Boids_hash` и повторный замер S10):
+**6a Палитра** (после «принято» 5c, чтобы шейдерная работа не блокировала путь хэш → сила → steer). Решения и границы: [ADR-041](ADR/ADR-041-Team-Palette.md), ТЗ [`todo-adr-041-p6a-team-palette.md`](last/todo-adr-041-p6a-team-palette.md). Принято 2026-10-08: EditMode 295/295, вид огня `Boids_hash` совпал. Замер S10 палитры остаётся за владельцем. Где этот абзац короче ТЗ, делать по ТЗ:
 - `PrimitiveParticleBinder` получает перегрузку конструктора с `IReadOnlyList<TeamProfile>` (4-арг конструктор остаётся). Если у эффекта есть `teams` и атрибут `teamId`: 2D LUT `256 × teamCount` (строка = градиент команды), в `ParticleBillboard.shader` добавить `StructuredBuffer<uint> _TeamIds`, выборка `float2(value*scale, (team+0.5)/teamCount)`. Без команд поведение ADR-031 не меняется (`_UseLut` как раньше).
 - `LutTextureUtility` выделить, только если это уменьшает дублирование (иначе не трогать `BuildLutPixels`).
 - Тесты: пиксели LUT на концах каждой строки; конструкторы; рендер без `teams` как раньше (существующие `PrimitiveParticleBinder*Tests` зелёные без правок).

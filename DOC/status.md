@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
-**Дата:** 2026-10-07  
-**Итерация:** 5c закрыт. Пресет `Boids_hash` (3000/48). Порог доли cap снят замером, числа в [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md). Замеры S10 полной цепочки (2026-10-06) в разделе «ADR-040 — замеры S10» ниже, сырые логи в `DOC/MEASURE/`. Дальше P6a: [`ADR-041`](ADR/ADR-041-Team-Palette.md) предложен, ТЗ [`todo-adr-041-p6a-team-palette.md`](last/todo-adr-041-p6a-team-palette.md) готово, кода нет.  
+**Дата:** 2026-10-08  
+**Итерация:** 6a принята. Палитра по командам в `PrimitiveParticleBinder`, `Boids_hash` красится огнём команды. EditMode 295/295. Снимки [`play-6a-before.png`](last/play-6a-before.png) и [`play-6a-after.png`](last/play-6a-after.png), вид совпал. Замер S10 палитры остаётся за владельцем.  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  
@@ -58,9 +58,9 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 `Boid Neighbor Force` читает снимок хэша и прибавляет силу к `velocity`. Курс из команды — ADR-039. Пресет — `Boids_hash`.
 
-## ADR-037 — команды без палитры (EditMode)
+## ADR-037 — команды (EditMode)
 
-На `EffectAsset` список `teams`, не больше 8. Мир держит буфер из восьми `TeamParams` и перезаливает его каждый кадр. Цвет хранится и не используется. Буфер читают сила соседей (ADR-038) и курс из команды (ADR-039).
+На `EffectAsset` список `teams`, не больше 8. Мир держит буфер из восьми `TeamParams` и перезаливает его каждый кадр. Цвет команды читает билборд (ADR-041). Буфер читают сила соседей (ADR-038) и курс из команды (ADR-039).
 
 ## ADR-036 — SwarmSource (EditMode)
 
@@ -102,9 +102,9 @@ Samsung SM-G973F, Mali-G76, Vulkan, ландшафт, `Render Scale` 0,8, отл
 
 **Инструмент замера.** `Assets/Scripts/FPSDisplay.cs` — экранное окно для билдов на устройстве: 30 с прогрева и 30 с замера (поля `warmupSeconds`, `measureSeconds`), среднее, p95, максимум и доля длинных кадров, `cpuMain` / `cpuRender` / `gpu` из `FrameTimingManager`, статус троттлинга Android, бакеты по 10 с. Кнопки `MaxN 32/48/64`, сила, рендер, отладочное поле, перезапуск окна и сцены; смена конфигурации сбрасывает окно. Строки `M3D_PERF` идут в `adb logcat -s Unity` и в `m3d_perf.csv` (`persistentDataPath`). `CountCapHits` не включает. Правки значений в редакторе возвращаются при выходе. `gpu` на S10 равен кадру, пока тот упирается в vsync (ADR-040, errata 2). Для замеров использовались копии `Boids_hash30k.asset` (30 000, nn48) и `Boids_hash100k.asset` (100 000, nn32), созданные вручную, не меню.
 
-## ADR-041 — палитра по командам (предложено)
+## ADR-041 — палитра по командам (EditMode + Play)
 
-ADR и ТЗ написаны 2026-10-07, кода нет. `TeamProfile.Color` по-прежнему хранится и нигде не читается. Начинать после коммита 5c и приёмки её кода. После реализации владелец повторяет два прогона S10 (30 000, nn48, 3040×1440 и 2280×1080; база 16,74 и 16,80 мс).
+Принято 2026-10-08. `PrimitiveParticleBinder` при непустом списке команд и атрибуте `teamId` печёт LUT `256 × teamCount` из `TeamProfile.Color`. `Boids_hash` задаёт команде тот же огонь, что и `particleGradient`. EditMode 295/295 дважды. Снимки на 15 с: [`play-6a-before.png`](last/play-6a-before.png), [`play-6a-after.png`](last/play-6a-after.png), вид огня совпал. Замер S10 (30 000, nn48, 3040×1440 и 2280×1080; база 16,74 и 16,80 мс) остаётся за владельцем.
 
 ## ADR-035 — пустая привязка LUT
 

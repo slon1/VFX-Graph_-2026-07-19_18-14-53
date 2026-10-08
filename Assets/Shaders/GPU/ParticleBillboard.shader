@@ -23,12 +23,15 @@ Shader "M3D/ParticleBillboard"
 
             StructuredBuffer<float3> _Positions;
             StructuredBuffer<float> _Values;
+            StructuredBuffer<uint> _TeamIds;
             Texture2D<float4> _LutTex;
             SamplerState sampler_LutTex;
             float _Size;
             float4 _Color;
             float _Scale;
             float _UseLut;
+            float _UseTeams;
+            float _TeamCount;
 
             static const float2 QuadOffsets[6] =
             {
@@ -58,10 +61,19 @@ Shader "M3D/ParticleBillboard"
 
             half4 frag(Varyings input) : SV_Target
             {
-                if (_UseLut > 0.5)
+                bool useValue = _UseLut > 0.5;
+                bool useTeam = _UseTeams > 0.5;
+                if (useValue || useTeam)
                 {
-                    float d = saturate(_Values[input.instanceID] * _Scale);
-                    float4 lut = _LutTex.SampleLevel(sampler_LutTex, float2(d, 0.5), 0);
+                    float d = useValue ? saturate(_Values[input.instanceID] * _Scale) : 0.0;
+                    float row = 0.5;
+                    if (useTeam)
+                    {
+                        uint t = min(_TeamIds[input.instanceID], (uint)max(_TeamCount - 1.0, 0.0));
+                        row = (t + 0.5) / max(_TeamCount, 1.0);
+                    }
+
+                    float4 lut = _LutTex.SampleLevel(sampler_LutTex, float2(d, row), 0);
                     return half4(lut.rgb, lut.a * _Color.a);
                 }
 

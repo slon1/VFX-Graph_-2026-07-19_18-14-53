@@ -1680,6 +1680,7 @@ public static class M3DDemoTools
                 CohesionWeight = 0.6f,
                 Cruise = 6f,
                 Turn = 4f,
+                Color = DebugFieldQuadSlot.DefaultFireGradient(),
             },
         });
 

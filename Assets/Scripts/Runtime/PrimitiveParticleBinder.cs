@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -17,27 +18,44 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
     private static readonly int LutTexId = Shader.PropertyToID("_LutTex");
     private static readonly int ScaleId = Shader.PropertyToID("_Scale");
     private static readonly int UseLutId = Shader.PropertyToID("_UseLut");
+    private static readonly int TeamIdsId = Shader.PropertyToID("_TeamIds");
+    private static readonly int UseTeamsId = Shader.PropertyToID("_UseTeams");
+    private static readonly int TeamCountId = Shader.PropertyToID("_TeamCount");
 
     private readonly float size;
     private readonly Color color;
     private readonly Gradient gradient;
     private readonly float valueScale;
+    private IReadOnlyList<TeamProfile> teams;
     private Material material;
     private MaterialPropertyBlock props;
     private RenderParams renderParams;
     private Texture2D lutTexture;
+    private Texture2D teamLut;
     private GraphicsBuffer valuesBuffer;
+    private GraphicsBuffer teamBuffer;
     private Texture2D dummyLut;
     private GraphicsBuffer dummyValues;
+    private GraphicsBuffer dummyTeamIds;
     private bool hasValueAttribute;
+    private int teamCount;
     private int instanceCount;
 
+    internal bool UsesTeamPalette { get; private set; }
+
     public PrimitiveParticleBinder(float size, Color color, Gradient gradient, float valueScale)
+        : this(size, color, gradient, valueScale, null)
+    {
+    }
+
+    public PrimitiveParticleBinder(
+        float size, Color color, Gradient gradient, float valueScale, IReadOnlyList<TeamProfile> teams)
     {
         this.size = size;
         this.color = color;
         this.gradient = gradient;
         this.valueScale = valueScale;
+        this.teams = teams;
     }
 
     public void Initialize(SimContext context)
@@ -54,7 +72,33 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
         instanceCount = context.Particles.Count;
 
         hasValueAttribute = context.Particles.TryGet(BuiltinAttributes.Value, out valuesBuffer);
-        if (hasValueAttribute)
+        UsesTeamPalette = teams != null
+            && teams.Count > 0
+            && context.Particles.TryGet(BuiltinAttributes.TeamId, out teamBuffer);
+        if (UsesTeamPalette)
+        {
+            teamCount = teams.Count < TeamProfile.MaxTeams ? teams.Count : TeamProfile.MaxTeams;
+            Gradient[] rows = new Gradient[teamCount];
+            for (int i = 0; i < teamCount; i++)
+            {
+                TeamProfile profile = teams[i];
+                Gradient row = profile != null ? profile.Color : null;
+                rows[i] = row ?? gradient ?? DebugFieldQuadSlot.DefaultFireGradient();
+            }
+
+            teamLut = BakeTeamLut(rows);
+        }
+
+        teams = null;
+
+        if (UsesTeamPalette)
+        {
+            if (!hasValueAttribute)
+            {
+                dummyValues = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float));
+            }
+        }
+        else if (hasValueAttribute)
         {
             lutTexture = BakeLutTexture(gradient ?? DebugFieldQuadSlot.DefaultFireGradient());
         }
@@ -67,6 +111,11 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
                 hideFlags = HideFlags.HideAndDontSave,
             };
             dummyLut.Apply(false, true);
+        }
+
+        if (!UsesTeamPalette)
+        {
+            dummyTeamIds = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
         }
 
         renderParams = new RenderParams(material)
@@ -89,18 +138,42 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
         props.SetFloat(SizeId, size);
         props.SetColor(ColorId, color);
 
-        if (hasValueAttribute)
+        if (UsesTeamPalette)
+        {
+            props.SetBuffer(TeamIdsId, teamBuffer);
+            props.SetFloat(UseTeamsId, 1f);
+            props.SetFloat(TeamCountId, teamCount);
+            props.SetTexture(LutTexId, teamLut);
+            if (hasValueAttribute)
+            {
+                props.SetBuffer(ValuesId, valuesBuffer);
+                props.SetFloat(ScaleId, valueScale);
+                props.SetFloat(UseLutId, 1f);
+            }
+            else
+            {
+                props.SetBuffer(ValuesId, dummyValues);
+                props.SetFloat(UseLutId, 0f);
+            }
+        }
+        else if (hasValueAttribute)
         {
             props.SetBuffer(ValuesId, valuesBuffer);
             props.SetTexture(LutTexId, lutTexture);
             props.SetFloat(ScaleId, valueScale);
             props.SetFloat(UseLutId, 1f);
+            props.SetBuffer(TeamIdsId, dummyTeamIds);
+            props.SetFloat(UseTeamsId, 0f);
+            props.SetFloat(TeamCountId, 1f);
         }
         else
         {
             props.SetBuffer(ValuesId, dummyValues);
             props.SetTexture(LutTexId, dummyLut);
             props.SetFloat(UseLutId, 0f);
+            props.SetBuffer(TeamIdsId, dummyTeamIds);
+            props.SetFloat(UseTeamsId, 0f);
+            props.SetFloat(TeamCountId, 1f);
         }
 
         Graphics.RenderPrimitives(renderParams, MeshTopology.Triangles, 6, instanceCount);
@@ -110,11 +183,18 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
     {
         DestroyObject(ref material);
         DestroyObject(ref lutTexture);
+        DestroyObject(ref teamLut);
         DestroyObject(ref dummyLut);
         if (dummyValues != null)
         {
             dummyValues.Release();
             dummyValues = null;
+        }
+
+        if (dummyTeamIds != null)
+        {
+            dummyTeamIds.Release();
+            dummyTeamIds = null;
         }
     }
 
@@ -142,6 +222,31 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
 
         texture.SetPixels(BuildLutPixels(gradient, LutWidth));
         texture.Apply(false, true);
+        return texture;
+    }
+
+    private static Texture2D BakeTeamLut(Gradient[] rows)
+    {
+        Texture2D texture = new Texture2D(LutWidth, rows.Length, TextureFormat.RGBA32, false, true)
+        {
+            name = "M3D_ParticleBillboard_TeamLUT",
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear,
+            hideFlags = HideFlags.HideAndDontSave,
+        };
+
+        Color[] pixels = new Color[LutWidth * rows.Length];
+        for (int row = 0; row < rows.Length; row++)
+        {
+            Color[] baked = BuildLutPixels(rows[row], LutWidth);
+            for (int x = 0; x < LutWidth; x++)
+            {
+                pixels[row * LutWidth + x] = baked[x];
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply(false, false);
         return texture;
     }
 
