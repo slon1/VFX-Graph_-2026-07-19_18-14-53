@@ -2,7 +2,7 @@
 
 **Статус:** на проверке. Раздел A1 ниже. «Принято» ставит владелец.
 **Дата:** 2026-10-08
-**Контекст:** M3D Framework, после принятых [ADR-041](ADR-041-Team-Palette.md) и [ADR-042](ADR-042-Two-Team-Preset.md). ТЗ: [`todo-adr-043-044-p6-fixes.md`](todo-adr-043-044-p6-fixes.md).
+**Контекст:** M3D Framework, после принятых [ADR-041](ADR-041-Team-Palette.md) и [ADR-042](ADR-042-Two-Team-Preset.md). ТЗ: [`todo-adr-043-044-p6-fixes.md`](../last/todo-adr-043-044-p6-fixes.md).
 
 ---
 

@@ -17,11 +17,11 @@ public class PrimitiveParticleBinderTeamPaletteShaderTests
     public void SetUp()
     {
         Assume.That(SystemInfo.supportsComputeShaders);
-        Assume.That(Shader.Find("M3D/ParticleBillboard") != null, "shader M3D/ParticleBillboard must be imported");
+        Assert.That(Shader.Find("M3D/ParticleBillboard") != null, "shader M3D/ParticleBillboard must be imported");
 
         shader = AssetDatabase.LoadAssetAtPath<ComputeShader>(ComputePath);
-        Assume.That(shader != null, "ParticlePaletteAddressing.compute must be imported.");
-        Assume.That(shader.HasKernel("PaletteAddressing"));
+        Assert.That(shader != null, "ParticlePaletteAddressing.compute must be imported.");
+        Assert.That(shader.HasKernel("PaletteAddressing"));
 
         particles = new ParticleSet();
         particles.EnsureCapacity(4);
