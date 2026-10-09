@@ -56,11 +56,8 @@ public class BoidsHashTwoTeamsPresetTests
         Assert.AreEqual(2, asset.Teams.Count);
         AssertTeam(asset.Teams[0], "Fire");
         AssertTeam(asset.Teams[1], "Ice");
-        AssertColors(Color.black, asset.Teams[0].Color.Evaluate(0f));
-        AssertColors(new Color(1f, 0.95f, 0.55f, 1f), asset.Teams[0].Color.Evaluate(1f));
-        AssertColors(new Color(0.02f, 0.08f, 0.35f, 1f), asset.Teams[1].Color.Evaluate(0f));
-        AssertColors(new Color(0.10f, 0.45f, 0.90f, 1f), asset.Teams[1].Color.Evaluate(0.45f));
-        AssertColors(new Color(0.75f, 0.95f, 1f, 1f), asset.Teams[1].Color.Evaluate(1f));
+        AssertCyclicKeys(asset.Teams[0].Color, "Fire", FireKeys());
+        AssertCyclicKeys(asset.Teams[1].Color, "Ice", IceKeys());
 
         IReadOnlyList<SimPass> passes = asset.Passes;
         Assert.AreEqual(8, passes.Count);
@@ -94,6 +91,16 @@ public class BoidsHashTwoTeamsPresetTests
         Assert.AreEqual("hashCount", field.Name);
         Assert.AreEqual(new Vector2Int(30, 30), field.Resolution);
         Assert.AreEqual(new Vector2(90f, 90f), field.Size);
+    }
+
+    [Test]
+    public void TeamGradients_AreCyclicAndReadable()
+    {
+        EffectAsset asset = LoadAsset();
+        // Снимок Play 2026-10-10, фон (103, 97, 91) в sRGB.
+        Color backgroundLinear = new Color(0.136f, 0.120f, 0.105f, 1f);
+        AssertCyclicAndReadable(asset.Teams[0].Color, "Fire", backgroundLinear, true);
+        AssertCyclicAndReadable(asset.Teams[1].Color, "Ice", backgroundLinear, false);
     }
 
     [Test]
@@ -240,12 +247,104 @@ public class BoidsHashTwoTeamsPresetTests
         Assert.AreEqual(4f, team.Turn);
     }
 
-    private static void AssertColors(Color expected, Color actual)
+    private static Color[] FireKeys()
     {
-        Assert.LessOrEqual(Mathf.Abs(expected.r - actual.r), ChannelTolerance, "r");
-        Assert.LessOrEqual(Mathf.Abs(expected.g - actual.g), ChannelTolerance, "g");
-        Assert.LessOrEqual(Mathf.Abs(expected.b - actual.b), ChannelTolerance, "b");
-        Assert.LessOrEqual(Mathf.Abs(expected.a - actual.a), ChannelTolerance, "a");
+        return new[]
+        {
+            new Color(0.55f, 0.08f, 0.00f, 1f),
+            new Color(0.85f, 0.30f, 0.00f, 1f),
+            new Color(1.00f, 0.70f, 0.10f, 1f),
+            new Color(0.85f, 0.30f, 0.00f, 1f),
+            new Color(0.55f, 0.08f, 0.00f, 1f),
+        };
+    }
+
+    private static Color[] IceKeys()
+    {
+        return new[]
+        {
+            new Color(0.30f, 0.80f, 1.00f, 1f),
+            new Color(0.15f, 0.50f, 0.95f, 1f),
+            new Color(0.05f, 0.15f, 0.55f, 1f),
+            new Color(0.15f, 0.50f, 0.95f, 1f),
+            new Color(0.30f, 0.80f, 1.00f, 1f),
+        };
+    }
+
+    private static void AssertCyclicKeys(Gradient gradient, string team, Color[] keys)
+    {
+        Assert.AreEqual(GradientMode.Blend, gradient.mode, team + " mode");
+        float[] times = { 0f, 0.25f, 0.5f, 0.75f, 1f };
+        for (int i = 0; i < times.Length; i++)
+        {
+            AssertColors(keys[i], gradient.Evaluate(times[i]), team + " t=" + times[i]);
+        }
+    }
+
+    private static void AssertCyclicAndReadable(
+        Gradient gradient, string team, Color backgroundLinear, bool fire)
+    {
+        Color start = gradient.Evaluate(0f);
+        Color end = gradient.Evaluate(1f);
+        AssertColors(start, end, team + " ends");
+
+        const int sampleCount = 256;
+        float maxLuminance = float.NegativeInfinity;
+        float[] luminance = new float[sampleCount];
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = i / 255f;
+            Color sample = gradient.Evaluate(t);
+            string where = team + " sample " + i + " t=" + t.ToString("0.###");
+            Color.RGBToHSV(sample, out float hue01, out float saturation, out float value);
+            float hue = hue01 * 360f;
+            Assert.GreaterOrEqual(saturation, 0.5f, where + " S");
+            Assert.GreaterOrEqual(value, 0.4f, where + " V");
+            if (fire)
+            {
+                Assert.That(hue, Is.InRange(0f, 60f), where + " hue");
+            }
+            else
+            {
+                Assert.That(hue, Is.InRange(180f, 250f), where + " hue");
+            }
+
+            float distance = Mathf.Sqrt(
+                (sample.r - backgroundLinear.r) * (sample.r - backgroundLinear.r)
+                + (sample.g - backgroundLinear.g) * (sample.g - backgroundLinear.g)
+                + (sample.b - backgroundLinear.b) * (sample.b - backgroundLinear.b));
+            Assert.GreaterOrEqual(distance, 0.25f, where + " distance");
+
+            luminance[i] = 0.2126f * sample.r + 0.7152f * sample.g + 0.0722f * sample.b;
+            if (luminance[i] > maxLuminance)
+            {
+                maxLuminance = luminance[i];
+            }
+        }
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            if (luminance[i] < maxLuminance - 1e-4f)
+            {
+                continue;
+            }
+
+            float t = i / 255f;
+            bool peakInRange = fire
+                ? t >= 0.45f && t <= 0.55f
+                : t <= 0.05f || t >= 0.95f;
+            Assert.IsTrue(
+                peakInRange,
+                team + " luminance peak t=" + t.ToString("0.###") + " is outside the allowed range");
+        }
+    }
+
+    private static void AssertColors(Color expected, Color actual, string label)
+    {
+        Assert.LessOrEqual(Mathf.Abs(expected.r - actual.r), ChannelTolerance, label + " r");
+        Assert.LessOrEqual(Mathf.Abs(expected.g - actual.g), ChannelTolerance, label + " g");
+        Assert.LessOrEqual(Mathf.Abs(expected.b - actual.b), ChannelTolerance, label + " b");
+        Assert.LessOrEqual(Mathf.Abs(expected.a - actual.a), ChannelTolerance, label + " a");
     }
 
     private EffectAsset LoadAsset()

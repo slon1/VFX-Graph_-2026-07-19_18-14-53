@@ -1822,7 +1822,7 @@ public static class M3DDemoTools
                 CohesionWeight = 0.6f,
                 Cruise = 6f,
                 Turn = 4f,
-                Color = DebugFieldQuadSlot.DefaultFireGradient(),
+                Color = FireCyclicGradient(),
             },
             new TeamProfile
             {
@@ -1851,15 +1851,34 @@ public static class M3DDemoTools
         AssetDatabase.SaveAssetIfDirty(asset);
     }
 
+    private static Gradient FireCyclicGradient()
+    {
+        return CyclicTeamGradient(
+            new Color(0.55f, 0.08f, 0.00f),
+            new Color(0.85f, 0.30f, 0.00f),
+            new Color(1.00f, 0.70f, 0.10f));
+    }
+
     private static Gradient IceGradient()
     {
+        return CyclicTeamGradient(
+            new Color(0.30f, 0.80f, 1.00f),
+            new Color(0.15f, 0.50f, 0.95f),
+            new Color(0.05f, 0.15f, 0.55f));
+    }
+
+    private static Gradient CyclicTeamGradient(Color ends, Color quarter, Color middle)
+    {
         Gradient gradient = new Gradient();
+        gradient.mode = GradientMode.Blend;
         gradient.SetKeys(
             new[]
             {
-                new GradientColorKey(new Color(0.02f, 0.08f, 0.35f), 0f),
-                new GradientColorKey(new Color(0.10f, 0.45f, 0.90f), 0.45f),
-                new GradientColorKey(new Color(0.75f, 0.95f, 1f), 1f),
+                new GradientColorKey(ends, 0f),
+                new GradientColorKey(quarter, 0.25f),
+                new GradientColorKey(middle, 0.5f),
+                new GradientColorKey(quarter, 0.75f),
+                new GradientColorKey(ends, 1f),
             },
             new[]
             {

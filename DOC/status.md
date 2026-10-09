@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-10-09  
-**Итерация:** A3 на проверке. LUT команд в Editor перепекается при смене градиента. ADR-043 на проверке.  
+**Итерация:** A4 на проверке. У пресета двух стай циклические градиенты Fire и Ice. ADR-043 на проверке.  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  
