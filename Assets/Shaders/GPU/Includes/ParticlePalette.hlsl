@@ -13,6 +13,7 @@ float4 ParticlePaletteColor(
     Texture2D<float4> lutTex,
     SamplerState lutSampler)
 {
+    float4 result = color;
     bool useValue = useLut > 0.5;
     bool useTeam = useTeams > 0.5;
     if (useValue || useTeam)
@@ -26,10 +27,10 @@ float4 ParticlePaletteColor(
         }
 
         float4 lut = lutTex.SampleLevel(lutSampler, float2(d, row), 0);
-        return float4(lut.rgb, lut.a * color.a);
+        result = float4(lut.rgb, lut.a * color.a);
     }
 
-    return color;
+    return result;
 }
 
 #endif

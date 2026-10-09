@@ -103,25 +103,7 @@ public class PrimitiveParticleBinderTeamPaletteStageTests
             camera.Render();
 
             readback = Read(rt);
-            for (int i = 0; i < Positions.Length; i++)
-            {
-                Vector2Int center = Pixel(camera, Positions[i]);
-                Color centerColor = readback.GetPixel(center.x, center.y);
-                AssertColor(expected[i], centerColor, StageTolerance, "center " + i + " px " + center + " rgb " + centerColor);
-
-                Vector2Int[] inside =
-                {
-                    Pixel(camera, Positions[i] + new Vector3(QuadSize * 0.35f, QuadSize * 0.35f, 0f)),
-                    Pixel(camera, Positions[i] + new Vector3(QuadSize * 0.35f, -QuadSize * 0.35f, 0f)),
-                    Pixel(camera, Positions[i] + new Vector3(-QuadSize * 0.35f, QuadSize * 0.35f, 0f)),
-                };
-                for (int k = 0; k < inside.Length; k++)
-                {
-                    Assert.AreNotEqual(center, inside[k], "inset pixel " + i + "/" + k + " collapsed onto the center");
-                    Color corner = readback.GetPixel(inside[k].x, inside[k].y);
-                    AssertColor(centerColor, corner, UniformTolerance, "corner " + i + "/" + k);
-                }
-            }
+            CheckQuads(camera, readback, Positions, expected);
         }
         finally
         {
@@ -145,6 +127,185 @@ public class PrimitiveParticleBinderTeamPaletteStageTests
             particles?.Dispose();
             fields?.Dispose();
         }
+    }
+
+    [Test]
+    public void ValueOnly_CenterMatchesLutFormula_CornersMatchCenter()
+    {
+        Assert.That(Shader.Find("M3D/ParticleBillboard") != null, "shader M3D/ParticleBillboard must be imported");
+
+        Vector3[] positions = { new Vector3(-2.2f, 0f, 0f), new Vector3(2.2f, 0f, 0f) };
+        float[] values = { 0.5f, 0f };
+        Gradient gradient = Ramp(new Color(1f, 0f, 0f, 1f), new Color(0f, 0f, 1f, 1f));
+        Color tint = Color.white;
+        var expected = new Vector4[values.Length];
+        for (int i = 0; i < values.Length; i++)
+        {
+            expected[i] = (Vector4)ExpectedFromLutFormula(gradient, values[i], 1f, tint);
+        }
+
+        Draw(positions, values, null, new PrimitiveParticleBinder(QuadSize, tint, gradient, 1f), expected);
+    }
+
+    [Test]
+    public void FlatColor_CenterMatchesColor_CornersMatchCenter()
+    {
+        Assert.That(Shader.Find("M3D/ParticleBillboard") != null, "shader M3D/ParticleBillboard must be imported");
+
+        Color tint = new Color(0.2f, 0.55f, 0.8f, 1f);
+        Vector3[] positions = { new Vector3(-2.2f, 0f, 0f), new Vector3(2.2f, 0f, 0f) };
+        Color uploaded = tint.linear;
+        var expected = new Vector4[positions.Length];
+        for (int i = 0; i < expected.Length; i++)
+        {
+            expected[i] = (Vector4)uploaded;
+        }
+
+        Draw(positions, null, null, new PrimitiveParticleBinder(QuadSize, tint, null, 1f), expected);
+    }
+
+    private static void Draw(
+        Vector3[] positions,
+        float[] values,
+        uint[] teams,
+        PrimitiveParticleBinder binder,
+        Vector4[] expected)
+    {
+        ParticleSet particles = null;
+        FieldSet fields = null;
+        GameObject cameraObject = null;
+        RenderTexture rt = null;
+        Texture2D readback = null;
+        try
+        {
+            particles = new ParticleSet();
+            particles.EnsureCapacity(positions.Length);
+            particles.RegisterAttribute(BuiltinAttributes.Position);
+            if (values != null)
+            {
+                particles.RegisterAttribute(BuiltinAttributes.Value);
+                particles.Get(BuiltinAttributes.Value).SetData(values);
+            }
+
+            if (teams != null)
+            {
+                particles.RegisterAttribute(BuiltinAttributes.TeamId);
+                particles.Get(BuiltinAttributes.TeamId).SetData(teams);
+            }
+
+            particles.Get(BuiltinAttributes.Position).SetData(positions);
+            fields = new FieldSet();
+            binder.Initialize(new SimContext(particles, fields, System.Array.Empty<ComputeShader>(), null));
+
+            rt = new RenderTexture(RtSize, RtSize, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
+            {
+                name = "M3D_PaletteStageRT",
+                antiAliasing = 1,
+                useMipMap = false,
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            rt.Create();
+
+            cameraObject = new GameObject("PaletteStageCamera") { hideFlags = HideFlags.HideAndDontSave };
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.orthographic = true;
+            camera.orthographicSize = OrthoSize;
+            camera.aspect = 1f;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0f, 0f, 0f, 1f);
+            camera.allowHDR = false;
+            camera.allowMSAA = false;
+            camera.nearClipPlane = 0.1f;
+            camera.farClipPlane = 50f;
+            camera.transform.position = new Vector3(0f, 0f, -10f);
+            camera.transform.rotation = Quaternion.identity;
+            camera.targetTexture = rt;
+            camera.cullingMask = ~0;
+            camera.useOcclusionCulling = false;
+
+            UniversalAdditionalCameraData extra = camera.GetUniversalAdditionalCameraData();
+            extra.renderPostProcessing = false;
+            extra.antialiasing = AntialiasingMode.None;
+            extra.renderShadows = false;
+            extra.volumeLayerMask = 0;
+            extra.requiresColorOption = CameraOverrideOption.Off;
+            extra.requiresDepthOption = CameraOverrideOption.Off;
+
+            AssignCamera(binder, camera);
+            binder.Execute(new SimContext(particles, fields, System.Array.Empty<ComputeShader>(), null));
+            camera.Render();
+            readback = Read(rt);
+            CheckQuads(camera, readback, positions, expected);
+        }
+        finally
+        {
+            if (readback != null)
+            {
+                Object.DestroyImmediate(readback);
+            }
+
+            if (cameraObject != null)
+            {
+                Object.DestroyImmediate(cameraObject);
+            }
+
+            if (rt != null)
+            {
+                rt.Release();
+                Object.DestroyImmediate(rt);
+            }
+
+            binder?.Dispose();
+            particles?.Dispose();
+            fields?.Dispose();
+        }
+    }
+
+    private static void CheckQuads(Camera camera, Texture2D readback, Vector3[] positions, Vector4[] expected)
+    {
+        for (int i = 0; i < positions.Length; i++)
+        {
+            Vector2Int center = Pixel(camera, positions[i]);
+            Color centerColor = readback.GetPixel(center.x, center.y);
+            AssertColor(expected[i], centerColor, StageTolerance, "center " + i + " px " + center + " rgb " + centerColor);
+
+            Vector2Int[] inside =
+            {
+                Pixel(camera, positions[i] + new Vector3(QuadSize * 0.35f, QuadSize * 0.35f, 0f)),
+                Pixel(camera, positions[i] + new Vector3(QuadSize * 0.35f, -QuadSize * 0.35f, 0f)),
+                Pixel(camera, positions[i] + new Vector3(-QuadSize * 0.35f, QuadSize * 0.35f, 0f)),
+            };
+            for (int k = 0; k < inside.Length; k++)
+            {
+                Assert.AreNotEqual(center, inside[k], "inset pixel " + i + "/" + k + " collapsed onto the center");
+                Color corner = readback.GetPixel(inside[k].x, inside[k].y);
+                AssertColor(centerColor, corner, UniformTolerance, "corner " + i + "/" + k);
+            }
+        }
+    }
+
+    private static Color ExpectedFromLutFormula(Gradient gradient, float value, float scale, Color tint)
+    {
+        Color[] pixels = PrimitiveParticleBinder.BuildLutPixels(gradient, 256);
+        float d = Mathf.Clamp01(value * scale);
+        float texel = d * 256f - 0.5f;
+        Color sample;
+        if (texel <= 0f)
+        {
+            sample = pixels[0];
+        }
+        else if (texel >= 255f)
+        {
+            sample = pixels[255];
+        }
+        else
+        {
+            int index = Mathf.FloorToInt(texel);
+            sample = Color.Lerp(pixels[index], pixels[index + 1], texel - index);
+        }
+
+        sample.a *= tint.a;
+        return sample;
     }
 
     private static void AssignCamera(PrimitiveParticleBinder binder, Camera camera)
