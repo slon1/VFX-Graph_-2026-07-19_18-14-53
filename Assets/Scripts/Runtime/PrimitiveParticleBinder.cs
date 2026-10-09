@@ -41,7 +41,21 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
     private int teamCount;
     private int instanceCount;
 
+#if UNITY_EDITOR
+    private Gradient fallbackGradient;
+    private Color[] uploadedPixels;
+    private Color[] scratchPixels;
+    private int executeCount;
+    private bool teamCountWarningIssued;
+#endif
+
     internal bool UsesTeamPalette { get; private set; }
+
+    internal const int LiveLutCheckInterval = 8;
+
+    internal int LutCheckCount { get; private set; }
+
+    internal int LutRefreshCount { get; private set; }
 
     public PrimitiveParticleBinder(float size, Color color, Gradient gradient, float valueScale)
         : this(size, color, gradient, valueScale, null)
@@ -78,18 +92,32 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
         if (UsesTeamPalette)
         {
             teamCount = teams.Count < TeamProfile.MaxTeams ? teams.Count : TeamProfile.MaxTeams;
+#if UNITY_EDITOR
+            fallbackGradient = gradient ?? DebugFieldQuadSlot.DefaultFireGradient();
+            uploadedPixels = new Color[LutWidth * teamCount];
+            scratchPixels = new Color[LutWidth * teamCount];
+            for (int row = 0; row < teamCount; row++)
+            {
+                BuildLutPixels(RowGradient(teams[row], fallbackGradient), LutWidth, uploadedPixels, row * LutWidth);
+            }
+
+            teamLut = CreateTeamLut(teamCount, uploadedPixels);
+#else
+            Gradient playerFallback = gradient ?? DebugFieldQuadSlot.DefaultFireGradient();
             Gradient[] rows = new Gradient[teamCount];
             for (int i = 0; i < teamCount; i++)
             {
-                TeamProfile profile = teams[i];
-                Gradient row = profile != null ? profile.Color : null;
-                rows[i] = row ?? gradient ?? DebugFieldQuadSlot.DefaultFireGradient();
+                rows[i] = RowGradient(teams[i], playerFallback);
             }
 
             teamLut = BakeTeamLut(rows);
+            teams = null;
+#endif
         }
-
-        teams = null;
+        else
+        {
+            teams = null;
+        }
 
         if (UsesTeamPalette)
         {
@@ -128,7 +156,24 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
 
     public void Execute(SimContext context)
     {
-        if (material == null || instanceCount <= 0)
+        if (material == null)
+        {
+            return;
+        }
+
+#if UNITY_EDITOR
+        // Play tuning of team colors stays in the Editor. A player build keeps the Initialize LUT.
+        if (UsesTeamPalette && teams != null)
+        {
+            executeCount++;
+            if (executeCount % LiveLutCheckInterval == 0)
+            {
+                CheckLiveTeamLut();
+            }
+        }
+#endif
+
+        if (instanceCount <= 0)
         {
             return;
         }
@@ -196,17 +241,23 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
             dummyTeamIds.Release();
             dummyTeamIds = null;
         }
+
+        teams = null;
+    }
+
+    internal static void BuildLutPixels(Gradient gradient, int width, Color[] destination, int offset)
+    {
+        float inv = 1f / (width - 1);
+        for (int i = 0; i < width; i++)
+        {
+            destination[offset + i] = gradient.Evaluate(i * inv);
+        }
     }
 
     internal static Color[] BuildLutPixels(Gradient gradient, int width)
     {
         Color[] pixels = new Color[width];
-        float inv = 1f / (width - 1);
-        for (int i = 0; i < width; i++)
-        {
-            pixels[i] = gradient.Evaluate(i * inv);
-        }
-
+        BuildLutPixels(gradient, width, pixels, 0);
         return pixels;
     }
 
@@ -225,9 +276,22 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
         return texture;
     }
 
+#if !UNITY_EDITOR
     private static Texture2D BakeTeamLut(Gradient[] rows)
     {
-        Texture2D texture = new Texture2D(LutWidth, rows.Length, TextureFormat.RGBA32, false, true)
+        Color[] pixels = new Color[LutWidth * rows.Length];
+        for (int row = 0; row < rows.Length; row++)
+        {
+            BuildLutPixels(rows[row], LutWidth, pixels, row * LutWidth);
+        }
+
+        return CreateTeamLut(rows.Length, pixels);
+    }
+#endif
+
+    private static Texture2D CreateTeamLut(int height, Color[] pixels)
+    {
+        Texture2D texture = new Texture2D(LutWidth, height, TextureFormat.RGBA32, false, true)
         {
             name = "M3D_ParticleBillboard_TeamLUT",
             wrapMode = TextureWrapMode.Clamp,
@@ -235,20 +299,61 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
             hideFlags = HideFlags.HideAndDontSave,
         };
 
-        Color[] pixels = new Color[LutWidth * rows.Length];
-        for (int row = 0; row < rows.Length; row++)
-        {
-            Color[] baked = BuildLutPixels(rows[row], LutWidth);
-            for (int x = 0; x < LutWidth; x++)
-            {
-                pixels[row * LutWidth + x] = baked[x];
-            }
-        }
-
         texture.SetPixels(pixels);
         texture.Apply(false, false);
         return texture;
     }
+
+    private static Gradient RowGradient(TeamProfile profile, Gradient fallback)
+    {
+        Gradient row = profile != null ? profile.Color : null;
+        return row ?? fallback;
+    }
+
+#if UNITY_EDITOR
+    private void CheckLiveTeamLut()
+    {
+        LutCheckCount++;
+        int liveCount = teams.Count < TeamProfile.MaxTeams ? teams.Count : TeamProfile.MaxTeams;
+        if (liveCount != teamCount && !teamCountWarningIssued)
+        {
+            teamCountWarningIssued = true;
+            Debug.LogWarning(
+                "PrimitiveParticleBinder: team count changed after Initialize. Rebuild to resize the team palette.");
+        }
+
+        for (int row = 0; row < teamCount; row++)
+        {
+            TeamProfile profile = row < teams.Count ? teams[row] : null;
+            BuildLutPixels(RowGradient(profile, fallbackGradient), LutWidth, scratchPixels, row * LutWidth);
+        }
+
+        if (!PixelsDiffer(uploadedPixels, scratchPixels))
+        {
+            return;
+        }
+
+        Array.Copy(scratchPixels, uploadedPixels, uploadedPixels.Length);
+        teamLut.SetPixels(uploadedPixels);
+        teamLut.Apply(false, false);
+        LutRefreshCount++;
+    }
+
+    private static bool PixelsDiffer(Color[] stored, Color[] fresh)
+    {
+        for (int i = 0; i < stored.Length; i++)
+        {
+            Color left = stored[i];
+            Color right = fresh[i];
+            if (left.r != right.r || left.g != right.g || left.b != right.b || left.a != right.a)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+#endif
 
     private static void DestroyObject<T>(ref T obj) where T : UnityEngine.Object
     {

@@ -110,6 +110,8 @@
 
 10. **LUT-палитра — EditMode закрыт [ADR-031](../ADR/ADR-031-Primitive-Only-And-Value-Palette.md) (2026-09-25).** `value` → 256×1 LUT на `PrimitiveParticleBinder`. `HeadingToValue` на хвосте `Boids_mk1`, явный fire-градиент. Play-разноцветность по курсу ещё не смотрели. **Мерцание при `particleSize` 0.05** — субпиксельный мировой квад, не солвер: на коммите до палитры (без LUT) инстансы совпали с числом точек, размер 0.2 почти убрал мигание. **Trail/persistence (M2d.2) не начат.** Perf — пункт 9.
 
+10b. **Живой LUT команд — только Editor ([ADR-043](../ADR/ADR-043-Team-Palette-Followups.md) A3).** Одиночный LUT (`lutTexture`, режим без команд) запекается один раз и не перепекается. Изменение числа команд в Play требует `Rebuild`. Перепекание LUT работает только в Editor.
+
 10a. **Fluid2D разноцветный dye.** Два скалярных dye-поля / кастомный `FieldDebug` / честный multi-channel dye. Явно отложено из [ADR-025](../ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) §6 — не смешивать со слоем HDR/Bloom/ACES.
 
 ---
