@@ -590,7 +590,9 @@ public sealed class SimulationWorld : MonoBehaviour
                 effect.ParticleColor,
                 effect.ParticleGradient,
                 effect.ParticleValueScale,
-                effect.Teams);
+                effect.Teams,
+                effect.ParticleColorSource,
+                effect.ParticleColorAxis);
             primitiveBinder.Initialize(context);
             binders.Add(primitiveBinder);
             StopVfxPlayback();

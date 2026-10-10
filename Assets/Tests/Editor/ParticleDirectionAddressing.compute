@@ -1,0 +1,17 @@
+#pragma kernel DirectionAddressing
+
+#include "Assets/Shaders/GPU/Includes/ParticleDirection.hlsl"
+
+StructuredBuffer<float3> _InVelocity;
+StructuredBuffer<float3> _InAxis;
+RWStructuredBuffer<float> _OutValue;
+uint _CaseCount;
+
+[numthreads(64, 1, 1)]
+void DirectionAddressing(uint id : SV_DispatchThreadID)
+{
+    if (id >= _CaseCount)
+        return;
+
+    _OutValue[id] = DirectionToValue(_InVelocity[id], _InAxis[id]);
+}

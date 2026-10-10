@@ -54,10 +54,10 @@ public class BoidsHashTwoTeamsPresetTests
         AssertSpawn(swarm.Spawns[1], 1, 1500, new Vector2(22f, 0f), new Vector2(-1f, 0f));
 
         Assert.AreEqual(2, asset.Teams.Count);
-        AssertTeam(asset.Teams[0], "Fire");
-        AssertTeam(asset.Teams[1], "Ice");
-        AssertCyclicKeys(asset.Teams[0].Color, "Fire", FireKeys());
-        AssertCyclicKeys(asset.Teams[1].Color, "Ice", IceKeys());
+        AssertTeam(asset.Teams[0], "RedBlue");
+        AssertTeam(asset.Teams[1], "YellowGreen");
+        AssertTwoKeys(asset.Teams[0].Color, "RedBlue", new Color(1f, 0f, 0f, 1f), new Color(0f, 0.15f, 1f, 1f));
+        AssertTwoKeys(asset.Teams[1].Color, "YellowGreen", new Color(0.98f, 1f, 0f, 1f), new Color(0.02f, 1f, 0f, 1f));
 
         IReadOnlyList<SimPass> passes = asset.Passes;
         Assert.AreEqual(8, passes.Count);
@@ -94,13 +94,11 @@ public class BoidsHashTwoTeamsPresetTests
     }
 
     [Test]
-    public void TeamGradients_AreCyclicAndReadable()
+    public void TeamGradients_AreTwoKeyAndReadable()
     {
         EffectAsset asset = LoadAsset();
-        // Снимок Play 2026-10-10, фон (103, 97, 91) в sRGB.
         Color backgroundLinear = new Color(0.136f, 0.120f, 0.105f, 1f);
-        AssertCyclicAndReadable(asset.Teams[0].Color, "Fire", backgroundLinear, true);
-        AssertCyclicAndReadable(asset.Teams[1].Color, "Ice", backgroundLinear, false);
+        AssertTwoKeyReadable(asset.Teams[0].Color, asset.Teams[1].Color, backgroundLinear);
     }
 
     [Test]
@@ -247,96 +245,41 @@ public class BoidsHashTwoTeamsPresetTests
         Assert.AreEqual(4f, team.Turn);
     }
 
-    private static Color[] FireKeys()
-    {
-        return new[]
-        {
-            new Color(0.55f, 0.08f, 0.00f, 1f),
-            new Color(0.85f, 0.30f, 0.00f, 1f),
-            new Color(1.00f, 0.70f, 0.10f, 1f),
-            new Color(0.85f, 0.30f, 0.00f, 1f),
-            new Color(0.55f, 0.08f, 0.00f, 1f),
-        };
-    }
-
-    private static Color[] IceKeys()
-    {
-        return new[]
-        {
-            new Color(0.30f, 0.80f, 1.00f, 1f),
-            new Color(0.15f, 0.50f, 0.95f, 1f),
-            new Color(0.05f, 0.15f, 0.55f, 1f),
-            new Color(0.15f, 0.50f, 0.95f, 1f),
-            new Color(0.30f, 0.80f, 1.00f, 1f),
-        };
-    }
-
-    private static void AssertCyclicKeys(Gradient gradient, string team, Color[] keys)
+    private static void AssertTwoKeys(Gradient gradient, string team, Color low, Color high)
     {
         Assert.AreEqual(GradientMode.Blend, gradient.mode, team + " mode");
-        float[] times = { 0f, 0.25f, 0.5f, 0.75f, 1f };
-        for (int i = 0; i < times.Length; i++)
+        Assert.AreEqual(2, gradient.colorKeys.Length, team + " key count");
+        AssertColors(low, gradient.Evaluate(0f), team + " t=0");
+        AssertColors(high, gradient.Evaluate(1f), team + " t=1");
+    }
+
+    private static void AssertTwoKeyReadable(Gradient first, Gradient second, Color backgroundLinear)
+    {
+        const int sampleCount = 256;
+        for (int i = 0; i < sampleCount; i++)
         {
-            AssertColors(keys[i], gradient.Evaluate(times[i]), team + " t=" + times[i]);
+            float t = i / 255f;
+            Color a = first.Evaluate(t);
+            Color b = second.Evaluate(t);
+            string where = "t=" + t.ToString("0.###");
+            AssertReadable(a, backgroundLinear, "RedBlue " + where);
+            AssertReadable(b, backgroundLinear, "YellowGreen " + where);
+            float between = Mathf.Sqrt(
+                (a.r - b.r) * (a.r - b.r) + (a.g - b.g) * (a.g - b.g) + (a.b - b.b) * (a.b - b.b));
+            Assert.GreaterOrEqual(between, 0.5f, where + " between teams");
         }
     }
 
-    private static void AssertCyclicAndReadable(
-        Gradient gradient, string team, Color backgroundLinear, bool fire)
+    private static void AssertReadable(Color sample, Color backgroundLinear, string where)
     {
-        Color start = gradient.Evaluate(0f);
-        Color end = gradient.Evaluate(1f);
-        AssertColors(start, end, team + " ends");
-
-        const int sampleCount = 256;
-        float maxLuminance = float.NegativeInfinity;
-        float[] luminance = new float[sampleCount];
-        for (int i = 0; i < sampleCount; i++)
-        {
-            float t = i / 255f;
-            Color sample = gradient.Evaluate(t);
-            string where = team + " sample " + i + " t=" + t.ToString("0.###");
-            Color.RGBToHSV(sample, out float hue01, out float saturation, out float value);
-            float hue = hue01 * 360f;
-            Assert.GreaterOrEqual(saturation, 0.5f, where + " S");
-            Assert.GreaterOrEqual(value, 0.4f, where + " V");
-            if (fire)
-            {
-                Assert.That(hue, Is.InRange(0f, 60f), where + " hue");
-            }
-            else
-            {
-                Assert.That(hue, Is.InRange(180f, 250f), where + " hue");
-            }
-
-            float distance = Mathf.Sqrt(
-                (sample.r - backgroundLinear.r) * (sample.r - backgroundLinear.r)
-                + (sample.g - backgroundLinear.g) * (sample.g - backgroundLinear.g)
-                + (sample.b - backgroundLinear.b) * (sample.b - backgroundLinear.b));
-            Assert.GreaterOrEqual(distance, 0.25f, where + " distance");
-
-            luminance[i] = 0.2126f * sample.r + 0.7152f * sample.g + 0.0722f * sample.b;
-            if (luminance[i] > maxLuminance)
-            {
-                maxLuminance = luminance[i];
-            }
-        }
-
-        for (int i = 0; i < sampleCount; i++)
-        {
-            if (luminance[i] < maxLuminance - 1e-4f)
-            {
-                continue;
-            }
-
-            float t = i / 255f;
-            bool peakInRange = fire
-                ? t >= 0.45f && t <= 0.55f
-                : t <= 0.05f || t >= 0.95f;
-            Assert.IsTrue(
-                peakInRange,
-                team + " luminance peak t=" + t.ToString("0.###") + " is outside the allowed range");
-        }
+        Color.RGBToHSV(sample, out _, out float saturation, out float value);
+        Assert.GreaterOrEqual(saturation, 0.5f, where + " S");
+        Assert.GreaterOrEqual(value, 0.4f, where + " V");
+        float distance = Mathf.Sqrt(
+            (sample.r - backgroundLinear.r) * (sample.r - backgroundLinear.r)
+            + (sample.g - backgroundLinear.g) * (sample.g - backgroundLinear.g)
+            + (sample.b - backgroundLinear.b) * (sample.b - backgroundLinear.b));
+        Assert.GreaterOrEqual(distance, 0.25f, where + " distance");
     }
 
     private static void AssertColors(Color expected, Color actual, string label)

@@ -120,6 +120,8 @@
 
 10f. **Не воспроизвелась цена рендера на 2280×1080** (ADR-040 errata 3 против errata 5). Возможный A/B: `d9bba9c` против `df9748d` на 100 000 частиц, 1520×720 и 2280×1080, по три прогона на режим.
 
+10g. **Режим Direction ([ADR-045](../ADR/ADR-045-Direction-Coloring-And-Needle.md)).** `HeadingToValue` в пресетах по-прежнему пишет `value`, который в этом режиме не читается. Стенд `PrimitiveParticleBinderDirectionStageTests` дублирует стенд A2. `particleValueScale` в режиме Direction не действует. Одиночный LUT не перепекается — это пункт 10b, не отдельный долг. Градиент одиночных эффектов (чёрное начало `DefaultFireGradient` на `Boids_Hash`) решает владелец, C1b.
+
 10a. **Fluid2D разноцветный dye.** Два скалярных dye-поля / кастомный `FieldDebug` / честный multi-channel dye. Явно отложено из [ADR-025](../ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) §6 — не смешивать со слоем HDR/Bloom/ACES.
 
 ---

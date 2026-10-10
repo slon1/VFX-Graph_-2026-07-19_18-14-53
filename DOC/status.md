@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-10-09  
-**Итерация:** База 100k на S10 записана (`df9748d`). Правила сравнения в [`DOC/MEASURE/README.md`](MEASURE/README.md).  
+**Итерация:** C1 на проверке. Цвет частиц из вертикали скорости, пресет двух стай RedBlue/YellowGreen. ADR-045.  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  

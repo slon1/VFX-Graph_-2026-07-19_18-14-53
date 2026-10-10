@@ -21,9 +21,11 @@ Shader "M3D/ParticleBillboard"
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Assets/Shaders/GPU/Includes/ParticlePalette.hlsl"
+            #include "Assets/Shaders/GPU/Includes/ParticleDirection.hlsl"
 
             StructuredBuffer<float3> _Positions;
             StructuredBuffer<float> _Values;
+            StructuredBuffer<float3> _Velocities;
             StructuredBuffer<uint> _TeamIds;
             Texture2D<float4> _LutTex;
             SamplerState sampler_LutTex;
@@ -33,6 +35,8 @@ Shader "M3D/ParticleBillboard"
             float _UseLut;
             float _UseTeams;
             float _TeamCount;
+            float _UseDirection;
+            float3 _DirAxis;
 
             static const float2 QuadOffsets[6] =
             {
@@ -57,7 +61,9 @@ Shader "M3D/ParticleBillboard"
                 // Dummy _Values and _TeamIds are length 1. Read only the buffer the flag turns on.
                 float value = 0.0;
                 uint team = 0;
-                if (_UseLut > 0.5)
+                if (_UseDirection > 0.5)
+                    value = DirectionToValue(_Velocities[instanceID], _DirAxis);
+                else if (_UseLut > 0.5)
                     value = _Values[instanceID];
                 if (_UseTeams > 0.5)
                     team = _TeamIds[instanceID];

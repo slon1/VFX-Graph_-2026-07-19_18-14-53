@@ -21,6 +21,8 @@ public sealed class EffectAssetEditor : Editor
     private SerializedProperty fieldsProperty;
     private SerializedProperty passesProperty;
     private SerializedProperty debugFieldQuadsProperty;
+    private SerializedProperty particleColorSourceProperty;
+    private SerializedProperty particleColorAxisProperty;
     private ReorderableList passList;
     private ReorderableList debugQuadList;
     private string[] fieldNameOptions = Array.Empty<string>();
@@ -37,6 +39,8 @@ public sealed class EffectAssetEditor : Editor
         fieldsProperty = serializedObject.FindProperty("fields");
         passesProperty = serializedObject.FindProperty("passes");
         debugFieldQuadsProperty = serializedObject.FindProperty("debugFieldQuads");
+        particleColorSourceProperty = serializedObject.FindProperty("particleColorSource");
+        particleColorAxisProperty = serializedObject.FindProperty("particleColorAxis");
 
         EffectAsset asset = (EffectAsset)target;
         bool migrated = asset.EditorEnsureDebugQuadMigration();
@@ -93,6 +97,8 @@ public sealed class EffectAssetEditor : Editor
 
         EditorGUILayout.PropertyField(teamsProperty, true);
         EditorGUILayout.PropertyField(simulationSpeedProperty);
+        EditorGUILayout.PropertyField(particleColorSourceProperty);
+        EditorGUILayout.PropertyField(particleColorAxisProperty);
 
         EditorGUILayout.Space();
         EditorGUILayout.PropertyField(fieldsProperty, new GUIContent("Fields"), true);

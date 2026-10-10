@@ -8,6 +8,12 @@ public enum ParticleRenderMode
     Primitive = 1,
 }
 
+public enum ParticleColorSource
+{
+    Value = 0,
+    Direction = 1,
+}
+
 /// <summary>
 /// One effect = one asset: data source config + field declarations + ordered pass list.
 /// Field resources are declaration-owned (policy C): runtime never auto-creates them.
@@ -31,6 +37,8 @@ public sealed class EffectAsset : ScriptableObject
     [SerializeField] private Color particleColor = Color.white;
     [SerializeField] private Gradient particleGradient;
     [SerializeField, Min(0f)] private float particleValueScale = 1f;
+    [SerializeField] private ParticleColorSource particleColorSource = ParticleColorSource.Direction;
+    [SerializeField] private Vector3 particleColorAxis = new Vector3(0f, 0f, 1f);
 
     // Legacy flags — migrated into debugFieldQuads via OnValidate, then cleared.
     [SerializeField, HideInInspector] private bool showVelocityFieldQuad;
@@ -65,6 +73,8 @@ public sealed class EffectAsset : ScriptableObject
     public Color ParticleColor => particleColor;
     public Gradient ParticleGradient => particleGradient;
     public float ParticleValueScale => particleValueScale;
+    public ParticleColorSource ParticleColorSource => particleColorSource;
+    public Vector3 ParticleColorAxis => particleColorAxis;
 
     public IDataSource ResolveSource()
     {

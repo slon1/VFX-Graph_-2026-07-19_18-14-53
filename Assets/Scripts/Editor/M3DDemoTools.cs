@@ -1812,7 +1812,7 @@ public static class M3DDemoTools
         {
             new TeamProfile
             {
-                Name = "Fire",
+                Name = "RedBlue",
                 SeparationRadius = 3f,
                 AlignmentRadius = 3f,
                 CohesionRadius = 3f,
@@ -1822,11 +1822,11 @@ public static class M3DDemoTools
                 CohesionWeight = 0.6f,
                 Cruise = 6f,
                 Turn = 4f,
-                Color = FireCyclicGradient(),
+                Color = RedBlueGradient(),
             },
             new TeamProfile
             {
-                Name = "Ice",
+                Name = "YellowGreen",
                 SeparationRadius = 3f,
                 AlignmentRadius = 3f,
                 CohesionRadius = 3f,
@@ -1836,7 +1836,7 @@ public static class M3DDemoTools
                 CohesionWeight = 0.6f,
                 Cruise = 6f,
                 Turn = 4f,
-                Color = IceGradient(),
+                Color = YellowGreenGradient(),
             },
         });
 
@@ -1851,34 +1851,25 @@ public static class M3DDemoTools
         AssetDatabase.SaveAssetIfDirty(asset);
     }
 
-    private static Gradient FireCyclicGradient()
+    private static Gradient RedBlueGradient()
     {
-        return CyclicTeamGradient(
-            new Color(0.55f, 0.08f, 0.00f),
-            new Color(0.85f, 0.30f, 0.00f),
-            new Color(1.00f, 0.70f, 0.10f));
+        return TwoKeyGradient(new Color(1f, 0f, 0f), new Color(0f, 0.15f, 1f));
     }
 
-    private static Gradient IceGradient()
+    private static Gradient YellowGreenGradient()
     {
-        return CyclicTeamGradient(
-            new Color(0.30f, 0.80f, 1.00f),
-            new Color(0.15f, 0.50f, 0.95f),
-            new Color(0.05f, 0.15f, 0.55f));
+        return TwoKeyGradient(new Color(0.98f, 1f, 0f), new Color(0.02f, 1f, 0f));
     }
 
-    private static Gradient CyclicTeamGradient(Color ends, Color quarter, Color middle)
+    private static Gradient TwoKeyGradient(Color low, Color high)
     {
         Gradient gradient = new Gradient();
         gradient.mode = GradientMode.Blend;
         gradient.SetKeys(
             new[]
             {
-                new GradientColorKey(ends, 0f),
-                new GradientColorKey(quarter, 0.25f),
-                new GradientColorKey(middle, 0.5f),
-                new GradientColorKey(quarter, 0.75f),
-                new GradientColorKey(ends, 1f),
+                new GradientColorKey(low, 0f),
+                new GradientColorKey(high, 1f),
             },
             new[]
             {
