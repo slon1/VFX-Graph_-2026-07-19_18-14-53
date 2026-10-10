@@ -33,10 +33,13 @@ public sealed class FPSDisplay : MonoBehaviour
 	private const float ThermalSeconds = 1f;
 	private const float SampleFpsBudget = 240f;
 	private const string CsvFileName = "m3d_perf.csv";
-	private const string CsvSuffixName = "m3d_perf_v2.csv";
+	private const string CsvSuffixName = "m3d_perf_res.csv";
 	private const string CsvHeaderLine =
-		"count,maxNeighbors,force,render,debug,phase,t,frameAvg,frameP95,frameMax,long,cpuFrame,cpuMainAvg,cpuMainP95,cpuRenderAvg,cpuRenderP95,cpuWaitAvg,cpuWaitP95,gpuAvg,gpuP95,thermal,thermalStart,thermalMax,buckets";
+		"count,maxNeighbors,force,render,debug,phase,t,frameAvg,frameP95,frameMax,long,cpuFrame,cpuMainAvg,cpuMainP95,cpuRenderAvg,cpuRenderP95,cpuWaitAvg,cpuWaitP95,gpuAvg,gpuP95,thermal,thermalStart,thermalMax,buckets,res,hist";
 	private const string CsvHeader = CsvHeaderLine + "\n";
+
+	// 16.7 / 33.3 / 50 ms are the vsync clusters. Bins 2 and 3 catch frames that fall between them.
+	private static readonly float[] HistEdges = { 15f, 18f, 25f, 36f, 55f };
 
 	private static readonly string[] PhaseNames = { "WARMUP", "MEASURE", "DONE" };
 	private static readonly string[] ThermalNames =
@@ -108,6 +111,7 @@ public sealed class FPSDisplay : MonoBehaviour
 	private float frameSum;
 	private float frameMax;
 	private int longCount;
+	private int[] hist;
 
 	private Series cpuFrame;
 	private Series cpuMain;
@@ -389,6 +393,7 @@ public sealed class FPSDisplay : MonoBehaviour
 		AllocateSeries(ref gpuTiming, cap);
 		timingScratch = new FrameTiming[1];
 		bucketAvg = new float[MaxBuckets];
+		hist = new int[HistEdges.Length + 1];
 	}
 
 	private static void AllocateSeries(ref Series series, int cap)
@@ -660,11 +665,17 @@ public sealed class FPSDisplay : MonoBehaviour
 		bucketFrames = 0;
 		bucketSum = 0f;
 		statsFrame = -1;
+		if (hist != null)
+		{
+			Array.Clear(hist, 0, hist.Length);
+		}
+
 		RebuildDisplay();
 	}
 
 	private void RecordFrame(float ms)
 	{
+		CountHist(ms);
 		if (frameCount >= sampleCap)
 		{
 			return;
@@ -681,6 +692,22 @@ public sealed class FPSDisplay : MonoBehaviour
 		{
 			longCount++;
 		}
+	}
+
+	private void CountHist(float ms)
+	{
+		if (hist == null)
+		{
+			return;
+		}
+
+		int bin = 0;
+		while (bin < HistEdges.Length && ms >= HistEdges[bin])
+		{
+			bin++;
+		}
+
+		hist[bin]++;
 	}
 
 	private void CaptureTiming(bool store)
@@ -840,6 +867,10 @@ public sealed class FPSDisplay : MonoBehaviour
 			text.Append('\n');
 		}
 
+		text.Append("hist ");
+		AppendHist(text, ' ');
+		text.Append('\n');
+
 		AppendPairLine(text, "cpuMain ", cpuMain.Valid, cpuMain.Avg, cpuMain.P95);
 		AppendPairLine(text, "cpuRender ", cpuRender.Valid, cpuRender.Avg, cpuRender.P95);
 		AppendPairLine(text, "gpu ", gpuTiming.Valid, gpuTiming.Avg, gpuTiming.P95);
@@ -971,6 +1002,12 @@ public sealed class FPSDisplay : MonoBehaviour
 		AppendThermalFlag(text, thermalMax);
 		text.Append(" buckets=");
 		AppendBuckets(text, '/');
+		text.Append(" res=");
+		text.Append(Screen.width);
+		text.Append('x');
+		text.Append(Screen.height);
+		text.Append(" hist=");
+		AppendHist(text, '/');
 		string line = text.ToString();
 		Debug.Log(line);
 		try
@@ -1129,6 +1166,34 @@ public sealed class FPSDisplay : MonoBehaviour
 		sb.Append("  p95 ");
 		AppendNum(sb, p95, "F1");
 		sb.Append('\n');
+	}
+
+	private void AppendHist(StringBuilder sb, char separator)
+	{
+		int total = 0;
+		if (hist != null)
+		{
+			for (int i = 0; i < hist.Length; i++)
+			{
+				total += hist[i];
+			}
+		}
+
+		if (total == 0)
+		{
+			sb.Append("na");
+			return;
+		}
+
+		for (int i = 0; i < hist.Length; i++)
+		{
+			if (i > 0)
+			{
+				sb.Append(separator);
+			}
+
+			sb.Append(hist[i]);
+		}
 	}
 
 	private void AppendBuckets(StringBuilder sb, char separator)
