@@ -122,6 +122,8 @@
 
 10g. **Режим Direction ([ADR-045](../ADR/ADR-045-Direction-Coloring-And-Needle.md)).** `HeadingToValue` в пресетах по-прежнему пишет `value`, который в этом режиме не читается. Стенд `PrimitiveParticleBinderDirectionStageTests` дублирует стенд A2. `particleValueScale` в режиме Direction не действует. Одиночный LUT не перепекается — это пункт 10b, не отдельный долг. Градиент одиночных эффектов (чёрное начало `DefaultFireGradient` на `Boids_Hash`) решает владелец, C1b.
 
+10h. **Файлы `m3d_perf.csv` не таблица.** После шапки идут сырые строки `M3D_PERF key=value`, их нельзя разобрать как CSV. Так пишет харнесс.
+
 10a. **Fluid2D разноцветный dye.** Два скалярных dye-поля / кастомный `FieldDebug` / честный multi-channel dye. Явно отложено из [ADR-025](../ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) §6 — не смешивать со слоем HDR/Bloom/ACES.
 
 ---
