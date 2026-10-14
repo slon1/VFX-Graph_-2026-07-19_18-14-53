@@ -139,6 +139,13 @@ public sealed class FPSDisplay : MonoBehaviour
 	private string csvPath;
 	private bool csvChecked;
 	private bool infoLogged;
+	private PerfArgs perfArgs = new PerfArgs();
+	private float argsWait;
+	private float quitElapsed;
+	private bool quitIssued;
+	private string buildId = "na";
+	private string dirtyFlag = "na";
+	private string dirtyHash = "na";
 
 	private int thermalStatus = -1;
 	private int thermalStart = -1;
@@ -157,16 +164,37 @@ public sealed class FPSDisplay : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
 	private IntPtr powerManagerGlobal;
 	private IntPtr thermalMethod;
+	private IntPtr powerSaveMethod;
 	private bool thermalReady;
 	private float thermalTimer;
 	private readonly jvalue[] jniArgs = new jvalue[1];
 #endif
 
+	private void Awake()
+	{
+		perfArgs = PerfArgs.Parse(Environment.GetCommandLineArgs());
+		for (int i = 0; i < perfArgs.Warnings.Count; i++)
+		{
+			Debug.Log("M3D_PERF_WARN " + perfArgs.Warnings[i]);
+		}
+
+		if (perfArgs.HasWarmup)
+		{
+			warmupSeconds = perfArgs.WarmupSeconds;
+		}
+
+		if (perfArgs.HasMeasure)
+		{
+			measureSeconds = perfArgs.MeasureSeconds;
+		}
+
+		ReadBuildStamp();
+	}
+
 	private void Start()
 	{
 		Application.targetFrameRate = 120;
 		QualitySettings.vSyncCount = 0;
-		LogDeviceInfo();
 	}
 
 	private void OnEnable()
@@ -273,6 +301,8 @@ public sealed class FPSDisplay : MonoBehaviour
 				TryFindQuads();
 			}
 		}
+
+		AdvanceArgs(dt);
 
 #if UNITY_ANDROID && !UNITY_EDITOR
 		if (thermalReady)
@@ -670,6 +700,7 @@ public sealed class FPSDisplay : MonoBehaviour
 			Array.Clear(hist, 0, hist.Length);
 		}
 
+		quitElapsed = 0f;
 		RebuildDisplay();
 	}
 
@@ -1067,7 +1098,120 @@ public sealed class FPSDisplay : MonoBehaviour
 		return first == CsvHeaderLine;
 	}
 
-	private void LogDeviceInfo()
+	private void AdvanceArgs(float dt)
+	{
+		if (!infoLogged)
+		{
+			argsWait += dt;
+			if (worldResolved)
+			{
+				bool applied = !perfArgs.HasOverride || TryApplyOverrides();
+				if (applied && perfArgs.HasOverride)
+				{
+					ResetWindow();
+				}
+				else if (!applied)
+				{
+					Debug.Log("M3D_PERF_WARN args-not-applied");
+				}
+
+				LogDeviceInfo(applied);
+			}
+			else if (argsWait >= 10f)
+			{
+				if (perfArgs.HasOverride)
+				{
+					Debug.Log("M3D_PERF_WARN args-not-applied");
+				}
+
+				LogDeviceInfo(!perfArgs.HasOverride);
+			}
+		}
+
+		if (!perfArgs.Quit || !doneLogged || quitIssued)
+		{
+			return;
+		}
+
+		quitElapsed += dt;
+		if (quitElapsed >= 3f)
+		{
+			quitIssued = true;
+			Application.Quit();
+		}
+	}
+
+	/// <summary>
+	/// Applies force, render, and neighbor cap. False when a requested pass is missing.
+	/// </summary>
+	private bool TryApplyOverrides()
+	{
+		if ((perfArgs.HasForce || perfArgs.HasMaxNeighbors) && forcePass == null)
+		{
+			return false;
+		}
+
+		if (perfArgs.HasRender)
+		{
+			if (world == null)
+			{
+				return false;
+			}
+
+			world.RenderParticles = perfArgs.Render;
+		}
+
+		if (perfArgs.HasForce)
+		{
+			forcePass.Enabled = perfArgs.Force;
+		}
+
+		if (perfArgs.HasMaxNeighbors)
+		{
+			forcePass.MaxNeighbors = perfArgs.MaxNeighbors;
+		}
+
+		return true;
+	}
+
+	private void ReadBuildStamp()
+	{
+		TextAsset stamp = Resources.Load<TextAsset>("m3d_build");
+		if (stamp != null && !string.IsNullOrEmpty(stamp.text))
+		{
+			string[] lines = stamp.text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+			for (int i = 0; i < lines.Length; i++)
+			{
+				ReadStampLine(lines[i]);
+			}
+		}
+
+		if ((string.IsNullOrEmpty(buildId) || buildId == "na") && !string.IsNullOrEmpty(perfArgs.Tag))
+		{
+			buildId = perfArgs.Tag;
+		}
+	}
+
+	private void ReadStampLine(string line)
+	{
+		const string BuildKey = "build=";
+		const string DirtyKey = "dirty=";
+		const string HashKey = "dirtyhash=";
+		if (line.StartsWith(HashKey, StringComparison.Ordinal))
+		{
+			dirtyHash = line.Substring(HashKey.Length);
+		}
+		else if (line.StartsWith(DirtyKey, StringComparison.Ordinal))
+		{
+			dirtyFlag = line.Substring(DirtyKey.Length);
+		}
+		else if (line.StartsWith(BuildKey, StringComparison.Ordinal))
+		{
+			buildId = line.Substring(BuildKey.Length);
+		}
+	}
+
+	private void LogDeviceInfo(bool applied)
 	{
 		if (infoLogged)
 		{
@@ -1075,13 +1219,84 @@ public sealed class FPSDisplay : MonoBehaviour
 		}
 
 		infoLogged = true;
+		bool? force = forcePass != null ? forcePass.Enabled : (bool?)null;
+		bool? render = world != null ? world.RenderParticles : (bool?)null;
+		int? maxNeighbors = forcePass != null ? forcePass.MaxNeighbors : (int?)null;
+		string scene = SceneManager.GetActiveScene().name;
+		if (string.IsNullOrEmpty(scene))
+		{
+			scene = "na";
+		}
+
 		Debug.Log(
 			"M3D_PERF_INFO device=" + SystemInfo.deviceModel
 			+ " api=" + SystemInfo.graphicsDeviceType
 			+ " gpu=" + SystemInfo.graphicsDeviceName
 			+ " screen=" + Screen.width.ToString(CultureInfo.InvariantCulture)
 			+ "x" + Screen.height.ToString(CultureInfo.InvariantCulture)
-			+ " unity=" + Application.unityVersion);
+			+ " unity=" + Application.unityVersion
+			+ " applied=" + (applied ? "1" : "0")
+			+ " dirtyhash=" + dirtyHash
+			+ " scene=" + scene
+			+ " camera=" + CameraText()
+			+ " build=" + buildId
+			+ " dirty=" + dirtyFlag
+			+ " powersave=" + PowerSaveText()
+			+ " battery=" + BatteryText()
+			+ " charging=" + (SystemInfo.batteryStatus == BatteryStatus.Charging ? "1" : "0")
+			+ " tag=" + perfArgs.Tag
+			+ " args=" + PerfArgs.FormatRun(
+				force,
+				render,
+				maxNeighbors,
+				warmupSeconds,
+				measureSeconds,
+				perfArgs.Autorun,
+				perfArgs.Quit,
+				perfArgs.Tag));
+	}
+
+	private static string CameraText()
+	{
+		Camera camera = Camera.main;
+		if (camera == null || !camera.orthographic)
+		{
+			return "na";
+		}
+
+		return PerfArgs.FormatSeconds(camera.orthographicSize);
+	}
+
+	private static string BatteryText()
+	{
+		float level = SystemInfo.batteryLevel;
+		if (level < 0f)
+		{
+			return "na";
+		}
+
+		return Mathf.RoundToInt(level * 100f).ToString(CultureInfo.InvariantCulture);
+	}
+
+	private string PowerSaveText()
+	{
+#if UNITY_ANDROID && !UNITY_EDITOR
+		if (!thermalReady || powerManagerGlobal == IntPtr.Zero || powerSaveMethod == IntPtr.Zero)
+		{
+			return "na";
+		}
+
+		try
+		{
+			return AndroidJNI.CallBooleanMethod(powerManagerGlobal, powerSaveMethod, null) ? "1" : "0";
+		}
+		catch (Exception)
+		{
+			return "na";
+		}
+#else
+		return "na";
+#endif
 	}
 
 	private void AppendDebugFlag(StringBuilder sb)
@@ -1305,6 +1520,7 @@ public sealed class FPSDisplay : MonoBehaviour
 
 			IntPtr powerClass = AndroidJNI.FindClass("android/os/PowerManager");
 			thermalMethod = AndroidJNI.GetMethodID(powerClass, "getCurrentThermalStatus", "()I");
+			powerSaveMethod = AndroidJNI.GetMethodID(powerClass, "isPowerSaveMode", "()Z");
 			DeleteLocal(powerClass);
 			if (powerManager == IntPtr.Zero || thermalMethod == IntPtr.Zero)
 			{
@@ -1367,6 +1583,7 @@ public sealed class FPSDisplay : MonoBehaviour
 		}
 
 		thermalMethod = IntPtr.Zero;
+		powerSaveMethod = IntPtr.Zero;
 		thermalReady = false;
 	}
 

@@ -4,7 +4,7 @@
 
 Связанные доки: [`getting-started.md`](getting-started.md) · [`capabilities.md`](capabilities.md) · [`architecture.md`](architecture.md)
 
-**Снимок:** 2026-10-08 (6b принята: две стаи `Boids_hash_2teams`, [ADR-042](ADR/ADR-042-Two-Team-Preset.md). 6a: цвет команды в билборде, [ADR-041](ADR/ADR-041-Team-Palette.md). Замеры S10 в [`status.md`](status.md))
+**Снимок:** 2026-10-14 (6b принята: две стаи `Boids_hash_2teams`, [ADR-042](ADR/ADR-042-Two-Team-Preset.md). 6a: цвет команды в билборде, [ADR-041](ADR/ADR-041-Team-Palette.md). Числа S10 в [`status.md`](status.md) сняты в режиме энергосбережения и базой не являются, ADR-040 errata 6)
 
 ---
 
@@ -180,7 +180,7 @@
 | **Particles** | R: `position`, `teamId`. W: `velocity` (`+=`) |
 | **Параметры** | `maxNeighbors` (48, 0 = без капа), `countCapHits` (выкл.) |
 | **dt** | Нет |
-| **Хорошо для** | После `Build Spatial Hash`. В меню пасса нет. Стоимость на S10 растёт с `maxNeighbors` (кап срабатывает почти у всех частиц): 100 000 частиц, 1520×720, доля пропущенных vsync 0% / 19,9% / 48,3% при nn32 / 48 / 64. Линейность и миллисекунды не доказаны (ADR-040 errata 1 и 4) |
+| **Хорошо для** | После `Build Spatial Hash`. В меню пасса нет. Старые доли пропущенных vsync на S10 (100 000, 1520×720, 0% / 19,9% / 48,3% при nn32 / 48 / 64) сняты в режиме энергосбережения и базой не являются (ADR-040 errata 6). Кап на десктопе срабатывает почти у всех частиц. Линейность и миллисекунды не доказаны (errata 1 и 4) |
 
 ### Team Heading Steer
 | | |
