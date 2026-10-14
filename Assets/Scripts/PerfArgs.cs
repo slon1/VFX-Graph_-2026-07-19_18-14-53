@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 
 /// <summary>
 /// Command-line switches for <see cref="FPSDisplay"/>. No Unity API: EditMode tests call <see cref="Parse"/>.
@@ -229,6 +230,20 @@ public sealed class PerfArgs
 			return;
 		}
 
-		Tag = value;
+		var sanitized = new StringBuilder(value.Length);
+		bool changed = false;
+		for (int i = 0; i < value.Length; i++)
+		{
+			char c = value[i];
+			bool allowed = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-';
+			sanitized.Append(allowed ? c : '_');
+			changed |= !allowed;
+		}
+
+		Tag = sanitized.ToString();
+		if (changed)
+		{
+			warnings.Add("tag=" + value);
+		}
 	}
 }

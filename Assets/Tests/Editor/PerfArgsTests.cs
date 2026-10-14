@@ -134,6 +134,18 @@ public class PerfArgsTests
 	}
 
 	[Test]
+	public void Parse_Tag_ReplacesCharactersOutsideTheAllowList()
+	{
+		PerfArgs parsed = PerfArgs.Parse(new[] { "-m3d_tag", "a b,c/д" });
+		PerfArgs clean = PerfArgs.Parse(new[] { "-m3d_tag", "build.1-a_2" });
+
+		Assert.That(parsed.Tag, Is.EqualTo("a_b_c__"));
+		Assert.That(parsed.Warnings, Is.EqualTo(new[] { "tag=a b,c/д" }));
+		Assert.That(clean.Tag, Is.EqualTo("build.1-a_2"));
+		Assert.That(clean.Warnings, Is.Empty);
+	}
+
+	[Test]
 	public void FormatRun_UsesNaWhenTheWorldDidNotSupplyAValue()
 	{
 		string args = PerfArgs.FormatRun(null, false, null, 15f, 10.5f, true, true, "test");

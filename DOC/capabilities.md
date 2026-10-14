@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-10-14. Замеры S10 до 2026-10-12 сняты в режиме энергосбережения и базой не являются. Разработка стай остановлена до новой базы (фаза E1).  
+**Снимок:** 2026-10-14. Числа S10 до 2026-10-12 недействительны (энергосбережение). Визуальная приёмка C1 действует. Фазы по этим числам ждут новой базы.  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 

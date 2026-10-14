@@ -172,7 +172,7 @@ public sealed class FPSDisplay : MonoBehaviour
 
 	private void Awake()
 	{
-		perfArgs = PerfArgs.Parse(Environment.GetCommandLineArgs());
+		perfArgs = PerfArgs.Parse(CommandLineArgs());
 		for (int i = 0; i < perfArgs.Warnings.Count; i++)
 		{
 			Debug.Log("M3D_PERF_WARN " + perfArgs.Warnings[i]);
@@ -189,6 +189,40 @@ public sealed class FPSDisplay : MonoBehaviour
 		}
 
 		ReadBuildStamp();
+	}
+
+	private static string[] CommandLineArgs()
+	{
+		string[] args = Environment.GetCommandLineArgs();
+#if UNITY_ANDROID && !UNITY_EDITOR
+		if (!HasM3dSwitch(args))
+		{
+			string extra = ReadUnityIntentExtra();
+			if (!string.IsNullOrEmpty(extra))
+			{
+				args = extra.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			}
+		}
+#endif
+		return args;
+	}
+
+	private static bool HasM3dSwitch(string[] args)
+	{
+		if (args == null)
+		{
+			return false;
+		}
+
+		for (int i = 0; i < args.Length; i++)
+		{
+			if (!string.IsNullOrEmpty(args[i]) && args[i].StartsWith("-m3d_", StringComparison.Ordinal))
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private void Start()
@@ -1585,6 +1619,57 @@ public sealed class FPSDisplay : MonoBehaviour
 		thermalMethod = IntPtr.Zero;
 		powerSaveMethod = IntPtr.Zero;
 		thermalReady = false;
+	}
+
+	private static string ReadUnityIntentExtra()
+	{
+		IntPtr player = IntPtr.Zero;
+		IntPtr activity = IntPtr.Zero;
+		IntPtr activityClass = IntPtr.Zero;
+		IntPtr intent = IntPtr.Zero;
+		IntPtr intentClass = IntPtr.Zero;
+		IntPtr key = IntPtr.Zero;
+		IntPtr extra = IntPtr.Zero;
+		try
+		{
+			player = AndroidJNI.FindClass("com/unity3d/player/UnityPlayer");
+			IntPtr activityField = AndroidJNI.GetStaticFieldID(player, "currentActivity", "Landroid/app/Activity;");
+			activity = AndroidJNI.GetStaticObjectField(player, activityField);
+			if (activity == IntPtr.Zero)
+			{
+				return null;
+			}
+
+			activityClass = AndroidJNI.GetObjectClass(activity);
+			IntPtr getIntent = AndroidJNI.GetMethodID(activityClass, "getIntent", "()Landroid/content/Intent;");
+			intent = AndroidJNI.CallObjectMethod(activity, getIntent, null);
+			if (intent == IntPtr.Zero)
+			{
+				return null;
+			}
+
+			intentClass = AndroidJNI.GetObjectClass(intent);
+			IntPtr getExtra = AndroidJNI.GetMethodID(intentClass, "getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;");
+			key = AndroidJNI.NewStringUTF("unity");
+			var jniArgs = new jvalue[1];
+			jniArgs[0].l = key;
+			extra = AndroidJNI.CallObjectMethod(intent, getExtra, jniArgs);
+			return extra == IntPtr.Zero ? null : AndroidJNI.GetStringUTFChars(extra);
+		}
+		catch (Exception)
+		{
+			return null;
+		}
+		finally
+		{
+			DeleteLocal(extra);
+			DeleteLocal(key);
+			DeleteLocal(intentClass);
+			DeleteLocal(intent);
+			DeleteLocal(activityClass);
+			DeleteLocal(activity);
+			DeleteLocal(player);
+		}
 	}
 
 	private static void DeleteLocal(IntPtr local)
