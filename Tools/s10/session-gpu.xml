@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1" title="Capture_B" call_stack_unwinding="no" parse_debug_info="no" high_resolution="no" buffer_mode="streaming" sample_rate="normal" duration="105" live_rate="10000" target_address="adb:RF8N31SLV7N" energy_capture="no" stop_gator="yes"/>
