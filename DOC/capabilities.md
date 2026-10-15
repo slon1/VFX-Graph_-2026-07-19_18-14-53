@@ -1,6 +1,6 @@
 # Возможности проекта — M3D Framework
 
-**Снимок:** 2026-09-25  
+**Снимок:** 2026-10-14. Числа S10 до 2026-10-12 недействительны (энергосбережение). Визуальная приёмка C1 действует. Фазы по этим числам ждут новой базы.  
 **Стек:** Unity 6 · URP · VFX Graph · UniTask  
 **Онбординг:** [`getting-started.md`](getting-started.md) · [`pass-catalog.md`](pass-catalog.md) · [`architecture.md`](architecture.md) · [`status.md`](status.md) · [`roadmap`](last/roadmap_m2a.md)
 
@@ -117,7 +117,7 @@ Present частиц ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)
 | **AgentFieldEcho** | particles → agentVelocity field (P2G) |
 | **Gray-Scott** | field-only RD (`Source Kind = None`, XZ + touch inject) |
 | **Boids_mk1** | kinematic heading + fields (ADR-012) + `HeadingToValue` и fire-LUT (ADR-031, EditMode; Play-цвета не закрыты). Primitive безусловный, `particleRenderMode` на диске `Vfx` и игнорируется |
-| **Boids_hash** | Swarm 3000, хэш, гистограмма `hashCount`, сила соседей и курс из команды. Меню `Tools/M3D/Create Boids Hash Effect`, сцена `Boids_Hash`. 5c закрыт, порог доли cap снят: [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md). S10 (Mali-G76, Vulkan): 30 000 частиц при nn48 держат 60 fps на 1520×720, 2280×1080 и 3040×1440; 100 000 при nn32 только на 1520×720 (см. [`status.md`](status.md), ADR-040 errata). Цвет команды — тот же огонь, что `particleGradient` ([ADR-041](ADR/ADR-041-Team-Palette.md)) |
+| **Boids_hash** | Swarm 3000, хэш, гистограмма `hashCount`, сила соседей и курс из команды. Меню `Tools/M3D/Create Boids Hash Effect`, сцена `Boids_Hash`. 5c закрыт, порог доли cap снят: [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md). Прежние числа S10 (30 000 при nn48 на потолке 60 Гц, 100 000 при nn32 только на 1520×720) сняты в режиме энергосбережения и базой не являются (2026-10-14, ADR-040 errata 6). Цвет команды — тот же огонь, что `particleGradient` ([ADR-041](ADR/ADR-041-Team-Palette.md)) |
 | **Boids_hash_2teams** | Две стаи Fire и Ice по 1500, навстречу. Меню `Tools/M3D/Create Boids Hash 2 Teams Effect`, сцена `Boids_Hash_2Teams`. На 15 с перекрытие двух цветов, множитель чужих 4: [`play-6b-two-teams.md`](last/play-6b-two-teams.md) |
 | **Physarum** | след `trail`: ScatterDensity → Decay 0.8 → Diffuse ×2 → `PhysarumSteer` (угол за шаг, без dt) → Integrate → Wrap. Куб 32³, поле 128². EditMode зелёный; Play-сеть не закрыта |
 | **Physarum_Fluid** | тот же след плюс `TouchInject` → `DecayField` 0.4 на `velocity` → `AdvectScalar` (`wrapUv`, dissipation 0). Без проекции. EditMode зелёный; Play пальцем не закрыт |
