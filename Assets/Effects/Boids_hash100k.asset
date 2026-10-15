@@ -165,6 +165,8 @@ MonoBehaviour:
     m_NumColorKeys: 4
     m_NumAlphaKeys: 2
   particleValueScale: 1
+  particleColorSource: 1
+  particleColorAxis: {x: 0, y: 0, z: 1}
   showVelocityFieldQuad: 0
   showDensityFieldQuad: 0
   references:
@@ -191,7 +193,7 @@ MonoBehaviour:
       type: {class: BoidNeighborForcePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-        maxNeighbors: 32
+        maxNeighbors: 48
         countCapHits: 0
     - rid: 5854237596249489733
       type: {class: TeamHeadingSteerPass, ns: , asm: Assembly-CSharp}

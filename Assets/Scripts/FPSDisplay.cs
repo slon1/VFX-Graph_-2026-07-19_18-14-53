@@ -146,6 +146,7 @@ public sealed class FPSDisplay : MonoBehaviour
 	private string buildId = "na";
 	private string dirtyFlag = "na";
 	private string dirtyHash = "na";
+	private int savedSleepTimeout;
 
 	private int thermalStatus = -1;
 	private int thermalStart = -1;
@@ -233,6 +234,8 @@ public sealed class FPSDisplay : MonoBehaviour
 
 	private void OnEnable()
 	{
+		savedSleepTimeout = Screen.sleepTimeout;
+		Screen.sleepTimeout = SleepTimeout.NeverSleep;
 		AllocateSamples();
 		if (world == null)
 		{
@@ -256,6 +259,7 @@ public sealed class FPSDisplay : MonoBehaviour
 
 	private void OnDisable()
 	{
+		Screen.sleepTimeout = savedSleepTimeout;
 #if UNITY_EDITOR
 		RestoreBaseline();
 #endif
@@ -1287,7 +1291,8 @@ public sealed class FPSDisplay : MonoBehaviour
 				measureSeconds,
 				perfArgs.Autorun,
 				perfArgs.Quit,
-				perfArgs.Tag));
+				perfArgs.Tag)
+			+ " devbuild=" + (Debug.isDebugBuild ? "1" : "0"));
 	}
 
 	private static string CameraText()
