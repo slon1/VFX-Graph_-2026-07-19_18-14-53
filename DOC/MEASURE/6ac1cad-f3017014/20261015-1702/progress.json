@@ -1,0 +1,48 @@
+{
+    "series":  "ABABC",
+    "stopped":  false,
+    "reason":  "",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\6ac1cad-f3017014\\20261015-1702",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "A",
+                       "tag":  "A1",
+                       "status":  "ok",
+                       "file":  "01-A-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "tag":  "B1",
+                       "status":  "ok",
+                       "file":  "02-B-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "A",
+                       "tag":  "A2",
+                       "status":  "ok",
+                       "file":  "03-A-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  4,
+                       "mode":  "B",
+                       "tag":  "B2",
+                       "status":  "ok",
+                       "file":  "04-B-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  5,
+                       "mode":  "C",
+                       "tag":  "C1",
+                       "status":  "ok",
+                       "file":  "05-C-1080.txt",
+                       "reason":  ""
+                   }
+               ]
+}
