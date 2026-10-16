@@ -1,7 +1,7 @@
 ﻿#Requires -Version 5.1
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("A", "B", "C")]
+    [ValidateSet("A", "B", "C", "D")]
     [string]$Mode,
     [Parameter(Mandatory = $true)]
     [string]$ApcName,
@@ -35,7 +35,7 @@ if (-not $Session) { $Session = Join-Path $PSScriptRoot "session-gpu.xml" }
 if (-not (Test-Path $Session)) { throw "Нет session.xml: $Session" }
 $sessionPath = (Resolve-Path $Session).Path
 
-$switches = @{ A = @(1, 1); B = @(1, 0); C = @(0, 1) }
+$switches = @{ A = @(1, 1); B = @(1, 0); C = @(0, 1); D = @(0, 0) }
 $force = $switches[$Mode][0]
 $render = $switches[$Mode][1]
 $tag = $Mode

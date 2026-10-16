@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Timeline,
     [double]$FrameAvgMs = 0,
+    [int]$ParticleCount = 0,
     [string]$Out
 )
 
@@ -53,6 +54,13 @@ function Get-PerFrame([string]$Column) {
     $sum = Get-M3dColumnSum $tl $Column
     if ($null -eq $sum) { return $null }
     return $sum / $frames
+}
+
+$gpuCyclesPerFrame = $null
+$cyclesPerParticle = $null
+if ($null -ne $frames -and $frames -gt 0) {
+    $gpuCyclesPerFrame = $gpu / $frames
+    if ($ParticleCount -gt 0) { $cyclesPerParticle = $gpuCyclesPerFrame / $ParticleCount }
 }
 
 $compute = Get-PerFrame "Mali Shader Core Cycles:Execution core active"
@@ -112,6 +120,8 @@ Write-M3dLine ("nonFragment={0}" -f (Format-Metric $nonFragShare "0.000"))
 Write-M3dLine ("fragment={0}" -f (Format-Metric $fragShare "0.000"))
 Write-M3dLine ("utilization={0}" -f (Format-Metric $utilMean "0.000"))
 Write-M3dLine ("computePerFrame={0}" -f (Format-Metric $compute "0"))
+Write-M3dLine ("gpuCyclesPerFrame={0}" -f (Format-Metric $gpuCyclesPerFrame "0"))
+Write-M3dLine ("cyclesPerParticle={0}" -f (Format-Metric $cyclesPerParticle "0.00"))
 Write-M3dLine ("diverged={0}" -f (Format-Metric $divergedShare "0.000"))
 Write-M3dLine ("partialReads={0}" -f (Format-Metric $partialShare "0.000"))
 Write-M3dLine ("atomicsPerFrame={0}" -f (Format-Metric $atomics "0.0"))
@@ -133,6 +143,8 @@ $row = [pscustomobject]@{
     fragment = Format-Metric $fragShare "0.000"
     utilization = Format-Metric $utilMean "0.000"
     computePerFrame = Format-Metric $compute "0"
+    gpuCyclesPerFrame = Format-Metric $gpuCyclesPerFrame "0"
+    cyclesPerParticle = Format-Metric $cyclesPerParticle "0.00"
     diverged = Format-Metric $divergedShare "0.000"
     partialReads = Format-Metric $partialShare "0.000"
     atomicsPerFrame = Format-Metric $atomics "0.0"

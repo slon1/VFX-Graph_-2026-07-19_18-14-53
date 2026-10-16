@@ -1,0 +1,2 @@
+﻿"file","activeMHz","clockMHz","nonFragment","fragment","utilization","computePerFrame","gpuCyclesPerFrame","cyclesPerParticle","diverged","partialReads","atomicsPerFrame","beatsPerFrame","visible","culled","below600"
+"Capture_C.csv","227.4","na","0.945","0.266","na","na","4042891","40.43","0.001","0.693","196287.6","2870300","0.065","0.935","1"
