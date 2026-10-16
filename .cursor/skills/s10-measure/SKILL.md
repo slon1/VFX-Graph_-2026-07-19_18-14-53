@@ -1,0 +1,63 @@
+---
+name: s10-measure
+description: >-
+  Runs the Galaxy S10 boids measurement harness and Streamline profiles for
+  modes A, B, C, and D. Use when the user asks for a замер, серия ABABC,
+  Streamline capture, preflight, gpu-metrics, S10 frame times, or cycles per particle.
+---
+
+# Замеры S10
+
+Команды только из корня репозитория, скриптами `Tools/s10`. Новый парсер CSV не писать. Телефон запускать только по явной просьбе. Скрипт не меняет разрешение, яркость и режим питания.
+
+Протокол и таблица базы: [DOC/MEASURE/README.md](../../../DOC/MEASURE/README.md). План: [DOC/plan-P7-perf-200k.md](../../../DOC/plan-P7-perf-200k.md).
+
+## Режимы
+
+| режим | сила | рендер | где |
+|---|---:|---:|---|
+| A | 1 | 1 | харнесс |
+| B | 1 | 0 | харнесс и Streamline |
+| C | 0 | 1 | харнесс и Streamline |
+| D | 0 | 0 | только Streamline |
+
+Харнесс по умолчанию `ABABC`. `run-series.ps1` отвергает любую букву кроме A, B, C. D в серию не добавлять.
+
+D — кадр без обхода соседей и без рендера частиц. Хэш, руление, интеграция и кадр URP продолжаются.
+
+## Перед запуском
+
+1. `powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/preflight.ps1`
+2. `low_power` должен быть `0`. Если `1`, замер не начинать и сказать об этом.
+3. `mWakefulness` печатается и пишется в лог. `Dozing` и `Asleep` точку не отменяют. Пустое поле останавливает серию.
+4. Короткая сторона берётся из `res` лога. `Override size 720x1520` — режим 720, даже если `Physical size` печатает `1440x3040`. Для профиля, который сравнивают с базой 720, короткая сторона должна быть 720.
+5. Сцена `Assets/Scenes/Boids_Hash_test.unity` остаётся на `Assets/Effects/Boids_hash100k.asset`.
+
+Пакет `com.slonInc.vfx`, activity `com.unity3d.player.UnityPlayerGameActivity`, serial по умолчанию `RF8N31SLV7N`. Прогрев 60 с, окно 25 с, пауза между точками серии 60 с. adb: `-Adb`, иначе `M3D_ADB`, иначе `%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`. Streamline: `-Streamline`, иначе `M3D_STREAMLINE`, иначе `PATH`. Имя пользователя не зашивать. При `adb server version doesn't match` остановиться.
+
+## Куда пишется результат
+
+Харнесс сам кладёт логи и `summary.md` в `DOC/MEASURE/<build>-<dirtyhash>/<yyyyMMdd-HHmm>/`. Имя лога `NN-<режим>-<короткая сторона>.txt`, первая строка `mWakefulness=...`.
+
+Streamline: пользователь даёт только имя файла `Capture_<режим>.apc`. Каталог `.apc` — `Документы/Streamline`. В git захват не класть. CSV отчёта копировать в папку захода через `-FixtureOut`. Дубли в `Tools/s10/out/` не коммитить.
+
+После захвата вызвать `gpu-metrics.ps1` с `-FrameAvgMs` из DONE этого же лога и `-ParticleCount`. Свой `summary.md` в папке захода, с колонкой `wakefulness`.
+
+`clockMHz`, `utilization` и `computePerFrame` на шаблоне `with-metrics` равны `na`: в CSV нет `Mali Clock:Frequency (Device #0)` и `Mali Shader Core Cycles:Execution core active`. Колонки не удалять. Фикстуры `DOC/MEASURE/1519383/s10` и `s10_` не удалять.
+
+Окно отчёта: `-scale 100 -start <warmup> -stop <warmup+measure>`. Длительность захвата: warmup + measure + 30. Успех захвата — фраза `Created Streamline capture` и существующий каталог `.apc`.
+
+## Команды
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/preflight.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/run-series.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/capture-streamline.ps1 -Mode B -ApcName Capture_B.apc -FixtureOut DOC/MEASURE/<папка>/Capture_B.csv
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/gpu-metrics.ps1 -Timeline DOC/MEASURE/<папка>/Capture_B.csv -FrameAvgMs <DONE> -ParticleCount 100000 -Out DOC/MEASURE/<папка>/Capture_B-gpu-metrics.csv
+```
+
+Режимы C и D — те же команды с `-Mode C` или `-Mode D` и своим именем `.apc`. Не перезаписывать чужой захват.
+
+## Не коммитить
+
+`.apc`, APK, `Tools/s10/out/`, `*.tmp`, `quote-check.cmd`, включённый `countCapHits`. Долю капа снимать в редакторе и вернуть флаг в 0 до выхода из Play, не сохраняя сцену.
