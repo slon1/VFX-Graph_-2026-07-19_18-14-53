@@ -1,12 +1,12 @@
 # S10 summary
 
-| file | mode | frameAvg | long | valid | reason |
-|---|---|---:|---:|---|---|
-| 01-A-720.txt | A | 19.74 | 0.181 | 1 |  |
-| 02-B-720.txt | B | 17.88 | 0.069 | 1 |  |
-| 03-A-720.txt | A | 19.80 | 0.184 | 1 |  |
-| 04-B-720.txt | B | 17.72 | 0.060 | 1 |  |
-| 05-C-720.txt | C | 16.72 | 0.000 | 1 |  |
+| file | mode | frameAvg | long | wakefulness | valid | reason |
+|---|---|---:|---:|---|---|---|
+| 01-A-720.txt | A | 19.74 | 0.181 | na | 1 |  |
+| 02-B-720.txt | B | 17.88 | 0.069 | na | 1 |  |
+| 03-A-720.txt | A | 19.80 | 0.184 | na | 1 |  |
+| 04-B-720.txt | B | 17.72 | 0.060 | na | 1 |  |
+| 05-C-720.txt | C | 16.72 | 0.000 | na | 1 |  |
 
 | mode | n | median frameAvg | spread | median long |
 |---|---:|---:|---:|---:|
