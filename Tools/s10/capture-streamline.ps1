@@ -11,7 +11,8 @@ param(
     [string]$FixtureOut,
     [string]$Serial = "RF8N31SLV7N",
     [string]$Adb,
-    [string]$Streamline
+    [string]$Streamline,
+    [string]$Scene = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +41,7 @@ $force = $switches[$Mode][0]
 $render = $switches[$Mode][1]
 $tag = $Mode
 $unityArgs = "-m3d_force $force -m3d_render $render -m3d_maxn 48 -m3d_warmup $WarmupSec -m3d_measure $MeasureSec -m3d_autorun -m3d_quit -m3d_tag $tag"
+if (-not [string]::IsNullOrWhiteSpace($Scene)) { $unityArgs = $unityArgs + " -m3d_scene $Scene" }
 $duration = $WarmupSec + $MeasureSec + 30
 $outDir = Get-M3dOutDir
 

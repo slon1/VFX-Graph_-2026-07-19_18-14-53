@@ -152,4 +152,36 @@ public class PerfArgsTests
 
 		Assert.That(args, Is.EqualTo("force=na,render=0,maxn=na,warmup=15,measure=10.5,autorun=1,quit=1,tag=test"));
 	}
+
+	[Test]
+	public void Parse_Scene_ReadsASceneName()
+	{
+		PerfArgs parsed = PerfArgs.Parse(new[] { "-m3d_scene", "Boids_Hash_test200k" });
+
+		Assert.That(parsed.HasScene, Is.True);
+		Assert.That(parsed.Scene, Is.EqualTo("Boids_Hash_test200k"));
+		Assert.That(parsed.Warnings, Is.Empty);
+		Assert.That(parsed.HasOverride, Is.False);
+	}
+
+	[Test]
+	public void Parse_Scene_RejectsEmptyAndIllegalNames()
+	{
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_scene" });
+		PerfArgs illegal = PerfArgs.Parse(new[] { "-m3d_scene", "Boids Hash" });
+
+		Assert.That(missing.HasScene, Is.False);
+		Assert.That(illegal.HasScene, Is.False);
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "scene=" }));
+		Assert.That(illegal.Warnings, Is.EqualTo(new[] { "scene=Boids Hash" }));
+	}
+
+	[Test]
+	public void FormatRun_AppendsSceneWhenItWasSupplied()
+	{
+		string args = PerfArgs.FormatRun(true, true, 48, 60f, 25f, true, true, "A1", "Boids_Hash_test");
+
+		Assert.That(args, Is.EqualTo(
+			"force=1,render=1,maxn=48,warmup=60,measure=25,autorun=1,quit=1,tag=A1,scene=Boids_Hash_test"));
+	}
 }

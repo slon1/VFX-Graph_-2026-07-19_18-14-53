@@ -115,11 +115,8 @@ $below600 = (-not $isFixture) -and ($activeMHz -lt 600)
 Write-M3dLine ("file={0}" -f (Split-Path $Timeline -Leaf))
 Write-M3dLine ("durationSec={0} rows={1}" -f (Format-Metric $duration "0.00"), $tl.Rows.Count)
 Write-M3dLine ("activeMHz={0}" -f (Format-Metric $activeMHz "0.0"))
-Write-M3dLine ("clockMHz={0}" -f (Format-Metric $clockMHz "0.0"))
 Write-M3dLine ("nonFragment={0}" -f (Format-Metric $nonFragShare "0.000"))
 Write-M3dLine ("fragment={0}" -f (Format-Metric $fragShare "0.000"))
-Write-M3dLine ("utilization={0}" -f (Format-Metric $utilMean "0.000"))
-Write-M3dLine ("computePerFrame={0}" -f (Format-Metric $compute "0"))
 Write-M3dLine ("gpuCyclesPerFrame={0}" -f (Format-Metric $gpuCyclesPerFrame "0"))
 Write-M3dLine ("cyclesPerParticle={0}" -f (Format-Metric $cyclesPerParticle "0.00"))
 Write-M3dLine ("diverged={0}" -f (Format-Metric $divergedShare "0.000"))
@@ -138,11 +135,8 @@ if (-not $Out) {
 $row = [pscustomobject]@{
     file = (Split-Path $Timeline -Leaf)
     activeMHz = Format-Metric $activeMHz "0.0"
-    clockMHz = Format-Metric $clockMHz "0.0"
     nonFragment = Format-Metric $nonFragShare "0.000"
     fragment = Format-Metric $fragShare "0.000"
-    utilization = Format-Metric $utilMean "0.000"
-    computePerFrame = Format-Metric $compute "0"
     gpuCyclesPerFrame = Format-Metric $gpuCyclesPerFrame "0"
     cyclesPerParticle = Format-Metric $cyclesPerParticle "0.00"
     diverged = Format-Metric $divergedShare "0.000"

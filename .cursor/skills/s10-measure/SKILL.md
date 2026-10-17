@@ -31,7 +31,7 @@ D — кадр без обхода соседей и без рендера ча�
 2. `low_power` должен быть `0`. Если `1`, замер не начинать и сказать об этом.
 3. `mWakefulness` печатается и пишется в лог. `Dozing` и `Asleep` точку не отменяют. Пустое поле останавливает серию.
 4. Короткая сторона берётся из `res` лога. `Override size 720x1520` — режим 720, даже если `Physical size` печатает `1440x3040`. Для профиля, который сравнивают с базой 720, короткая сторона должна быть 720.
-5. Сцена `Assets/Scenes/Boids_Hash_test.unity` остаётся на `Assets/Effects/Boids_hash100k.asset`.
+5. Сцена по умолчанию — `Assets/Scenes/Boids_Hash_test.unity` с `Assets/Effects/Boids_hash100k.asset`. Для 200 000 частиц — `Boids_Hash_test200k` и `Boids_hash200k` (камера около 380). Для плотной — `Boids_Hash_testx4` и `Boids_hash100k_x4` (камера около 135). Другую сцену запускать параметром `-Scene` у `run-series.ps1` и `capture-streamline.ps1` (`-m3d_scene`). Все три сцены должны быть в Build Settings; скрипт их туда не добавляет.
 
 Пакет `com.slonInc.vfx`, activity `com.unity3d.player.UnityPlayerGameActivity`, serial по умолчанию `RF8N31SLV7N`. Прогрев 60 с, окно 25 с, пауза между точками серии 60 с. adb: `-Adb`, иначе `M3D_ADB`, иначе `%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`. Streamline: `-Streamline`, иначе `M3D_STREAMLINE`, иначе `PATH`. Имя пользователя не зашивать. При `adb server version doesn't match` остановиться.
 

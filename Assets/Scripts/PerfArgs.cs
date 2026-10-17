@@ -26,6 +26,8 @@ public sealed class PerfArgs
 	public bool Autorun { get; private set; }
 	public bool Quit { get; private set; }
 	public string Tag { get; private set; } = "";
+	public bool HasScene { get; private set; }
+	public string Scene { get; private set; } = "";
 
 	public bool HasOverride => HasForce || HasRender || HasMaxNeighbors;
 
@@ -87,6 +89,12 @@ public sealed class PerfArgs
 			if (token == "-m3d_tag")
 			{
 				parsed.ReadTag(NextValue(args, ref i));
+				continue;
+			}
+
+			if (token == "-m3d_scene")
+			{
+				parsed.ReadScene(NextValue(args, ref i));
 			}
 		}
 
@@ -104,9 +112,10 @@ public sealed class PerfArgs
 		float measureSeconds,
 		bool autorun,
 		bool quit,
-		string tag)
+		string tag,
+		string scene = null)
 	{
-		return "force=" + Bit(force)
+		string text = "force=" + Bit(force)
 			+ ",render=" + Bit(render)
 			+ ",maxn=" + (maxNeighbors.HasValue ? maxNeighbors.Value.ToString(CultureInfo.InvariantCulture) : "na")
 			+ ",warmup=" + FormatSeconds(warmupSeconds)
@@ -114,6 +123,12 @@ public sealed class PerfArgs
 			+ ",autorun=" + (autorun ? "1" : "0")
 			+ ",quit=" + (quit ? "1" : "0")
 			+ ",tag=" + (tag ?? "");
+		if (!string.IsNullOrEmpty(scene))
+		{
+			text += ",scene=" + scene;
+		}
+
+		return text;
 	}
 
 	private static string Bit(bool? value)
@@ -245,5 +260,28 @@ public sealed class PerfArgs
 		{
 			warnings.Add("tag=" + value);
 		}
+	}
+
+	private void ReadScene(string value)
+	{
+		if (string.IsNullOrEmpty(value))
+		{
+			warnings.Add("scene=");
+			return;
+		}
+
+		for (int i = 0; i < value.Length; i++)
+		{
+			char c = value[i];
+			bool allowed = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
+			if (!allowed)
+			{
+				warnings.Add("scene=" + value);
+				return;
+			}
+		}
+
+		HasScene = true;
+		Scene = value;
 	}
 }

@@ -10,7 +10,8 @@ param(
     [switch]$Resume,
     [switch]$PullCsv,
     [string]$Adb,
-    [string]$Streamline
+    [string]$Streamline,
+    [string]$Scene = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,14 +60,18 @@ function Save-Progress($State, [string]$Path) {
 
 function Get-ExpectedArgs($Point) {
     $sw = Get-ModeSwitches $Point.mode
-    return ("force={0},render={1},maxn={2},warmup={3},measure={4},autorun=1,quit=1,tag={5}" -f `
+    $text = ("force={0},render={1},maxn={2},warmup={3},measure={4},autorun=1,quit=1,tag={5}" -f `
         $sw.Force, $sw.Render, $maxNeighbors, $WarmupSec, $MeasureSec, $Point.tag)
+    if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + ",scene=$Scene" }
+    return $text
 }
 
 function Get-UnityArgs($Point) {
     $sw = Get-ModeSwitches $Point.mode
-    return ("-m3d_force {0} -m3d_render {1} -m3d_maxn {2} -m3d_warmup {3} -m3d_measure {4} -m3d_autorun -m3d_quit -m3d_tag {5}" -f `
+    $text = ("-m3d_force {0} -m3d_render {1} -m3d_maxn {2} -m3d_warmup {3} -m3d_measure {4} -m3d_autorun -m3d_quit -m3d_tag {5}" -f `
         $sw.Force, $sw.Render, $maxNeighbors, $WarmupSec, $MeasureSec, $Point.tag)
+    if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + " -m3d_scene $Scene" }
+    return $text
 }
 
 $adbPath = Resolve-M3dAdb -Adb $Adb
@@ -214,7 +219,8 @@ foreach ($point in @($state.points)) {
     $side = Get-M3dShortSide $res
     $logName = "{0:D2}-{1}-{2}.txt" -f [int]$point.n, $point.mode, $side
     $logPath = Join-Path $resultDir $logName
-    [IO.File]::WriteAllText($logPath, (($perfLines -join "`r`n") + "`r`n"), [Text.UTF8Encoding]::new($false))
+    $logBody = "mWakefulness=$wakeValue`r`n" + ($perfLines -join "`r`n") + "`r`n"
+    [IO.File]::WriteAllText($logPath, $logBody, [Text.UTF8Encoding]::new($false))
 
     $reasons = @()
     if ($startFailed) { $reasons += "am start без has extras или с ошибкой" }

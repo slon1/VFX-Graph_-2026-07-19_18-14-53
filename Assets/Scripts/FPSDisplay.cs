@@ -179,6 +179,12 @@ public sealed class FPSDisplay : MonoBehaviour
 			Debug.Log("M3D_PERF_WARN " + perfArgs.Warnings[i]);
 		}
 
+		if (perfArgs.HasScene && SceneManager.GetActiveScene().name != perfArgs.Scene)
+		{
+			SceneManager.LoadScene(perfArgs.Scene);
+			return;
+		}
+
 		if (perfArgs.HasWarmup)
 		{
 			warmupSeconds = perfArgs.WarmupSeconds;
@@ -1291,7 +1297,8 @@ public sealed class FPSDisplay : MonoBehaviour
 				measureSeconds,
 				perfArgs.Autorun,
 				perfArgs.Quit,
-				perfArgs.Tag)
+				perfArgs.Tag,
+				perfArgs.HasScene ? perfArgs.Scene : null)
 			+ " devbuild=" + (Debug.isDebugBuild ? "1" : "0"));
 	}
 
