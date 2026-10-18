@@ -124,11 +124,14 @@ if ($Baseline) {
     if (-not (Test-Path $Baseline)) { throw "Нет baseline: $Baseline" }
     $baseRows = @(Import-Csv $Baseline)
     $lines.Add("")
-    $lines.Add("| mode | delta frameAvg | delta long | note |")
-    $lines.Add("|---|---:|---:|---|")
+    $lines.Add("| mode | walk | delta frameAvg | delta long | note |")
+    $lines.Add("|---|---|---:|---:|---|")
     foreach ($mode in @("A", "B", "C")) {
-        $key = "$mode|na"
-        if (-not $byKey.ContainsKey($key)) { continue }
+        $walk = $null
+        $key = "$mode|0"
+        if ($byKey.ContainsKey($key)) { $walk = "0" }
+        elseif ($byKey.ContainsKey("$mode|na")) { $key = "$mode|na"; $walk = "na" }
+        else { continue }
         $base = $baseRows | Where-Object { $_.mode -eq $mode } | Select-Object -First 1
         if (-not $base) { continue }
         $dFrame = $byKey[$key].Median - (Get-M3dNumber $base.frameAvg)
@@ -138,10 +141,10 @@ if ($Baseline) {
         $longNoise = [Math]::Abs($dLong) -lt 0.03
         $note = if ($frameNoise) { "шум" } else { "кадр" }
         if ($longNoise) { $note = "$note, long шум" }
-        $lines.Add(("| {0} | {1} | {2} | {3} |" -f $mode, `
+        $lines.Add(("| {0} | {1} | {2} | {3} | {4} |" -f $mode, $walk, `
             $dFrame.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
             $dLong.ToString("0.000", [Globalization.CultureInfo]::InvariantCulture), $note))
-        Write-M3dLine ("baseline mode={0} dFrame={1} dLong={2} {3}" -f $mode, `
+        Write-M3dLine ("baseline mode={0} walk={1} dFrame={2} dLong={3} {4}" -f $mode, $walk, `
             $dFrame.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
             $dLong.ToString("0.000", [Globalization.CultureInfo]::InvariantCulture), $note)
     }

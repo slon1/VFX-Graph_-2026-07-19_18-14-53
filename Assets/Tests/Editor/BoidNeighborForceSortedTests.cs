@@ -48,7 +48,14 @@ public class BoidNeighborForceSortedTests
         owned.Clear();
     }
 
+    // Recorded 2026-10-18 on NVIDIA GeForce GTX 1080, driver 32.0.15.8180, Direct3D 12.
+    // The bits were taken before BoidNeighborForceSorted existed, on the tree of 8b5450f.
+    // Bit-exact: another GPU or driver may fold fma differently and fail this test
+    // without a logic error. The project does not exclude categories from EditMode,
+    // so GpuBitExact stays in the normal run. The tolerance test next to this one
+    // does not depend on fma.
     [Test]
+    [Category("GpuBitExact")]
     public void Walk0_OneParticlePerCell_MatchesBitsFromBeforeTheEdit()
     {
         const int side = 4;
@@ -90,6 +97,42 @@ public class BoidNeighborForceSortedTests
             Assert.AreEqual(Walk0LatticeBits[i * 3], unchecked((uint)BitConverter.SingleToInt32Bits(velocity[i].x)), "x " + i);
             Assert.AreEqual(Walk0LatticeBits[i * 3 + 1], unchecked((uint)BitConverter.SingleToInt32Bits(velocity[i].y)), "y " + i);
             Assert.AreEqual(Walk0LatticeBits[i * 3 + 2], unchecked((uint)BitConverter.SingleToInt32Bits(velocity[i].z)), "z " + i);
+        }
+    }
+
+    [Test]
+    public void Walk0_OneParticlePerCell_MatchesRecordedBitsWithinOracleTolerance()
+    {
+        const int side = 4;
+        const float step = 3f;
+        int count = side * side;
+        Vector3[] positions = new Vector3[count];
+        Vector3[] headings = new Vector3[count];
+        uint[] teamIds = new uint[count];
+        for (int z = 0; z < side; z++)
+        {
+            for (int x = 0; x < side; x++)
+            {
+                int i = z * side + x;
+                positions[i] = new Vector3(-4.5f + x * step, 0f, -4.5f + z * step);
+                float angle = i * 0.37f;
+                headings[i] = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+            }
+        }
+
+        TeamParams[] slots = Slots(Profile(3.1f, 3.1f, 3.1f, 1f, 1.2f, 0.5f, 0.4f, 6f, 4f));
+        Prepared prepared = Prepare(
+            positions, headings, teamIds, slots, true, new Vector3(8f, 0f, 8f), 2f, 48, false, false);
+        Run(prepared, 0);
+        Vector3[] velocity = ReadVelocity(prepared);
+        for (int i = 0; i < count; i++)
+        {
+            float expectedX = BitConverter.Int32BitsToSingle(unchecked((int)Walk0LatticeBits[i * 3]));
+            float expectedY = BitConverter.Int32BitsToSingle(unchecked((int)Walk0LatticeBits[i * 3 + 1]));
+            float expectedZ = BitConverter.Int32BitsToSingle(unchecked((int)Walk0LatticeBits[i * 3 + 2]));
+            AssertClose(velocity[i].x, expectedX, "recorded x " + i);
+            AssertClose(velocity[i].y, expectedY, "recorded y " + i);
+            AssertClose(velocity[i].z, expectedZ, "recorded z " + i);
         }
     }
 
@@ -259,6 +302,10 @@ public class BoidNeighborForceSortedTests
     public void Random_ThirtySeeds_Walk1MatchesWalk0()
     {
         int worst = 0;
+        int worstWrap = 0;
+        Vector3 worldExtents = new Vector3(16f, 0f, 16f);
+        const float minCell = 4f;
+        SpatialHashLayout layout = SpatialHashSet.ComputeLayout(Vector3.zero, worldExtents, minCell);
         for (int seed = 1; seed <= 30; seed++)
         {
             var random = new System.Random(seed);
@@ -269,23 +316,43 @@ public class BoidNeighborForceSortedTests
             Vector3[] positions = new Vector3[count];
             Vector3[] headings = new Vector3[count];
             uint[] teamIds = new uint[count];
+            int edge = 0;
             for (int i = 0; i < count; i++)
             {
-                positions[i] = new Vector3(Next(random, -12f, 12f), 0f, Next(random, -12f, 12f));
+                positions[i] = new Vector3(
+                    Next(random, -worldExtents.x, worldExtents.x),
+                    0f,
+                    Next(random, -worldExtents.z, worldExtents.z));
                 float angle = Next(random, 0f, Mathf.PI * 2f);
                 headings[i] = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
                 teamIds[i] = (uint)(i & 1);
+                int ix = Mathf.FloorToInt((positions[i].x - layout.Origin.x) / layout.CellSize.x);
+                int iy = Mathf.FloorToInt((positions[i].z - layout.Origin.y) / layout.CellSize.y);
+                if (ix == 0 || ix == layout.Resolution.x - 1 || iy == 0 || iy == layout.Resolution.y - 1)
+                {
+                    edge++;
+                }
+            }
+
+            if (wrap)
+            {
+                Assert.Greater(edge, 0, "seed " + seed + " does not touch an edge cell");
             }
 
             TeamParams[] slots = Slots(
                 Profile(3.5f, 3.5f, 3.5f, 1.4f, 1f, 0.5f, 0.4f, 4f, 2f),
                 Profile(3.5f, 3.5f, 3.5f, 0.4f, 0.7f, 0.3f, 0.3f, 3f, 1f));
             Pair pair = RunPair(
-                positions, headings, teamIds, slots, wrap, new Vector3(16f, 0f, 16f), 4f, cap, cap > 0, false);
+                positions, headings, teamIds, slots, wrap, worldExtents, minCell, cap, cap > 0, false);
             int ulp = MaxUlp(pair.Walk0, pair.Walk1);
             if (ulp > worst)
             {
                 worst = ulp;
+            }
+
+            if (wrap && ulp > worstWrap)
+            {
+                worstWrap = ulp;
             }
 
             AssertCloseWalks("seed " + seed + " n " + count + " wrap " + wrap + " cap " + cap, pair);
@@ -295,7 +362,7 @@ public class BoidNeighborForceSortedTests
             }
         }
 
-        TestContext.WriteLine("random max ulp " + worst);
+        TestContext.WriteLine("random max ulp " + worst + " wrap max ulp " + worstWrap);
     }
 
     [Test]
