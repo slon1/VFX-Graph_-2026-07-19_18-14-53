@@ -176,9 +176,9 @@
 | | |
 |--|--|
 | **Назначение** | Сила соседей по снимку хэша: separation, alignment, cohesion прибавляются к `velocity`. Соседей за пределами 3×3 ячеек не ищет. Курс из команды даёт `Team Heading Steer` |
-| **Библиотека / kernel** | `BoidsPasses` / `BoidNeighborForce` |
+| **Библиотека / kernel** | `BoidsPasses` / `BoidNeighborForce` (`walkMode` 0) или `BoidNeighborForceSorted` (`walkMode` 1 и, до F3b, 2) |
 | **Particles** | R: `position`, `teamId`. W: `velocity` (`+=`) |
-| **Параметры** | `maxNeighbors` (48, 0 = без капа), `countCapHits` (выкл.) |
+| **Параметры** | `maxNeighbors` (48, 0 = без капа), `countCapHits` (выкл.), `walkMode` (0 по умолчанию, допустимо 0..2) |
 | **dt** | Нет |
 | **Хорошо для** | После `Build Spatial Hash`. В меню пасса нет. Старые доли пропущенных vsync на S10 (100 000, 1520×720, 0% / 19,9% / 48,3% при nn32 / 48 / 64) сняты в режиме энергосбережения и базой не являются (ADR-040 errata 6). Кап на десктопе срабатывает почти у всех частиц. Линейность и миллисекунды не доказаны (errata 1 и 4) |
 

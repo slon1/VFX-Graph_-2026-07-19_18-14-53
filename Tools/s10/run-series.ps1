@@ -14,6 +14,16 @@ param(
     [string]$Scene = ""
 )
 
+<#
+.SYNOPSIS
+    Серия замеров S10. По умолчанию ABABC.
+.DESCRIPTION
+    Строка без пробелов и без цифр (ABABC) разбирается по символам, как раньше.
+    Строка с пробелами идёт по токенам, даже без цифр: "A B" значит walk не задан.
+    Токен A — режим A, walk остаётся значением ассета. Токен A0 — режим A и walk 0.
+    Слитный токен вроде A0A1 отклоняется ошибкой и не разбирается как старая строка.
+#>
+
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "lib.ps1")
 
@@ -31,12 +41,27 @@ function Get-ModeSwitches([string]$Mode) {
 }
 
 function New-PointPlan([string]$Spec) {
+    $trimmed = if ($null -eq $Spec) { "" } else { $Spec.Trim() }
+    if ([string]::IsNullOrWhiteSpace($trimmed)) { throw "Серия пустая." }
+    $tokens = @()
+    if ($trimmed -notmatch '\s' -and $trimmed -notmatch '\d') {
+        foreach ($ch in $trimmed.ToCharArray()) { $tokens += [string]$ch }
+    } else {
+        $tokens = @($trimmed -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
     $counts = @{ A = 0; B = 0; C = 0 }
     $plan = @()
     $n = 0
-    foreach ($ch in $Spec.ToCharArray()) {
-        $mode = [string]$ch
-        if ($mode -notmatch '^[ABC]$') { throw "Серия содержит не A/B/C: $mode" }
+    foreach ($token in $tokens) {
+        $walk = ""
+        if ($token -match '^[ABC]$') {
+            $mode = $token
+        } elseif ($token -match '^([ABC])([012])$') {
+            $mode = $Matches[1]
+            $walk = $Matches[2]
+        } else {
+            throw "Серия: токен '$token' не разобран. Нужен режим A, B или C, либо режим и walk через пробел, например A0 A1. Слитный токен вроде A0A1 не принимается."
+        }
         $counts[$mode] = $counts[$mode] + 1
         $n++
         $pointTag = "$mode$($counts[$mode])"
@@ -44,6 +69,7 @@ function New-PointPlan([string]$Spec) {
         $plan += [pscustomobject]@{
             n = $n
             mode = $mode
+            walk = $walk
             tag = $pointTag
             status = "pending"
             file = ""
@@ -63,6 +89,7 @@ function Get-ExpectedArgs($Point) {
     $text = ("force={0},render={1},maxn={2},warmup={3},measure={4},autorun=1,quit=1,tag={5}" -f `
         $sw.Force, $sw.Render, $maxNeighbors, $WarmupSec, $MeasureSec, $Point.tag)
     if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + ",scene=$Scene" }
+    if (-not [string]::IsNullOrWhiteSpace([string]$Point.walk)) { $text = $text + ",walk=$($Point.walk)" }
     return $text
 }
 
@@ -71,6 +98,7 @@ function Get-UnityArgs($Point) {
     $text = ("-m3d_force {0} -m3d_render {1} -m3d_maxn {2} -m3d_warmup {3} -m3d_measure {4} -m3d_autorun -m3d_quit -m3d_tag {5}" -f `
         $sw.Force, $sw.Render, $maxNeighbors, $WarmupSec, $MeasureSec, $Point.tag)
     if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + " -m3d_scene $Scene" }
+    if (-not [string]::IsNullOrWhiteSpace([string]$Point.walk)) { $text = $text + " -m3d_walk $($Point.walk)" }
     return $text
 }
 

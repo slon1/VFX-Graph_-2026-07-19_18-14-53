@@ -93,6 +93,7 @@ public sealed class SimulationWorld : MonoBehaviour
         if (teamBuffer != null)
         {
             TeamParams.Upload(teamBuffer, effect.Teams, teamScratch);
+            context.TeamMaxRadius = MaxTeamRadius(effect.Teams);
         }
 
         if (neighborForceEnabled && context.SpatialHash != null)
@@ -250,6 +251,7 @@ public sealed class SimulationWorld : MonoBehaviour
                 GraphicsBuffer.Target.Structured, TeamProfile.MaxTeams, TeamParams.Stride);
             TeamParams.Upload(teamBuffer, effect.Teams, teamScratch);
             context.Teams = teamBuffer;
+            context.TeamMaxRadius = MaxTeamRadius(effect.Teams);
         }
 
         IReadOnlyList<SimPass> passes = effect.Passes;
@@ -725,5 +727,40 @@ public sealed class SimulationWorld : MonoBehaviour
         samplers.Clear();
         context = null;
         source = null;
+    }
+
+    private static float MaxTeamRadius(IReadOnlyList<TeamProfile> teams)
+    {
+        float max = 0f;
+        if (teams == null)
+        {
+            return max;
+        }
+
+        for (int i = 0; i < teams.Count; i++)
+        {
+            TeamProfile profile = teams[i];
+            if (profile == null)
+            {
+                continue;
+            }
+
+            if (profile.SeparationRadius > max)
+            {
+                max = profile.SeparationRadius;
+            }
+
+            if (profile.AlignmentRadius > max)
+            {
+                max = profile.AlignmentRadius;
+            }
+
+            if (profile.CohesionRadius > max)
+            {
+                max = profile.CohesionRadius;
+            }
+        }
+
+        return max;
     }
 }

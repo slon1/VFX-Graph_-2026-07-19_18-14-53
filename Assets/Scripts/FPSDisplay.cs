@@ -1083,6 +1083,16 @@ public sealed class FPSDisplay : MonoBehaviour
 		text.Append(Screen.height);
 		text.Append(" hist=");
 		AppendHist(text, '/');
+		text.Append(" walk=");
+		if (forcePass == null)
+		{
+			text.Append("na");
+		}
+		else
+		{
+			text.Append(forcePass.WalkMode.ToString(CultureInfo.InvariantCulture));
+		}
+
 		string line = text.ToString();
 		Debug.Log(line);
 		try
@@ -1190,7 +1200,7 @@ public sealed class FPSDisplay : MonoBehaviour
 	/// </summary>
 	private bool TryApplyOverrides()
 	{
-		if ((perfArgs.HasForce || perfArgs.HasMaxNeighbors) && forcePass == null)
+		if ((perfArgs.HasForce || perfArgs.HasMaxNeighbors || perfArgs.HasWalk) && forcePass == null)
 		{
 			return false;
 		}
@@ -1213,6 +1223,11 @@ public sealed class FPSDisplay : MonoBehaviour
 		if (perfArgs.HasMaxNeighbors)
 		{
 			forcePass.MaxNeighbors = perfArgs.MaxNeighbors;
+		}
+
+		if (perfArgs.HasWalk)
+		{
+			forcePass.WalkMode = perfArgs.Walk;
 		}
 
 		return true;
@@ -1298,8 +1313,12 @@ public sealed class FPSDisplay : MonoBehaviour
 				perfArgs.Autorun,
 				perfArgs.Quit,
 				perfArgs.Tag,
-				perfArgs.HasScene ? perfArgs.Scene : null)
-			+ " devbuild=" + (Debug.isDebugBuild ? "1" : "0"));
+				perfArgs.HasScene ? perfArgs.Scene : null,
+				perfArgs.HasWalk ? perfArgs.Walk : (int?)null)
+			+ " devbuild=" + (Debug.isDebugBuild ? "1" : "0")
+			+ " walk=" + (forcePass != null
+				? forcePass.WalkMode.ToString(CultureInfo.InvariantCulture)
+				: "na"));
 	}
 
 	private static string CameraText()

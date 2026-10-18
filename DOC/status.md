@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-10-15  
-**Итерация:** F1: P6 закрыта, план P7 записан (ADR-046).  
+**Итерация:** F3a: обход соседей в порядке слотов, `-m3d_walk` (ADR-047).  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  

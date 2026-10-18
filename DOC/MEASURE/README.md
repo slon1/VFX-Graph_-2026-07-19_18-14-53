@@ -19,8 +19,11 @@
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/preflight.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/run-series.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/run-series.ps1 -Series "A0 A1 A0 A1 B0 B1 B0 B1"
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/summarize.ps1 -Logs DOC/MEASURE/<папка> -Out DOC/MEASURE/<папка>/summary.md
 ```
+
+Токен `A0` передаёт `-m3d_walk 0`. Токен `A` без цифры walk не задаёт. `ABABC` без пробелов остаётся прежней серией. Сводка группирует по паре режим и walk; старые строки без поля `walk` попадают в группу `na`.
 
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/capture-streamline.ps1 -Mode B -ApcName Capture_B.apc

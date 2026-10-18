@@ -325,9 +325,19 @@ public abstract class ParticleKernelPass : SimPass
         new List<(int, AttributeId)>();
 
     private KernelHandle kernel;
+    private KernelHandle selectedKernel;
+    private bool hasSelectedKernel;
 
     protected abstract string KernelName { get; }
-    protected KernelHandle Kernel => kernel;
+
+    /// <summary>Kernel used by <see cref="BindBuffer"/> and the dispatch. During Execute this is the kernel from <see cref="SelectKernel"/>.</summary>
+    protected KernelHandle Kernel => hasSelectedKernel ? selectedKernel : kernel;
+
+    /// <summary>Called once per Execute. The default is the kernel found in Initialize.</summary>
+    protected virtual KernelHandle SelectKernel(SimContext context)
+    {
+        return kernel;
+    }
 
     public override void Initialize(SimContext context)
     {
@@ -343,7 +353,8 @@ public abstract class ParticleKernelPass : SimPass
     {
         LastExecuteDispatched = false;
 
-        if (!kernel.IsValid)
+        KernelHandle chosen = SelectKernel(context);
+        if (!chosen.IsValid)
         {
             return; // pass added in Play Mode without Rebuild — skip silently
         }
@@ -354,20 +365,29 @@ public abstract class ParticleKernelPass : SimPass
             return;
         }
 
-        for (int i = 0; i < attributeBindings.Count; i++)
+        selectedKernel = chosen;
+        hasSelectedKernel = true;
+        try
         {
-            (int propertyId, AttributeId attribute) = attributeBindings[i];
-            context.Cmd.SetComputeBufferParam(
-                kernel.Shader, kernel.Index, propertyId, context.Particles.Get(attribute));
+            for (int i = 0; i < attributeBindings.Count; i++)
+            {
+                (int propertyId, AttributeId attribute) = attributeBindings[i];
+                context.Cmd.SetComputeBufferParam(
+                    Kernel.Shader, Kernel.Index, propertyId, context.Particles.Get(attribute));
+            }
+
+            context.Cmd.SetComputeIntParam(Kernel.Shader, SimShaderIds.ParticleCount, count);
+            SetParams(context, deltaTime);
+
+            int threadGroups = (count + ThreadGroupSize - 1) / ThreadGroupSize;
+            context.Cmd.DispatchCompute(Kernel.Shader, Kernel.Index, threadGroups, 1, 1);
+            OnDispatched(context);
+            LastExecuteDispatched = true;
         }
-
-        context.Cmd.SetComputeIntParam(kernel.Shader, SimShaderIds.ParticleCount, count);
-        SetParams(context, deltaTime);
-
-        int threadGroups = (count + ThreadGroupSize - 1) / ThreadGroupSize;
-        context.Cmd.DispatchCompute(kernel.Shader, kernel.Index, threadGroups, 1, 1);
-        OnDispatched(context);
-        LastExecuteDispatched = true;
+        finally
+        {
+            hasSelectedKernel = false;
+        }
     }
 
     /// <summary>Runs after a real dispatch. Count == 0 and an invalid kernel never get here.</summary>
@@ -382,22 +402,22 @@ public abstract class ParticleKernelPass : SimPass
 
     protected void SetFloat(SimContext context, int propertyId, float value)
     {
-        context.Cmd.SetComputeFloatParam(kernel.Shader, propertyId, value);
+        context.Cmd.SetComputeFloatParam(Kernel.Shader, propertyId, value);
     }
 
     protected void SetInt(SimContext context, int propertyId, int value)
     {
-        context.Cmd.SetComputeIntParam(kernel.Shader, propertyId, value);
+        context.Cmd.SetComputeIntParam(Kernel.Shader, propertyId, value);
     }
 
     protected void SetVector(SimContext context, int propertyId, Vector3 value)
     {
-        context.Cmd.SetComputeVectorParam(kernel.Shader, propertyId, value);
+        context.Cmd.SetComputeVectorParam(Kernel.Shader, propertyId, value);
     }
 
     protected void BindBuffer(SimContext context, int propertyId, GraphicsBuffer buffer)
     {
-        context.Cmd.SetComputeBufferParam(kernel.Shader, kernel.Index, propertyId, buffer);
+        context.Cmd.SetComputeBufferParam(Kernel.Shader, Kernel.Index, propertyId, buffer);
     }
 
     private void CollectBindings(IReadOnlyList<AttributeId> ids, HashSet<AttributeId> seen)

@@ -54,6 +54,12 @@ public sealed class SimContext
     /// <summary>Eight team slots (ADR-037). Null when the effect has no teams. Not disposed here.</summary>
     public GraphicsBuffer Teams { get; internal set; }
 
+    /// <summary>
+    /// Largest separation, alignment or cohesion radius across teams.
+    /// Zero means the sorted-walk guard does not check (ADR-047 §2.5).
+    /// </summary>
+    public float TeamMaxRadius { get; internal set; }
+
     public SimContext(
         ParticleSet particles,
         FieldSet fields,

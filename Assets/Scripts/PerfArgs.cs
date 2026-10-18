@@ -19,6 +19,8 @@ public sealed class PerfArgs
 	public bool Render { get; private set; }
 	public bool HasMaxNeighbors { get; private set; }
 	public int MaxNeighbors { get; private set; }
+	public bool HasWalk { get; private set; }
+	public int Walk { get; private set; }
 	public bool HasWarmup { get; private set; }
 	public float WarmupSeconds { get; private set; } = DefaultSeconds;
 	public bool HasMeasure { get; private set; }
@@ -29,7 +31,7 @@ public sealed class PerfArgs
 	public bool HasScene { get; private set; }
 	public string Scene { get; private set; } = "";
 
-	public bool HasOverride => HasForce || HasRender || HasMaxNeighbors;
+	public bool HasOverride => HasForce || HasRender || HasMaxNeighbors || HasWalk;
 
 	public IReadOnlyList<string> Warnings => warnings;
 
@@ -74,6 +76,12 @@ public sealed class PerfArgs
 				continue;
 			}
 
+			if (token == "-m3d_walk")
+			{
+				parsed.ReadWalk(NextValue(args, ref i));
+				continue;
+			}
+
 			if (token == "-m3d_warmup")
 			{
 				parsed.ReadSeconds(NextValue(args, ref i), warmup: true);
@@ -113,7 +121,8 @@ public sealed class PerfArgs
 		bool autorun,
 		bool quit,
 		string tag,
-		string scene = null)
+		string scene = null,
+		int? walk = null)
 	{
 		string text = "force=" + Bit(force)
 			+ ",render=" + Bit(render)
@@ -126,6 +135,11 @@ public sealed class PerfArgs
 		if (!string.IsNullOrEmpty(scene))
 		{
 			text += ",scene=" + scene;
+		}
+
+		if (walk.HasValue)
+		{
+			text += ",walk=" + walk.Value.ToString(CultureInfo.InvariantCulture);
 		}
 
 		return text;
@@ -204,6 +218,21 @@ public sealed class PerfArgs
 		}
 
 		warnings.Add(value == null ? "maxn=" : "maxn=" + value);
+	}
+
+	private void ReadWalk(string value)
+	{
+		if (value != null
+			&& int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int mode)
+			&& mode >= 0
+			&& mode <= 2)
+		{
+			HasWalk = true;
+			Walk = mode;
+			return;
+		}
+
+		warnings.Add(value == null ? "walk=" : "walk=" + value);
 	}
 
 	private void ReadSeconds(string value, bool warmup)

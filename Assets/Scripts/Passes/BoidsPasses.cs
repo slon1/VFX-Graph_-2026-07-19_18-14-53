@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -21,6 +22,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     private static readonly int SortedPositionsId = Shader.PropertyToID("SortedPositions");
     private static readonly int SortedDirectionsId = Shader.PropertyToID("SortedDirections");
     private static readonly int SortedTeamsId = Shader.PropertyToID("SortedTeams");
+    private static readonly int SortedIndicesId = Shader.PropertyToID("SortedIndices");
     private static readonly int CellStartsId = Shader.PropertyToID("CellStarts");
     private static readonly int CellCountsId = Shader.PropertyToID("CellCounts");
     private static readonly int MaxNeighborsId = Shader.PropertyToID("MaxNeighbors");
@@ -29,14 +31,19 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
 
     [SerializeField] private int maxNeighbors = 48;
     [SerializeField] private bool countCapHits;
+    [SerializeField] private int walkMode;
 
     private readonly uint[] capClear = new uint[1];
     private readonly List<float> capWindow = new List<float>(CapWindow);
 
     private GraphicsBuffer capCounter;
+    private KernelHandle sortedKernel;
     private int generation;
     private int inflight;
     private bool disposed;
+    private bool walk2Warned;
+    private bool radiusWarned;
+    private float warnedRadius;
 
     public int MaxNeighbors
     {
@@ -49,6 +56,20 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
             }
 
             maxNeighbors = value;
+        }
+    }
+
+    public int WalkMode
+    {
+        get => walkMode;
+        set
+        {
+            if (value < 0 || value > 2)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "walkMode must be 0, 1, or 2.");
+            }
+
+            walkMode = value;
         }
     }
 
@@ -102,6 +123,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         }
 
         base.Initialize(context);
+        sortedKernel = context.FindKernel("BoidNeighborForceSorted");
         if (capCounter != null)
         {
             capCounter.Release();
@@ -149,6 +171,11 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         BindBuffer(context, SortedTeamsId, hash.SortedTeams);
         BindBuffer(context, CellStartsId, hash.CellStarts);
         BindBuffer(context, CellCountsId, hash.CellCounts);
+        if (Kernel.Shader == sortedKernel.Shader && Kernel.Index == sortedKernel.Index)
+        {
+            BindBuffer(context, SortedIndicesId, hash.SortedIndices);
+        }
+
         hash.PushParams(context.Cmd, Kernel.Shader);
         SetInt(context, MaxNeighborsId, maxNeighbors);
         BindBuffer(context, CapHitsId, capCounter);
@@ -158,6 +185,53 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
             capClear[0] = 0u;
             context.Cmd.SetBufferData(capCounter, capClear);
         }
+    }
+
+    protected override KernelHandle SelectKernel(SimContext context)
+    {
+        if (walkMode == 2 && !walk2Warned)
+        {
+            walk2Warned = true;
+            Debug.LogWarning("BoidNeighborForce: walk 2 ещё не реализован, выполняется walk 1.");
+        }
+
+        if (walkMode >= 1 && sortedKernel.IsValid && !RadiusBlocksSortedWalk(context))
+        {
+            return sortedKernel;
+        }
+
+        return base.SelectKernel(context);
+    }
+
+    private bool RadiusBlocksSortedWalk(SimContext context)
+    {
+        if (context == null || context.TeamMaxRadius <= 0f || context.SpatialHash == null)
+        {
+            return false;
+        }
+
+        Vector2 cell = context.SpatialHash.Layout.CellSize;
+        float limit = Mathf.Min(cell.x, cell.y) * (1f + SpatialHashSet.GridEpsilon);
+        float radius = context.TeamMaxRadius;
+        if (radius <= limit)
+        {
+            radiusWarned = false;
+            return false;
+        }
+
+        if (!radiusWarned || warnedRadius != radius)
+        {
+            radiusWarned = true;
+            warnedRadius = radius;
+            Debug.LogWarning(
+                "BoidNeighborForce: max radius "
+                + radius.ToString(CultureInfo.InvariantCulture)
+                + " exceeds the hash cell limit "
+                + limit.ToString(CultureInfo.InvariantCulture)
+                + ", executing walk 0.");
+        }
+
+        return true;
     }
 
     protected override void OnDispatched(SimContext context)

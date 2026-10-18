@@ -26,7 +26,7 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 | **None** | 0 частиц (`NoneSource`); field-only эффекты; particle-пассы no-op; если на объекте есть `VisualEffect` — `SpawnCount=0` |
 | **Swarm** | Спавнит диски с `teamId` и курсом. Сила соседей и курс из команды есть в пресете `Boids_hash` |
 | **teams** | Список команд на эффекте, максимум 8. Буфер читают сила соседей и курс. Цвет — `TeamProfile.Color`, его читает билборд |
-| **Boid Neighbor Force** | Сила соседей есть. Пресет `Boids_hash` |
+| **Boid Neighbor Force** | Сила соседей есть. Пресет `Boids_hash`. `walkMode` 0 по умолчанию |
 | **Team Heading Steer** | Курс и скорость берутся из команды. Пресет `Boids_hash` |
 | **Hash Counts To Field** | Гистограмма ячеек хэша в скалярное поле `hashCount`. Пресет `Boids_hash`, меню `Tools/M3D/Create Boids Hash Effect` |
 

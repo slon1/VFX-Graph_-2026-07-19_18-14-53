@@ -184,4 +184,67 @@ public class PerfArgsTests
 		Assert.That(args, Is.EqualTo(
 			"force=1,render=1,maxn=48,warmup=60,measure=25,autorun=1,quit=1,tag=A1,scene=Boids_Hash_test"));
 	}
+
+	[Test]
+	public void Parse_Walk_Absent_DoesNotOverride()
+	{
+		PerfArgs parsed = PerfArgs.Parse(new[] { "-m3d_tag", "A1" });
+
+		Assert.That(parsed.HasWalk, Is.False);
+		Assert.That(parsed.Walk, Is.EqualTo(0));
+		Assert.That(parsed.HasOverride, Is.False);
+		Assert.That(parsed.Warnings, Is.Empty);
+		Assert.That(
+			PerfArgs.FormatRun(null, null, null, 30f, 30f, false, false, ""),
+			Is.EqualTo("force=na,render=na,maxn=na,warmup=30,measure=30,autorun=0,quit=0,tag="));
+	}
+
+	[Test]
+	public void Parse_Walk_AcceptsZeroOneAndTwo()
+	{
+		PerfArgs zero = PerfArgs.Parse(new[] { "-m3d_walk", "0" });
+		PerfArgs one = PerfArgs.Parse(new[] { "-m3d_walk", "1" });
+		PerfArgs two = PerfArgs.Parse(new[] { "-m3d_walk", "2" });
+
+		Assert.That(zero.HasWalk, Is.True);
+		Assert.That(zero.Walk, Is.EqualTo(0));
+		Assert.That(one.Walk, Is.EqualTo(1));
+		Assert.That(two.Walk, Is.EqualTo(2));
+		Assert.That(one.HasOverride, Is.True);
+		Assert.That(one.Warnings, Is.Empty);
+	}
+
+	[Test]
+	public void Parse_Walk_RejectsOutOfRangeMissingAndText()
+	{
+		PerfArgs three = PerfArgs.Parse(new[] { "-m3d_walk", "3" });
+		PerfArgs negative = PerfArgs.Parse(new[] { "-m3d_walk", "-1" });
+		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_walk", "abc" });
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_walk" });
+
+		Assert.That(three.HasWalk, Is.False);
+		Assert.That(negative.HasWalk, Is.False);
+		Assert.That(text.HasWalk, Is.False);
+		Assert.That(missing.HasWalk, Is.False);
+		Assert.That(three.Warnings, Is.EqualTo(new[] { "walk=3" }));
+		Assert.That(negative.Warnings, Is.EqualTo(new[] { "walk=-1" }));
+		Assert.That(text.Warnings, Is.EqualTo(new[] { "walk=abc" }));
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "walk=" }));
+	}
+
+	[Test]
+	public void Parse_Walk_CombinesWithMaxNeighbors()
+	{
+		PerfArgs parsed = PerfArgs.Parse(new[] { "-m3d_walk", "1", "-m3d_maxn", "48" });
+
+		Assert.That(parsed.HasWalk, Is.True);
+		Assert.That(parsed.Walk, Is.EqualTo(1));
+		Assert.That(parsed.HasMaxNeighbors, Is.True);
+		Assert.That(parsed.MaxNeighbors, Is.EqualTo(48));
+		Assert.That(parsed.HasOverride, Is.True);
+		Assert.That(parsed.Warnings, Is.Empty);
+		Assert.That(
+			PerfArgs.FormatRun(true, false, 48, 60f, 25f, true, true, "B1", null, 1),
+			Is.EqualTo("force=1,render=0,maxn=48,warmup=60,measure=25,autorun=1,quit=1,tag=B1,walk=1"));
+	}
 }
