@@ -12,7 +12,9 @@ param(
     [string]$Adb,
     [string]$Streamline,
     [string]$Scene = "",
-    [string]$Cam = ""
+    [string]$Cam = "",
+    [string]$Cap = "",
+    [string]$HashRep = ""
 )
 
 <#
@@ -92,6 +94,8 @@ function Get-ExpectedArgs($Point) {
     if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + ",scene=$Scene" }
     if (-not [string]::IsNullOrWhiteSpace([string]$Point.walk)) { $text = $text + ",walk=$($Point.walk)" }
     if (-not [string]::IsNullOrWhiteSpace($script:camText)) { $text = $text + ",cam=$script:camText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:capText)) { $text = $text + ",cap=$script:capText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:hashRepText)) { $text = $text + ",hashrep=$script:hashRepText" }
     return $text
 }
 
@@ -102,6 +106,8 @@ function Get-UnityArgs($Point) {
     if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + " -m3d_scene $Scene" }
     if (-not [string]::IsNullOrWhiteSpace([string]$Point.walk)) { $text = $text + " -m3d_walk $($Point.walk)" }
     if (-not [string]::IsNullOrWhiteSpace($script:camText)) { $text = $text + " -m3d_cam $script:camText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:capText)) { $text = $text + " -m3d_cap $script:capText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:hashRepText)) { $text = $text + " -m3d_hashrep $script:hashRepText" }
     return $text
 }
 
@@ -111,6 +117,20 @@ if (-not [string]::IsNullOrWhiteSpace($Cam)) {
     $camOk = [double]::TryParse($Cam, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$camValue)
     if (-not $camOk -or $camValue -le 0) { throw "Камера: '$Cam' не разобрана. Нужно положительное число." }
     $camText = $camValue.ToString("0.###", [Globalization.CultureInfo]::InvariantCulture)
+}
+
+$capText = ""
+if (-not [string]::IsNullOrWhiteSpace($Cap)) {
+    if ($Cap -ne "0" -and $Cap -ne "1") { throw "Кап: '$Cap' не разобран. Нужен 0 или 1." }
+    $capText = $Cap
+}
+
+$hashRepText = ""
+if (-not [string]::IsNullOrWhiteSpace($HashRep)) {
+    $hashRepValue = 0
+    $hashOk = [int]::TryParse($HashRep, [ref]$hashRepValue)
+    if (-not $hashOk -or $hashRepValue -lt 1 -or $hashRepValue -gt 16) { throw "Повтор хэша: '$HashRep' не разобран. Нужно целое от 1 до 16." }
+    $hashRepText = [string]$hashRepValue
 }
 
 $adbPath = Resolve-M3dAdb -Adb $Adb
@@ -127,6 +147,12 @@ if ($Resume) {
     $state = Get-Content $progressPath -Raw | ConvertFrom-Json
     if ([string]::IsNullOrWhiteSpace($camText) -and -not [string]::IsNullOrWhiteSpace([string]$state.cam)) {
         $camText = [string]$state.cam
+    }
+    if ([string]::IsNullOrWhiteSpace($capText) -and -not [string]::IsNullOrWhiteSpace([string]$state.cap)) {
+        $capText = [string]$state.cap
+    }
+    if ([string]::IsNullOrWhiteSpace($hashRepText) -and -not [string]::IsNullOrWhiteSpace([string]$state.hashrep)) {
+        $hashRepText = [string]$state.hashrep
     }
     if ($state.stopped) {
         Write-M3dLine ("Серия остановлена: {0}. -Resume её не продолжает." -f $state.reason)
@@ -157,6 +183,8 @@ if ($Resume) {
         stopped = $false
         reason = ""
         cam = $camText
+        cap = $capText
+        hashrep = $hashRepText
         resultDir = $resultDir
         points = $points
     }

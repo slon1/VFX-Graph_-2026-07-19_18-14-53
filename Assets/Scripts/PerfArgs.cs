@@ -23,6 +23,10 @@ public sealed class PerfArgs
 	public int Walk { get; private set; }
 	public bool HasCam { get; private set; }
 	public float Cam { get; private set; }
+	public bool HasCap { get; private set; }
+	public bool Cap { get; private set; }
+	public bool HasHashRep { get; private set; }
+	public int HashRep { get; private set; } = 1;
 	public bool HasWarmup { get; private set; }
 	public float WarmupSeconds { get; private set; } = DefaultSeconds;
 	public bool HasMeasure { get; private set; }
@@ -87,6 +91,18 @@ public sealed class PerfArgs
 			if (token == "-m3d_cam")
 			{
 				parsed.ReadCam(NextValue(args, ref i));
+				continue;
+			}
+
+			if (token == "-m3d_cap")
+			{
+				parsed.ReadCap(NextValue(args, ref i));
+				continue;
+			}
+
+			if (token == "-m3d_hashrep")
+			{
+				parsed.ReadHashRep(NextValue(args, ref i));
 				continue;
 			}
 
@@ -255,6 +271,33 @@ public sealed class PerfArgs
 		}
 
 		warnings.Add(value == null ? "cam=" : "cam=" + value);
+	}
+
+	private void ReadCap(string value)
+	{
+		if (value == "0" || value == "1")
+		{
+			HasCap = true;
+			Cap = value == "1";
+			return;
+		}
+
+		warnings.Add(value == null ? "cap=" : "cap=" + value);
+	}
+
+	private void ReadHashRep(string value)
+	{
+		if (value != null
+			&& int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int repeats)
+			&& repeats >= 1
+			&& repeats <= 16)
+		{
+			HasHashRep = true;
+			HashRep = repeats;
+			return;
+		}
+
+		warnings.Add(value == null ? "hashrep=" : "hashrep=" + value);
 	}
 
 	private void ReadSeconds(string value, bool warmup)

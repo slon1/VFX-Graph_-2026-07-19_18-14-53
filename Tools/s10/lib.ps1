@@ -166,7 +166,7 @@ function Get-M3dMedian([double[]]$Values) {
     $s = @($Values | Sort-Object)
     $n = $s.Count
     if ($n -eq 0) { return $null }
-    if ($n % 2 -eq 1) { return [double]$s[[int]($n / 2)] }
+    if ($n % 2 -eq 1) { return [double]$s[[int][Math]::Floor($n / 2)] }
     return ([double]$s[$n / 2 - 1] + [double]$s[$n / 2]) / 2.0
 }
 

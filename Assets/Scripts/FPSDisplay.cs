@@ -16,7 +16,7 @@ using UnityEngine.SceneManagement;
 /// cpuMainThreadPresentWaitTime is the wait inside the present.
 /// Player Settings Frame Timing Stats is off; a release build needs that checkbox.
 /// FrameTimingManager delivers a sample several frames late. A 30 s average absorbs that.
-/// 10 s buckets stop at 48 (8 minutes). Later buckets are not recorded.
+/// 10 s buckets stop at 90 (15 minutes). Later buckets are not recorded.
 /// The count on screen is the configured source count, not the live set.
 /// The world logs "N points"; compare them once by hand.
 /// SimulationWorld.OnDisable tears the world down, so enabled = false is not a sim pause.
@@ -25,7 +25,7 @@ using UnityEngine.SceneManagement;
 /// </remarks>
 public sealed class FPSDisplay : MonoBehaviour
 {
-	private const int MaxBuckets = 48;
+	private const int MaxBuckets = 90;
 	private const int ButtonRows = 4;
 	private const int QuadsSearchAttempts = 8;
 	private const float BucketSeconds = 10f;
@@ -35,7 +35,7 @@ public sealed class FPSDisplay : MonoBehaviour
 	private const string CsvFileName = "m3d_perf.csv";
 	private const string CsvSuffixName = "m3d_perf_res.csv";
 	private const string CsvHeaderLine =
-		"count,maxNeighbors,force,render,debug,phase,t,frameAvg,frameP95,frameMax,long,cpuFrame,cpuMainAvg,cpuMainP95,cpuRenderAvg,cpuRenderP95,cpuWaitAvg,cpuWaitP95,gpuAvg,gpuP95,thermal,thermalStart,thermalMax,buckets,res,hist";
+		"count,maxNeighbors,force,render,debug,phase,t,frameAvg,frameP95,frameMax,long,cpuFrame,cpuMainAvg,cpuMainP95,cpuRenderAvg,cpuRenderP95,cpuWaitAvg,cpuWaitP95,gpuAvg,gpuP95,thermal,thermalStart,thermalMax,buckets,res,hist,capfrac,hashrep";
 	private const string CsvHeader = CsvHeaderLine + "\n";
 
 	// 16.7 / 33.3 / 50 ms are the vsync clusters. Bins 2 and 3 catch frames that fall between them.
@@ -87,6 +87,7 @@ public sealed class FPSDisplay : MonoBehaviour
 
 	private SimulationWorld world;
 	private BoidNeighborForcePass forcePass;
+	private BuildSpatialHashPass hashBuilder;
 	private HashCountsToFieldPass hashCountsPass;
 	private GameObject debugQuads;
 	private bool worldResolved;
@@ -510,6 +511,7 @@ public sealed class FPSDisplay : MonoBehaviour
 		worldResolved = true;
 		particleCount = -1;
 		forcePass = null;
+		hashBuilder = null;
 		hashCountsPass = null;
 
 		EffectAsset effect = world.Effect;
@@ -542,6 +544,10 @@ public sealed class FPSDisplay : MonoBehaviour
 					if (forcePass == null && passes[i] is BoidNeighborForcePass pass)
 					{
 						forcePass = pass;
+					}
+					else if (hashBuilder == null && passes[i] is BuildSpatialHashPass builder)
+					{
+						hashBuilder = builder;
 					}
 					else if (hashCountsPass == null && passes[i] is HashCountsToFieldPass hashPass)
 					{
@@ -1122,6 +1128,10 @@ public sealed class FPSDisplay : MonoBehaviour
 
 		text.Append(" cam=");
 		text.Append(CameraText());
+		text.Append(" capfrac=");
+		text.Append(CapFractionText());
+		text.Append(" hashrep=");
+		text.Append(HashRepText());
 
 		string line = text.ToString();
 		Debug.Log(line);
@@ -1189,6 +1199,7 @@ public sealed class FPSDisplay : MonoBehaviour
 			argsWait += dt;
 			if (worldResolved)
 			{
+				ApplyCapAndHashRep();
 				bool applied = !perfArgs.HasOverride || TryApplyOverrides();
 				if (applied && perfArgs.HasOverride)
 				{
@@ -1333,6 +1344,16 @@ public sealed class FPSDisplay : MonoBehaviour
 			args += ",cam=" + PerfArgs.FormatSeconds(perfArgs.Cam);
 		}
 
+		if (perfArgs.HasCap)
+		{
+			args += ",cap=" + (perfArgs.Cap ? "1" : "0");
+		}
+
+		if (perfArgs.HasHashRep)
+		{
+			args += ",hashrep=" + perfArgs.HashRep.ToString(CultureInfo.InvariantCulture);
+		}
+
 		Debug.Log(
 			"M3D_PERF_INFO device=" + SystemInfo.deviceModel
 			+ " api=" + SystemInfo.graphicsDeviceType
@@ -1355,6 +1376,60 @@ public sealed class FPSDisplay : MonoBehaviour
 			+ " walk=" + (forcePass != null
 				? forcePass.WalkMode.ToString(CultureInfo.InvariantCulture)
 				: "na"));
+	}
+
+	private void ApplyCapAndHashRep()
+	{
+		if (perfArgs.HasCap)
+		{
+			if (forcePass == null)
+			{
+				Debug.Log("M3D_PERF_WARN cap=" + (perfArgs.Cap ? "1" : "0"));
+			}
+			else
+			{
+				forcePass.CountCapHits = perfArgs.Cap;
+			}
+		}
+
+		if (perfArgs.HasHashRep)
+		{
+			if (hashBuilder == null)
+			{
+				Debug.Log("M3D_PERF_WARN hashrep=" + perfArgs.HashRep.ToString(CultureInfo.InvariantCulture));
+			}
+			else
+			{
+				hashBuilder.RepeatCount = perfArgs.HashRep;
+			}
+		}
+	}
+
+	private string CapFractionText()
+	{
+		if (forcePass == null || !forcePass.CountCapHits)
+		{
+			return "na";
+		}
+
+		float fraction = forcePass.LastCapHitFraction;
+		if (fraction < 0f)
+		{
+			return "na";
+		}
+
+		return fraction.ToString("0.###", CultureInfo.InvariantCulture);
+	}
+
+	private string HashRepText()
+	{
+		if (hashBuilder == null)
+		{
+			return "na";
+		}
+
+		int repeats = hashBuilder.RepeatCount < 1 ? 1 : hashBuilder.RepeatCount;
+		return repeats.ToString(CultureInfo.InvariantCulture);
 	}
 
 	private static string CameraText()

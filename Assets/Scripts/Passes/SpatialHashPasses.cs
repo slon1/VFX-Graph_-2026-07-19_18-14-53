@@ -9,7 +9,7 @@ public interface ISpatialHashConsumer
 
 /// <summary>
 /// Builds the XZ spatial hash and a cell-sorted snapshot of position/heading/teamId (ADR-034).
-/// Owns the SpatialHashSet; six kernels per Execute.
+/// Owns the SpatialHashSet; six kernels per Execute, repeated <see cref="RepeatCount"/> times.
 /// </summary>
 [Serializable]
 public sealed class BuildSpatialHashPass : SimPass, IDisposable
@@ -53,6 +53,9 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         get => wrap;
         set => wrap = value;
     }
+
+    /// <summary>How many times one Execute rebuilds the hash. 1 leaves the frame unchanged.</summary>
+    public int RepeatCount { get; set; } = 1;
 
     internal SpatialHashSet Hash => hash;
 
@@ -164,12 +167,17 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         int particleGroups = (hash.ParticleCount + ThreadGroupSize - 1) / ThreadGroupSize;
         int blocks = hash.Layout.BlockCount;
 
-        cmd.DispatchCompute(clearKernel.Shader, clearKernel.Index, cellGroups, 1, 1);
-        cmd.DispatchCompute(countKernel.Shader, countKernel.Index, particleGroups, 1, 1);
-        cmd.DispatchCompute(scanBlocksKernel.Shader, scanBlocksKernel.Index, blocks, 1, 1);
-        cmd.DispatchCompute(scanBlockSumsKernel.Shader, scanBlockSumsKernel.Index, 1, 1, 1);
-        cmd.DispatchCompute(addOffsetsKernel.Shader, addOffsetsKernel.Index, blocks, 1, 1);
-        cmd.DispatchCompute(scatter.Shader, scatter.Index, particleGroups, 1, 1);
+        int repeats = RepeatCount < 1 ? 1 : RepeatCount;
+        for (int repeat = 0; repeat < repeats; repeat++)
+        {
+            cmd.DispatchCompute(clearKernel.Shader, clearKernel.Index, cellGroups, 1, 1);
+            cmd.DispatchCompute(countKernel.Shader, countKernel.Index, particleGroups, 1, 1);
+            cmd.DispatchCompute(scanBlocksKernel.Shader, scanBlocksKernel.Index, blocks, 1, 1);
+            cmd.DispatchCompute(scanBlockSumsKernel.Shader, scanBlockSumsKernel.Index, 1, 1, 1);
+            cmd.DispatchCompute(addOffsetsKernel.Shader, addOffsetsKernel.Index, blocks, 1, 1);
+            cmd.DispatchCompute(scatter.Shader, scatter.Index, particleGroups, 1, 1);
+        }
+
         if (packed)
         {
             hash.PackedWritten = true;

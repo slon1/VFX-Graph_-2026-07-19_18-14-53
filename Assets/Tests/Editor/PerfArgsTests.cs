@@ -279,4 +279,70 @@ public class PerfArgsTests
 		Assert.That(text.Warnings, Is.EqualTo(new[] { "cam=abc" }));
 		Assert.That(missing.Warnings, Is.EqualTo(new[] { "cam=" }));
 	}
+
+	[Test]
+	public void Parse_Cap_AcceptsZeroAndOne()
+	{
+		PerfArgs on = PerfArgs.Parse(new[] { "-m3d_cap", "1" });
+		PerfArgs off = PerfArgs.Parse(new[] { "-m3d_cap", "0" });
+
+		Assert.That(on.HasCap, Is.True);
+		Assert.That(on.Cap, Is.True);
+		Assert.That(off.HasCap, Is.True);
+		Assert.That(off.Cap, Is.False);
+		Assert.That(on.HasOverride, Is.False);
+		Assert.That(on.Warnings, Is.Empty);
+		Assert.That(
+			PerfArgs.FormatRun(true, true, 48, 60f, 25f, true, true, "B1"),
+			Does.Not.Contain("cap="));
+	}
+
+	[Test]
+	public void Parse_Cap_RejectsOtherValues()
+	{
+		PerfArgs two = PerfArgs.Parse(new[] { "-m3d_cap", "2" });
+		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_cap", "abc" });
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_cap" });
+
+		Assert.That(two.HasCap, Is.False);
+		Assert.That(text.HasCap, Is.False);
+		Assert.That(missing.HasCap, Is.False);
+		Assert.That(two.Warnings, Is.EqualTo(new[] { "cap=2" }));
+		Assert.That(text.Warnings, Is.EqualTo(new[] { "cap=abc" }));
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "cap=" }));
+	}
+
+	[Test]
+	public void Parse_HashRep_AcceptsOneThroughSixteen()
+	{
+		PerfArgs once = PerfArgs.Parse(new[] { "-m3d_hashrep", "1" });
+		PerfArgs sixteen = PerfArgs.Parse(new[] { "-m3d_hashrep", "16" });
+
+		Assert.That(once.HasHashRep, Is.True);
+		Assert.That(once.HashRep, Is.EqualTo(1));
+		Assert.That(sixteen.HashRep, Is.EqualTo(16));
+		Assert.That(once.HasOverride, Is.False);
+		Assert.That(once.Warnings, Is.Empty);
+		Assert.That(
+			PerfArgs.FormatRun(true, false, 48, 60f, 25f, true, true, "B1", null, 1),
+			Does.Not.Contain("hashrep="));
+	}
+
+	[Test]
+	public void Parse_HashRep_RejectsOutOfRange()
+	{
+		PerfArgs zero = PerfArgs.Parse(new[] { "-m3d_hashrep", "0" });
+		PerfArgs big = PerfArgs.Parse(new[] { "-m3d_hashrep", "17" });
+		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_hashrep", "abc" });
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_hashrep" });
+
+		Assert.That(zero.HasHashRep, Is.False);
+		Assert.That(big.HasHashRep, Is.False);
+		Assert.That(text.HasHashRep, Is.False);
+		Assert.That(missing.HasHashRep, Is.False);
+		Assert.That(zero.Warnings, Is.EqualTo(new[] { "hashrep=0" }));
+		Assert.That(big.Warnings, Is.EqualTo(new[] { "hashrep=17" }));
+		Assert.That(text.Warnings, Is.EqualTo(new[] { "hashrep=abc" }));
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "hashrep=" }));
+	}
 }

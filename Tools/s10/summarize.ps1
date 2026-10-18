@@ -51,6 +51,14 @@ function Get-RunRows($File) {
         }
         $frame = Get-M3dNumber $run.Done["frameAvg"]
         $long = Get-M3dNumber $run.Done["long"]
+        $marks = @()
+        $capOn = $false
+        if ($run.Done.ContainsKey("capfrac") -and -not [string]::IsNullOrWhiteSpace($run.Done["capfrac"]) -and $run.Done["capfrac"] -ne "na") { $capOn = $true }
+        if ($run.Info -and $run.Info.ContainsKey("args") -and $run.Info["args"] -match '(^|,)cap=1(,|$)') { $capOn = $true }
+        if ($capOn) { $marks += "cap counting" }
+        $hashRep = 1
+        if ($run.Done.ContainsKey("hashrep") -and $run.Done["hashrep"] -match '^\d+$') { $hashRep = [int]$run.Done["hashrep"] }
+        if ($hashRep -gt 1) { $marks += "diagnostic" }
         $rows += [pscustomobject]@{
             File = $File.Name
             FullName = $File.FullName
@@ -62,7 +70,8 @@ function Get-RunRows($File) {
             Cam = $camValue
             Res = $run.Done["res"]
             Valid = ($reasons.Count -eq 0 -and $null -ne $frame -and $null -ne $long)
-            Reason = ($reasons -join ", ")
+            Compare = ($reasons.Count -eq 0 -and $null -ne $frame -and $null -ne $long -and $marks.Count -eq 0)
+            Reason = ((@($reasons) + @($marks)) -join ", ")
         }
     }
     return $rows
@@ -70,9 +79,9 @@ function Get-RunRows($File) {
 
 function Add-VsyncMarks($Rows) {
     foreach ($mode in @("A", "B", "C")) {
-        $walks = @($Rows | Where-Object { $_.Mode -eq $mode -and $_.Valid } | ForEach-Object { $_.Walk } | Select-Object -Unique)
+        $walks = @($Rows | Where-Object { $_.Mode -eq $mode -and $_.Compare } | ForEach-Object { $_.Walk } | Select-Object -Unique)
         foreach ($walk in $walks) {
-            $valid = @($Rows | Where-Object { $_.Mode -eq $mode -and $_.Walk -eq $walk -and $_.Valid })
+            $valid = @($Rows | Where-Object { $_.Mode -eq $mode -and $_.Walk -eq $walk -and $_.Compare })
             if ($valid.Count -eq 0) { continue }
             $frames = @($valid | ForEach-Object { [double]$_.FrameAvg })
             $median = Get-M3dMedian $frames
@@ -116,7 +125,7 @@ $groupOrder = @()
 foreach ($mode in @("A", "B", "C")) {
     $walks = @($results | Where-Object { $_.Mode -eq $mode -and $_.Valid } | ForEach-Object { $_.Walk } | Select-Object -Unique)
     foreach ($walk in $walks) {
-        $valid = @($results | Where-Object { $_.Mode -eq $mode -and $_.Walk -eq $walk -and $_.Valid })
+        $valid = @($results | Where-Object { $_.Mode -eq $mode -and $_.Walk -eq $walk -and $_.Compare })
         if ($valid.Count -eq 0) { continue }
         $frames = @($valid | ForEach-Object { [double]$_.FrameAvg })
         $longs = @($valid | ForEach-Object { [double]$_.Long })
