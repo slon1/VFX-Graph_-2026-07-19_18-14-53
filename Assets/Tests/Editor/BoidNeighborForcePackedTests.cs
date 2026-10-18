@@ -422,12 +422,23 @@ public class BoidNeighborForcePackedTests
             new Vector3(-0.1f, 0f, 0.15f),
             new Vector3(0.05f, 0f, -0.2f),
         };
+        float x0 = DirX(0.60f, 4);
+        float x1 = DirX(0.51f, 3);
+        float x2 = DirX(0.51f, 4);
+        float x3 = DirX(-(x1 + x2 - 0.03f), 3);
+        AssertPackPattern(x0, 4);
+        AssertPackPattern(x1, 3);
+        AssertPackPattern(x2, 4);
+        AssertPackPattern(x3, 3);
+        Vector2 align0 = new Vector2(x1 + x2 + x3, 0.25f + 0.30f - 0.51f);
+        Assert.That(align0.x, Is.EqualTo(0.03f).Within(1e-4f));
+        Assert.That(align0.y, Is.EqualTo(0.04f).Within(1e-4f));
         Vector3[] headings =
         {
-            Vector3.right,
-            new Vector3(1f, 0f, 0f),
-            new Vector3(-0.5f, 0f, 0.8660254f),
-            new Vector3(-0.45f, 0f, -0.8660254f),
+            new Vector3(x0, 0f, 0.20f),
+            new Vector3(x1, 0f, 0.25f),
+            new Vector3(x2, 0f, 0.30f),
+            new Vector3(x3, 0f, -0.51f),
         };
         uint[] teams = { 0u, 0u, 0u, 0u };
         TeamParams[] slots = Slots(Profile(2f, 2f, 2f, 1f, 0f, 1f, 0f, 1f, 1f));
@@ -453,7 +464,24 @@ public class BoidNeighborForcePackedTests
             Assert.That(deviation, Is.LessThanOrEqualTo(bound), "i " + i + " align " + sample.Magnitude + " deviation " + deviation + " bound " + bound);
         }
 
-        TestContext.WriteLine("cancelling deviation " + worst);
+        Assert.That(worst, Is.GreaterThan(0f), "тест пустой: отклонение walk 2 от walk 1 равно 0");
+        string deviationText = worst.ToString("G9", System.Globalization.CultureInfo.InvariantCulture);
+        TestContext.WriteLine("cancelling deviation " + deviationText);
+    }
+
+    private static float DirX(float magnitude, int lowBits)
+    {
+        int bits = BitConverter.SingleToInt32Bits(magnitude);
+        bits = (bits & ~7) | lowBits;
+        return BitConverter.Int32BitsToSingle(bits);
+    }
+
+    private static void AssertPackPattern(float value, int lowBits)
+    {
+        int bits = BitConverter.SingleToInt32Bits(value);
+        Assert.AreEqual(lowBits, bits & 7);
+        float abs = Mathf.Abs(value);
+        Assert.That(abs, Is.GreaterThanOrEqualTo(0.5f).And.LessThan(1f));
     }
 
     private int AssertScenario(

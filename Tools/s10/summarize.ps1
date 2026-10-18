@@ -138,8 +138,15 @@ if ($Baseline) {
         else { continue }
         $base = $baseRows | Where-Object { $_.mode -eq $mode } | Select-Object -First 1
         if (-not $base) { continue }
-        $dFrame = $byKey[$key].Median - (Get-M3dNumber $base.frameAvg)
-        $dLong = $byKey[$key].Long - (Get-M3dNumber $base.long)
+        $baseFrameText = [string]$base.frameAvg
+        $baseLongText = [string]$base.long
+        if ([string]::IsNullOrWhiteSpace($baseFrameText) -or [string]::IsNullOrWhiteSpace($baseLongText)) {
+            $lines.Add(("| {0} | {1} | n/a | n/a | пустая база |" -f $mode, $walk))
+            Write-M3dLine ("baseline mode={0} walk={1} dFrame=na dLong=na пустая база" -f $mode, $walk)
+            continue
+        }
+        $dFrame = $byKey[$key].Median - (Convert-M3dCsvNumber $baseFrameText)
+        $dLong = $byKey[$key].Long - (Convert-M3dCsvNumber $baseLongText)
         $spread = $byKey[$key].Spread
         $frameNoise = [Math]::Abs($dFrame) -lt [Math]::Max(2.0 * $spread, 0.5)
         $longNoise = [Math]::Abs($dLong) -lt 0.03
