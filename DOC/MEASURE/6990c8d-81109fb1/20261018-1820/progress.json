@@ -1,0 +1,89 @@
+{
+    "series":  "A0 A2 A0 A2 B0 B2 B0 B2 C0",
+    "stopped":  false,
+    "reason":  "",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\6990c8d-81109fb1\\20261018-1820",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "A",
+                       "walk":  "0",
+                       "tag":  "A1",
+                       "status":  "ok",
+                       "file":  "01-A-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "A",
+                       "walk":  "2",
+                       "tag":  "A2",
+                       "status":  "ok",
+                       "file":  "02-A-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "A",
+                       "walk":  "0",
+                       "tag":  "A3",
+                       "status":  "ok",
+                       "file":  "03-A-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  4,
+                       "mode":  "A",
+                       "walk":  "2",
+                       "tag":  "A4",
+                       "status":  "ok",
+                       "file":  "04-A-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  5,
+                       "mode":  "B",
+                       "walk":  "0",
+                       "tag":  "B1",
+                       "status":  "ok",
+                       "file":  "05-B-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  6,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B2",
+                       "status":  "ok",
+                       "file":  "06-B-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  7,
+                       "mode":  "B",
+                       "walk":  "0",
+                       "tag":  "B3",
+                       "status":  "ok",
+                       "file":  "07-B-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  8,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B4",
+                       "status":  "ok",
+                       "file":  "08-B-1080.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  9,
+                       "mode":  "C",
+                       "walk":  "0",
+                       "tag":  "C1",
+                       "status":  "ok",
+                       "file":  "09-C-1080.txt",
+                       "reason":  ""
+                   }
+               ]
+}
