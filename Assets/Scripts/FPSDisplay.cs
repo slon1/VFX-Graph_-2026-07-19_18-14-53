@@ -195,7 +195,24 @@ public sealed class FPSDisplay : MonoBehaviour
 			measureSeconds = perfArgs.MeasureSeconds;
 		}
 
+		if (perfArgs.HasCam)
+		{
+			ApplyCameraSize();
+		}
+
 		ReadBuildStamp();
+	}
+
+	private void ApplyCameraSize()
+	{
+		Camera camera = Camera.main;
+		if (camera == null || !camera.orthographic)
+		{
+			Debug.Log("M3D_PERF_WARN cam=" + PerfArgs.FormatSeconds(perfArgs.Cam));
+			return;
+		}
+
+		camera.orthographicSize = perfArgs.Cam;
 	}
 
 	private static string[] CommandLineArgs()
@@ -1103,6 +1120,9 @@ public sealed class FPSDisplay : MonoBehaviour
 			text.Append(forcePass.EffectiveWalkMode.ToString(CultureInfo.InvariantCulture));
 		}
 
+		text.Append(" cam=");
+		text.Append(CameraText());
+
 		string line = text.ToString();
 		Debug.Log(line);
 		try
@@ -1297,6 +1317,22 @@ public sealed class FPSDisplay : MonoBehaviour
 			scene = "na";
 		}
 
+		string args = PerfArgs.FormatRun(
+			force,
+			render,
+			maxNeighbors,
+			warmupSeconds,
+			measureSeconds,
+			perfArgs.Autorun,
+			perfArgs.Quit,
+			perfArgs.Tag,
+			perfArgs.HasScene ? perfArgs.Scene : null,
+			perfArgs.HasWalk ? perfArgs.Walk : (int?)null);
+		if (perfArgs.HasCam)
+		{
+			args += ",cam=" + PerfArgs.FormatSeconds(perfArgs.Cam);
+		}
+
 		Debug.Log(
 			"M3D_PERF_INFO device=" + SystemInfo.deviceModel
 			+ " api=" + SystemInfo.graphicsDeviceType
@@ -1314,17 +1350,7 @@ public sealed class FPSDisplay : MonoBehaviour
 			+ " battery=" + BatteryText()
 			+ " charging=" + (SystemInfo.batteryStatus == BatteryStatus.Charging ? "1" : "0")
 			+ " tag=" + perfArgs.Tag
-			+ " args=" + PerfArgs.FormatRun(
-				force,
-				render,
-				maxNeighbors,
-				warmupSeconds,
-				measureSeconds,
-				perfArgs.Autorun,
-				perfArgs.Quit,
-				perfArgs.Tag,
-				perfArgs.HasScene ? perfArgs.Scene : null,
-				perfArgs.HasWalk ? perfArgs.Walk : (int?)null)
+			+ " args=" + args
 			+ " devbuild=" + (Debug.isDebugBuild ? "1" : "0")
 			+ " walk=" + (forcePass != null
 				? forcePass.WalkMode.ToString(CultureInfo.InvariantCulture)

@@ -247,4 +247,36 @@ public class PerfArgsTests
 			PerfArgs.FormatRun(true, false, 48, 60f, 25f, true, true, "B1", null, 1),
 			Is.EqualTo("force=1,render=0,maxn=48,warmup=60,measure=25,autorun=1,quit=1,tag=B1,walk=1"));
 	}
+
+	[Test]
+	public void Parse_Cam_AcceptsPositiveSize()
+	{
+		PerfArgs parsed = PerfArgs.Parse(new[] { "-m3d_cam", "46.5" });
+
+		Assert.That(parsed.HasCam, Is.True);
+		Assert.That(parsed.Cam, Is.EqualTo(46.5f).Within(1e-4f));
+		Assert.That(parsed.HasOverride, Is.False);
+		Assert.That(parsed.Warnings, Is.Empty);
+		Assert.That(
+			PerfArgs.FormatRun(true, true, 48, 60f, 25f, true, true, "A1", "Boids_Hash_test", 0),
+			Does.Not.Contain("cam="));
+	}
+
+	[Test]
+	public void Parse_Cam_RejectsNonPositive()
+	{
+		PerfArgs zero = PerfArgs.Parse(new[] { "-m3d_cam", "0" });
+		PerfArgs negative = PerfArgs.Parse(new[] { "-m3d_cam", "-2" });
+		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_cam", "abc" });
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_cam" });
+
+		Assert.That(zero.HasCam, Is.False);
+		Assert.That(negative.HasCam, Is.False);
+		Assert.That(text.HasCam, Is.False);
+		Assert.That(missing.HasCam, Is.False);
+		Assert.That(zero.Warnings, Is.EqualTo(new[] { "cam=0" }));
+		Assert.That(negative.Warnings, Is.EqualTo(new[] { "cam=-2" }));
+		Assert.That(text.Warnings, Is.EqualTo(new[] { "cam=abc" }));
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "cam=" }));
+	}
 }

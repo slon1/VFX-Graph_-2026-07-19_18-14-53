@@ -43,6 +43,9 @@ function Get-RunRows($File) {
         if (-not $run.Done) { continue }
         $reasons = @(Get-M3dLenientReasons $run)
         $walkValue = $(if ([string]::IsNullOrWhiteSpace($run.Done["walk"])) { "na" } else { $run.Done["walk"] })
+        $camValue = "na"
+        if ($run.Done.ContainsKey("cam") -and -not [string]::IsNullOrWhiteSpace($run.Done["cam"])) { $camValue = $run.Done["cam"] }
+        elseif ($run.Info -and $run.Info.ContainsKey("camera") -and -not [string]::IsNullOrWhiteSpace($run.Info["camera"])) { $camValue = $run.Info["camera"] }
         if ($run.Done.ContainsKey("walkeff") -and -not [string]::IsNullOrWhiteSpace($run.Done["walkeff"]) -and $run.Done["walkeff"] -ne $walkValue) {
             $reasons += "walk fallback"
         }
@@ -56,6 +59,7 @@ function Get-RunRows($File) {
             Long = $long
             Wake = $wake
             Walk = $walkValue
+            Cam = $camValue
             Res = $run.Done["res"]
             Valid = ($reasons.Count -eq 0 -and $null -ne $frame -and $null -ne $long)
             Reason = ($reasons -join ", ")
@@ -64,23 +68,44 @@ function Get-RunRows($File) {
     return $rows
 }
 
+function Add-VsyncMarks($Rows) {
+    foreach ($mode in @("A", "B", "C")) {
+        $walks = @($Rows | Where-Object { $_.Mode -eq $mode -and $_.Valid } | ForEach-Object { $_.Walk } | Select-Object -Unique)
+        foreach ($walk in $walks) {
+            $valid = @($Rows | Where-Object { $_.Mode -eq $mode -and $_.Walk -eq $walk -and $_.Valid })
+            if ($valid.Count -eq 0) { continue }
+            $frames = @($valid | ForEach-Object { [double]$_.FrameAvg })
+            $median = Get-M3dMedian $frames
+            $spread = [Math]::Round(([double]($frames | Measure-Object -Maximum).Maximum) - ([double]($frames | Measure-Object -Minimum).Minimum), 3)
+            if ($median -le 16.9 -and $spread -le 0.1) {
+                foreach ($row in $valid) {
+                    if ([string]::IsNullOrWhiteSpace($row.Reason)) { $row.Reason = "vsync" }
+                    else { $row.Reason = "$($row.Reason), vsync" }
+                }
+            }
+        }
+    }
+}
+
 $files = @(Get-LogFiles $Logs)
 $results = @()
 foreach ($file in $files) { $results += @(Get-RunRows $file) }
+Add-VsyncMarks $results
 
 $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add("# S10 summary")
 $lines.Add("")
-$lines.Add("| file | mode | walk | frameAvg | long | wakefulness | valid | reason |")
-$lines.Add("|---|---|---|---:|---:|---|---|---|")
+$lines.Add("| file | mode | walk | cam | frameAvg | long | wakefulness | valid | reason |")
+$lines.Add("|---|---|---|---|---:|---:|---|---|---|")
 foreach ($row in $results) {
     $frameText = if ($null -eq $row.FrameAvg) { "na" } else { $row.FrameAvg.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture) }
     $longText = if ($null -eq $row.Long) { "na" } else { $row.Long.ToString("0.000", [Globalization.CultureInfo]::InvariantCulture) }
     $validText = if ($row.Valid) { "1" } else { "0" }
     $wakeText = if ([string]::IsNullOrWhiteSpace($row.Wake)) { "na" } else { $row.Wake }
     $walkText = if ([string]::IsNullOrWhiteSpace($row.Walk)) { "na" } else { $row.Walk }
-    $lines.Add("| $($row.File) | $($row.Mode) | $walkText | $frameText | $longText | $wakeText | $validText | $($row.Reason) |")
-    Write-M3dLine ("{0} mode={1} walk={2} frameAvg={3} long={4} wakefulness={5} valid={6} {7}" -f $row.File, $row.Mode, $walkText, $frameText, $longText, $wakeText, $validText, $row.Reason)
+    $camText = if ([string]::IsNullOrWhiteSpace($row.Cam)) { "na" } else { $row.Cam }
+    $lines.Add("| $($row.File) | $($row.Mode) | $walkText | $camText | $frameText | $longText | $wakeText | $validText | $($row.Reason) |")
+    Write-M3dLine ("{0} mode={1} walk={2} cam={3} frameAvg={4} long={5} wakefulness={6} valid={7} {8}" -f $row.File, $row.Mode, $walkText, $camText, $frameText, $longText, $wakeText, $validText, $row.Reason)
 }
 
 $lines.Add("")
@@ -170,6 +195,7 @@ foreach ($row in $results) {
         long = $row.Long
         wakefulness = $row.Wake
         walk = $row.Walk
+        cam = $row.Cam
         valid = $(if ($row.Valid) { 1 } else { 0 })
         reason = $row.Reason
     }

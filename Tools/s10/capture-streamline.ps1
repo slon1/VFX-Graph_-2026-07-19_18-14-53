@@ -12,7 +12,9 @@ param(
     [string]$Serial = "RF8N31SLV7N",
     [string]$Adb,
     [string]$Streamline,
-    [string]$Scene = ""
+    [string]$Scene = "",
+    [string]$Cam = "",
+    [string]$Walk = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,8 +42,20 @@ $switches = @{ A = @(1, 1); B = @(1, 0); C = @(0, 1); D = @(0, 0) }
 $force = $switches[$Mode][0]
 $render = $switches[$Mode][1]
 $tag = $Mode
+if (-not [string]::IsNullOrWhiteSpace($Walk) -and $Walk -notmatch '^[012]$') {
+    throw "Walk: '$Walk' не разобран. Нужен 0, 1 или 2."
+}
+$camText = ""
+if (-not [string]::IsNullOrWhiteSpace($Cam)) {
+    $camValue = 0.0
+    $camOk = [double]::TryParse($Cam, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$camValue)
+    if (-not $camOk -or $camValue -le 0) { throw "Камера: '$Cam' не разобрана. Нужно положительное число." }
+    $camText = $camValue.ToString("0.###", [Globalization.CultureInfo]::InvariantCulture)
+}
 $unityArgs = "-m3d_force $force -m3d_render $render -m3d_maxn 48 -m3d_warmup $WarmupSec -m3d_measure $MeasureSec -m3d_autorun -m3d_quit -m3d_tag $tag"
 if (-not [string]::IsNullOrWhiteSpace($Scene)) { $unityArgs = $unityArgs + " -m3d_scene $Scene" }
+if (-not [string]::IsNullOrWhiteSpace($Walk)) { $unityArgs = $unityArgs + " -m3d_walk $Walk" }
+if (-not [string]::IsNullOrWhiteSpace($camText)) { $unityArgs = $unityArgs + " -m3d_cam $camText" }
 $duration = $WarmupSec + $MeasureSec + 30
 $outDir = Get-M3dOutDir
 

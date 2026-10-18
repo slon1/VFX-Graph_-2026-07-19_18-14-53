@@ -11,7 +11,8 @@ param(
     [switch]$PullCsv,
     [string]$Adb,
     [string]$Streamline,
-    [string]$Scene = ""
+    [string]$Scene = "",
+    [string]$Cam = ""
 )
 
 <#
@@ -90,6 +91,7 @@ function Get-ExpectedArgs($Point) {
         $sw.Force, $sw.Render, $maxNeighbors, $WarmupSec, $MeasureSec, $Point.tag)
     if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + ",scene=$Scene" }
     if (-not [string]::IsNullOrWhiteSpace([string]$Point.walk)) { $text = $text + ",walk=$($Point.walk)" }
+    if (-not [string]::IsNullOrWhiteSpace($script:camText)) { $text = $text + ",cam=$script:camText" }
     return $text
 }
 
@@ -99,7 +101,16 @@ function Get-UnityArgs($Point) {
         $sw.Force, $sw.Render, $maxNeighbors, $WarmupSec, $MeasureSec, $Point.tag)
     if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + " -m3d_scene $Scene" }
     if (-not [string]::IsNullOrWhiteSpace([string]$Point.walk)) { $text = $text + " -m3d_walk $($Point.walk)" }
+    if (-not [string]::IsNullOrWhiteSpace($script:camText)) { $text = $text + " -m3d_cam $script:camText" }
     return $text
+}
+
+$camText = ""
+if (-not [string]::IsNullOrWhiteSpace($Cam)) {
+    $camValue = 0.0
+    $camOk = [double]::TryParse($Cam, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$camValue)
+    if (-not $camOk -or $camValue -le 0) { throw "Камера: '$Cam' не разобрана. Нужно положительное число." }
+    $camText = $camValue.ToString("0.###", [Globalization.CultureInfo]::InvariantCulture)
 }
 
 $adbPath = Resolve-M3dAdb -Adb $Adb
@@ -114,6 +125,9 @@ if ($Resume) {
     $progressPath = Join-Path $resultDir "progress.json"
     if (-not (Test-Path $progressPath)) { throw "Нет progress.json в $resultDir" }
     $state = Get-Content $progressPath -Raw | ConvertFrom-Json
+    if ([string]::IsNullOrWhiteSpace($camText) -and -not [string]::IsNullOrWhiteSpace([string]$state.cam)) {
+        $camText = [string]$state.cam
+    }
     if ($state.stopped) {
         Write-M3dLine ("Серия остановлена: {0}. -Resume её не продолжает." -f $state.reason)
         exit 2
@@ -142,6 +156,7 @@ if ($Resume) {
         series = $Series
         stopped = $false
         reason = ""
+        cam = $camText
         resultDir = $resultDir
         points = $points
     }

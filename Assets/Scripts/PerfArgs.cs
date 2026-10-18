@@ -21,6 +21,8 @@ public sealed class PerfArgs
 	public int MaxNeighbors { get; private set; }
 	public bool HasWalk { get; private set; }
 	public int Walk { get; private set; }
+	public bool HasCam { get; private set; }
+	public float Cam { get; private set; }
 	public bool HasWarmup { get; private set; }
 	public float WarmupSeconds { get; private set; } = DefaultSeconds;
 	public bool HasMeasure { get; private set; }
@@ -79,6 +81,12 @@ public sealed class PerfArgs
 			if (token == "-m3d_walk")
 			{
 				parsed.ReadWalk(NextValue(args, ref i));
+				continue;
+			}
+
+			if (token == "-m3d_cam")
+			{
+				parsed.ReadCam(NextValue(args, ref i));
 				continue;
 			}
 
@@ -233,6 +241,20 @@ public sealed class PerfArgs
 		}
 
 		warnings.Add(value == null ? "walk=" : "walk=" + value);
+	}
+
+	private void ReadCam(string value)
+	{
+		if (value != null
+			&& float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float size)
+			&& size > 0f)
+		{
+			HasCam = true;
+			Cam = size;
+			return;
+		}
+
+		warnings.Add(value == null ? "cam=" : "cam=" + value);
 	}
 
 	private void ReadSeconds(string value, bool warmup)
