@@ -21,6 +21,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     private static readonly int TeamsId = Shader.PropertyToID("Teams");
     private static readonly int SortedPositionsId = Shader.PropertyToID("SortedPositions");
     private static readonly int SortedDirectionsId = Shader.PropertyToID("SortedDirections");
+    private static readonly int SortedPackedId = Shader.PropertyToID("SortedPacked");
     private static readonly int SortedTeamsId = Shader.PropertyToID("SortedTeams");
     private static readonly int SortedIndicesId = Shader.PropertyToID("SortedIndices");
     private static readonly int CellStartsId = Shader.PropertyToID("CellStarts");
@@ -38,10 +39,15 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
 
     private GraphicsBuffer capCounter;
     private KernelHandle sortedKernel;
+    private KernelHandle packedKernel;
+    private SpatialHashSet spatialHash;
     private int generation;
     private int inflight;
     private bool disposed;
-    private bool walk2Warned;
+    private int packedMissingStreak;
+    private bool packedMissingWarned;
+    private bool packedKernelMissingWarned;
+    private int effectiveWalkMode;
     private bool radiusWarned;
     private float warnedRadius;
 
@@ -70,8 +76,15 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
             }
 
             walkMode = value;
+            if (spatialHash != null)
+            {
+                spatialHash.PackedRequested = value == 2;
+            }
         }
     }
+
+    /// <summary>Walk that the last <see cref="SelectKernel"/> actually ran: 0, 1, or 2.</summary>
+    public int EffectiveWalkMode => effectiveWalkMode;
 
     public bool CountCapHits
     {
@@ -123,7 +136,10 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         }
 
         base.Initialize(context);
+        spatialHash = context.SpatialHash;
+        spatialHash.PackedRequested = walkMode == 2;
         sortedKernel = context.FindKernel("BoidNeighborForceSorted");
+        packedKernel = FindPackedKernel(context);
         if (capCounter != null)
         {
             capCounter.Release();
@@ -166,14 +182,23 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     {
         SpatialHashSet hash = context.SpatialHash;
         BindBuffer(context, TeamsId, context.Teams);
-        BindBuffer(context, SortedPositionsId, hash.SortedPositions);
-        BindBuffer(context, SortedDirectionsId, hash.SortedDirections);
-        BindBuffer(context, SortedTeamsId, hash.SortedTeams);
         BindBuffer(context, CellStartsId, hash.CellStarts);
         BindBuffer(context, CellCountsId, hash.CellCounts);
-        if (Kernel.Shader == sortedKernel.Shader && Kernel.Index == sortedKernel.Index)
+        bool packed = packedKernel.IsValid && Kernel.Shader == packedKernel.Shader && Kernel.Index == packedKernel.Index;
+        if (packed)
         {
+            BindBuffer(context, SortedPackedId, hash.SortedPacked);
             BindBuffer(context, SortedIndicesId, hash.SortedIndices);
+        }
+        else
+        {
+            BindBuffer(context, SortedPositionsId, hash.SortedPositions);
+            BindBuffer(context, SortedDirectionsId, hash.SortedDirections);
+            BindBuffer(context, SortedTeamsId, hash.SortedTeams);
+            if (Kernel.Shader == sortedKernel.Shader && Kernel.Index == sortedKernel.Index)
+            {
+                BindBuffer(context, SortedIndicesId, hash.SortedIndices);
+            }
         }
 
         hash.PushParams(context.Cmd, Kernel.Shader);
@@ -189,18 +214,77 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
 
     protected override KernelHandle SelectKernel(SimContext context)
     {
-        if (walkMode == 2 && !walk2Warned)
+        bool radiusBlocks = RadiusBlocksSortedWalk(context);
+        bool packedWritten = spatialHash != null && spatialHash.PackedWritten;
+        NotePackedFallback(packedKernel.IsValid, radiusBlocks, packedWritten);
+        if (walkMode == 2 && packedKernel.IsValid && !radiusBlocks && packedWritten)
         {
-            walk2Warned = true;
-            Debug.LogWarning("BoidNeighborForce: walk 2 ещё не реализован, выполняется walk 1.");
+            effectiveWalkMode = 2;
+            return packedKernel;
         }
 
-        if (walkMode >= 1 && sortedKernel.IsValid && !RadiusBlocksSortedWalk(context))
+        if (walkMode >= 1 && sortedKernel.IsValid && !radiusBlocks)
         {
+            effectiveWalkMode = 1;
             return sortedKernel;
         }
 
+        effectiveWalkMode = 0;
         return base.SelectKernel(context);
+    }
+
+    private void NotePackedFallback(bool packedKernelOk, bool radiusBlocks, bool packedWritten)
+    {
+        if (walkMode != 2)
+        {
+            packedMissingStreak = 0;
+            return;
+        }
+
+        if (!packedKernelOk)
+        {
+            if (!packedKernelMissingWarned)
+            {
+                packedKernelMissingWarned = true;
+                Debug.LogWarning(
+                    "BoidNeighborForce: walk 2: кернел обхода не найден, выполняется walk 1.");
+            }
+
+            return;
+        }
+
+        if (radiusBlocks)
+        {
+            return;
+        }
+
+        if (!packedWritten)
+        {
+            packedMissingStreak++;
+            if (packedMissingStreak >= 3 && !packedMissingWarned)
+            {
+                packedMissingWarned = true;
+                Debug.LogWarning(
+                    "BoidNeighborForce: walk 2: пакет не пишется, выполняется walk 1.");
+            }
+
+            return;
+        }
+
+        packedMissingStreak = 0;
+        packedMissingWarned = false;
+    }
+
+    private static KernelHandle FindPackedKernel(SimContext context)
+    {
+        try
+        {
+            return context.FindKernel("BoidNeighborForceSortedPacked");
+        }
+        catch (InvalidOperationException)
+        {
+            return default;
+        }
     }
 
     private bool RadiusBlocksSortedWalk(SimContext context)

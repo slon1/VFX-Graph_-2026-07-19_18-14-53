@@ -23,7 +23,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/run-series.ps1 -Se
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/summarize.ps1 -Logs DOC/MEASURE/<папка> -Out DOC/MEASURE/<папка>/summary.md
 ```
 
-Токен `A0` передаёт `-m3d_walk 0`. Токен `A` без цифры walk не задаёт. `ABABC` без пробелов остаётся прежней серией. Сводка группирует по паре режим и walk; старые строки без поля `walk` попадают в группу `na`.
+Токен `A0` передаёт `-m3d_walk 0`, токены `A2` и `B2` передают `-m3d_walk 2`. Токен `A` без цифры walk не задаёт. `ABABC` без пробелов остаётся прежней серией. Сводка группирует по паре режим и walk; старые строки без поля `walk` попадают в группу `na`. Строка `M3D_PERF` пишет `walkeff`. Если `walkeff` есть и не равно `walk`, прогон невалиден, причина `walk fallback`.
 
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/capture-streamline.ps1 -Mode B -ApcName Capture_B.apc

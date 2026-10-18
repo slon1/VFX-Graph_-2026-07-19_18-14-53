@@ -428,7 +428,6 @@ public class BoidNeighborForceSortedTests
         Run(prepared, 1);
         Vector3[] walk1 = ReadVelocity(prepared);
 
-        LogAssert.Expect(LogType.Warning, new Regex("walk 2 ещё не реализован"));
         Rerun(prepared, 2);
         Vector3[] walk2 = ReadVelocity(prepared);
         Rerun(prepared, 2);

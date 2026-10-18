@@ -1093,6 +1093,16 @@ public sealed class FPSDisplay : MonoBehaviour
 			text.Append(forcePass.WalkMode.ToString(CultureInfo.InvariantCulture));
 		}
 
+		text.Append(" walkeff=");
+		if (forcePass == null)
+		{
+			text.Append("na");
+		}
+		else
+		{
+			text.Append(forcePass.EffectiveWalkMode.ToString(CultureInfo.InvariantCulture));
+		}
+
 		string line = text.ToString();
 		Debug.Log(line);
 		try

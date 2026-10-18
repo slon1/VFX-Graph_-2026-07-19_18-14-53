@@ -28,6 +28,7 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
     [NonSerialized] private KernelHandle scanBlockSumsKernel;
     [NonSerialized] private KernelHandle addOffsetsKernel;
     [NonSerialized] private KernelHandle scatterKernel;
+    [NonSerialized] private KernelHandle packedScatterKernel;
 
     public Vector3 Center
     {
@@ -74,13 +75,15 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         scanBlockSumsKernel = context.FindKernel("HashScanBlockSums");
         addOffsetsKernel = context.FindKernel("HashAddOffsets");
         scatterKernel = context.FindKernel("HashScatter");
+        packedScatterKernel = FindPackedScatter(context);
 
         ComputeShader shader = clearKernel.Shader;
         if (countKernel.Shader != shader ||
             scanBlocksKernel.Shader != shader ||
             scanBlockSumsKernel.Shader != shader ||
             addOffsetsKernel.Shader != shader ||
-            scatterKernel.Shader != shader)
+            scatterKernel.Shader != shader ||
+            (packedScatterKernel.IsValid && packedScatterKernel.Shader != shader))
         {
             throw new InvalidOperationException(
                 "Build Spatial Hash kernels must share one compute shader; uniforms are set once.");
@@ -105,6 +108,11 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
     public override void Execute(SimContext context, float deltaTime)
     {
         LastExecuteDispatched = false;
+        if (hash != null)
+        {
+            hash.PackedWritten = false;
+        }
+
         if (hash == null || hash.ParticleCount == 0 || !KernelsValid())
         {
             return;
@@ -136,15 +144,21 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         Bind(cmd, addOffsetsKernel, "CellCursors", hash.CellCursors);
         Bind(cmd, addOffsetsKernel, "BlockOffsets", hash.BlockOffsets);
 
-        Bind(cmd, scatterKernel, "position", positions);
-        Bind(cmd, scatterKernel, "heading", headings);
-        Bind(cmd, scatterKernel, "teamId", teams);
-        Bind(cmd, scatterKernel, "ParticleCells", hash.ParticleCells);
-        Bind(cmd, scatterKernel, "CellCursors", hash.CellCursors);
-        Bind(cmd, scatterKernel, "SortedIndices", hash.SortedIndices);
-        Bind(cmd, scatterKernel, "SortedPositions", hash.SortedPositions);
-        Bind(cmd, scatterKernel, "SortedDirections", hash.SortedDirections);
-        Bind(cmd, scatterKernel, "SortedTeams", hash.SortedTeams);
+        bool packed = hash.PackedRequested && packedScatterKernel.IsValid && hash.SortedPacked != null;
+        KernelHandle scatter = packed ? packedScatterKernel : scatterKernel;
+        Bind(cmd, scatter, "position", positions);
+        Bind(cmd, scatter, "heading", headings);
+        Bind(cmd, scatter, "teamId", teams);
+        Bind(cmd, scatter, "ParticleCells", hash.ParticleCells);
+        Bind(cmd, scatter, "CellCursors", hash.CellCursors);
+        Bind(cmd, scatter, "SortedIndices", hash.SortedIndices);
+        Bind(cmd, scatter, "SortedPositions", hash.SortedPositions);
+        Bind(cmd, scatter, "SortedDirections", hash.SortedDirections);
+        Bind(cmd, scatter, "SortedTeams", hash.SortedTeams);
+        if (packed)
+        {
+            Bind(cmd, scatter, "SortedPacked", hash.SortedPacked);
+        }
 
         int cellGroups = (hash.Layout.CellCount + ThreadGroupSize - 1) / ThreadGroupSize;
         int particleGroups = (hash.ParticleCount + ThreadGroupSize - 1) / ThreadGroupSize;
@@ -155,7 +169,12 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         cmd.DispatchCompute(scanBlocksKernel.Shader, scanBlocksKernel.Index, blocks, 1, 1);
         cmd.DispatchCompute(scanBlockSumsKernel.Shader, scanBlockSumsKernel.Index, 1, 1, 1);
         cmd.DispatchCompute(addOffsetsKernel.Shader, addOffsetsKernel.Index, blocks, 1, 1);
-        cmd.DispatchCompute(scatterKernel.Shader, scatterKernel.Index, particleGroups, 1, 1);
+        cmd.DispatchCompute(scatter.Shader, scatter.Index, particleGroups, 1, 1);
+        if (packed)
+        {
+            hash.PackedWritten = true;
+        }
+
         LastExecuteDispatched = true;
     }
 
@@ -163,6 +182,18 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
     {
         hash?.Dispose();
         hash = null;
+    }
+
+    private static KernelHandle FindPackedScatter(SimContext context)
+    {
+        try
+        {
+            return context.FindKernel("HashScatterPacked");
+        }
+        catch (InvalidOperationException)
+        {
+            return default;
+        }
     }
 
     private bool KernelsValid()

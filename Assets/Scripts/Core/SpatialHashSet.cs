@@ -53,6 +53,12 @@ public sealed class SpatialHashSet : IDisposable
     internal GraphicsBuffer SortedPositions { get; private set; }
     internal GraphicsBuffer SortedDirections { get; private set; }
     internal GraphicsBuffer SortedTeams { get; private set; }
+    internal GraphicsBuffer SortedPacked { get; private set; }
+
+    internal bool PackedRequested { get; set; }
+
+    /// <summary>Set by <see cref="BuildSpatialHashPass"/> for the frame it just recorded.</summary>
+    internal bool PackedWritten { get; set; }
 
     public SpatialHashSet(SpatialHashLayout layout, bool wrap, int particleCount)
     {
@@ -80,6 +86,7 @@ public sealed class SpatialHashSet : IDisposable
             SortedPositions = NewFloat2(particleCount);
             SortedDirections = NewFloat2(particleCount);
             SortedTeams = NewUint(particleCount);
+            SortedPacked = NewUint4(particleCount);
         }
     }
 
@@ -149,6 +156,7 @@ public sealed class SpatialHashSet : IDisposable
         SortedPositions = Release(SortedPositions);
         SortedDirections = Release(SortedDirections);
         SortedTeams = Release(SortedTeams);
+        SortedPacked = Release(SortedPacked);
     }
 
     private static int AxisResolution(double size, float minCellSize)
@@ -180,6 +188,11 @@ public sealed class SpatialHashSet : IDisposable
     private static GraphicsBuffer NewFloat2(int count)
     {
         return new GraphicsBuffer(GraphicsBuffer.Target.Structured, count, sizeof(float) * 2);
+    }
+
+    private static GraphicsBuffer NewUint4(int count)
+    {
+        return new GraphicsBuffer(GraphicsBuffer.Target.Structured, count, sizeof(uint) * 4);
     }
 
     private static GraphicsBuffer Release(GraphicsBuffer buffer)

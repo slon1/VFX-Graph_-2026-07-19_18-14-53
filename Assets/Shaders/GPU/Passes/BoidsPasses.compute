@@ -1,6 +1,7 @@
 // Neighbor force from the spatial-hash snapshot (ADR-038). Heading is not read.
 #pragma kernel BoidNeighborForce
 #pragma kernel BoidNeighborForceSorted
+#pragma kernel BoidNeighborForceSortedPacked
 #pragma kernel BoidReadTeamParams
 #pragma kernel TeamHeadingSteer
 
@@ -27,6 +28,7 @@ StructuredBuffer<float2> SortedPositions;
 StructuredBuffer<float2> SortedDirections;
 StructuredBuffer<uint> SortedTeams;
 StructuredBuffer<uint> SortedIndices;
+StructuredBuffer<uint4> SortedPacked;
 StructuredBuffer<uint> CellStarts;
 StructuredBuffer<uint> CellCounts;
 
@@ -368,6 +370,221 @@ void BoidNeighborForceSorted(uint3 id : SV_DispatchThreadID)
         state.sx = rangeSx;
         state.sy = rangeSy;
         AccumulateSortedRange(state, rangeStart, rangeEnd);
+    }
+
+    if (state.capped != 0u && CountCapHits != 0)
+    {
+        InterlockedAdd(CapHits[0], 1u);
+    }
+
+    float2 force = 0;
+    if (state.sepN > 0)
+    {
+        force += (state.sep / (float)state.sepN) * team.Weights.x;
+    }
+
+    if (dot(state.align, state.align) > 1e-6)
+    {
+        force += normalize(state.align) * team.Weights.y;
+    }
+
+    if (state.cohN > 0)
+    {
+        float2 mean = state.coh / (float)state.cohN;
+        if (dot(mean, mean) > 1e-6)
+        {
+            force += normalize(mean) * team.Weights.z;
+        }
+    }
+
+    velocity[i] += float3(force.x, 0, force.y);
+}
+
+void AccumulatePackedRange(inout NeighborWalk state, uint rangeStart, uint rangeEnd)
+{
+    float2 shift = float2(state.sx, state.sy) * HashSize;
+    [loop]
+    for (uint slot = rangeStart; slot < rangeEnd; slot++)
+    {
+        uint4 rec = SortedPacked[slot];
+        float2 pos = float2(asfloat(rec.x), asfloat(rec.y));
+        float2 d = pos - state.self + shift;
+        float r2 = dot(d, d);
+        if (r2 < 1e-6)
+        {
+            continue;
+        }
+
+        if (MaxNeighbors > 0 && state.visited >= (uint)MaxNeighbors)
+        {
+            state.capped = 1u;
+            break;
+        }
+
+        state.visited++;
+        if (r2 >= state.maxR2)
+        {
+            continue;
+        }
+
+        uint neighborTeam = rec.z & 7u;
+        bool same = neighborTeam == state.selfTeam;
+        if (r2 < state.sepR2)
+        {
+            float mul = same ? 1.0 : state.inter;
+            state.sep += (-d / (r2 + 1e-3)) * mul;
+            state.sepN++;
+        }
+
+        if (same && r2 < state.alignR2)
+        {
+            float2 dir = float2(asfloat(rec.z & ~7u), asfloat(rec.w));
+            state.align += dir;
+            state.alignN++;
+        }
+
+        if (same && r2 < state.cohR2)
+        {
+            state.coh += d;
+            state.cohN++;
+        }
+    }
+}
+
+[numthreads(THREADS, 1, 1)]
+void BoidNeighborForceSortedPacked(uint3 id : SV_DispatchThreadID)
+{
+    uint slot0 = id.x;
+    if (slot0 >= ParticleCount)
+    {
+        return;
+    }
+
+    uint4 selfRec = SortedPacked[slot0];
+    uint i = SortedIndices[slot0];
+    uint selfTeam = selfRec.z & 7u;
+    TeamParams team = Teams[selfTeam];
+    NeighborWalk state;
+    state.sep = 0;
+    state.align = 0;
+    state.coh = 0;
+    state.sepN = 0;
+    state.alignN = 0;
+    state.cohN = 0;
+    state.visited = 0;
+    state.capped = 0;
+    state.sepR2 = team.Radii.x * team.Radii.x;
+    state.alignR2 = team.Radii.y * team.Radii.y;
+    state.cohR2 = team.Radii.z * team.Radii.z;
+    state.maxR2 = max(state.sepR2, max(state.alignR2, state.cohR2));
+    state.inter = team.Radii.w;
+    state.self = float2(asfloat(selfRec.x), asfloat(selfRec.y));
+    state.selfTeam = selfTeam;
+    state.sx = 0;
+    state.sy = 0;
+    int2 cell = HashCellCoord(state.self);
+
+    int start = (int)(i % 9u);
+    bool open = false;
+    uint rangeStart = 0;
+    uint rangeEnd = 0;
+    int rangeSx = 0;
+    int rangeSy = 0;
+    [loop]
+    for (int n = 0; n < 9; n++)
+    {
+        if (state.capped != 0u)
+        {
+            break;
+        }
+
+        int k = start + n;
+        if (k >= 9)
+        {
+            k -= 9;
+        }
+
+        int row = 0;
+        if (k >= 6)
+        {
+            row = 2;
+        }
+        else if (k >= 3)
+        {
+            row = 1;
+        }
+
+        int dy = row - 1;
+        int dx = k - row * 3 - 1;
+        int2 raw = cell + int2(dx, dy);
+        int sx = 0;
+        int sy = 0;
+        if (HashWrap != 0)
+        {
+            if (raw.x < 0)
+            {
+                raw.x += HashRes.x;
+                sx = -1;
+            }
+            else if (raw.x >= HashRes.x)
+            {
+                raw.x -= HashRes.x;
+                sx = 1;
+            }
+
+            if (raw.y < 0)
+            {
+                raw.y += HashRes.y;
+                sy = -1;
+            }
+            else if (raw.y >= HashRes.y)
+            {
+                raw.y -= HashRes.y;
+                sy = 1;
+            }
+        }
+        else if (raw.x < 0 || raw.y < 0 || raw.x >= HashRes.x || raw.y >= HashRes.y)
+        {
+            continue;
+        }
+
+        uint cellIndex = HashCellIndex(raw);
+        uint slotCount = CellCounts[cellIndex];
+        if (slotCount == 0u)
+        {
+            continue;
+        }
+
+        uint nextStart = CellStarts[cellIndex];
+        if (open && nextStart == rangeEnd && sx == rangeSx && sy == rangeSy)
+        {
+            rangeEnd += slotCount;
+            continue;
+        }
+
+        if (open)
+        {
+            state.sx = rangeSx;
+            state.sy = rangeSy;
+            AccumulatePackedRange(state, rangeStart, rangeEnd);
+            if (state.capped != 0u)
+            {
+                break;
+            }
+        }
+
+        rangeStart = nextStart;
+        rangeEnd = nextStart + slotCount;
+        rangeSx = sx;
+        rangeSy = sy;
+        open = true;
+    }
+
+    if (open && state.capped == 0u)
+    {
+        state.sx = rangeSx;
+        state.sy = rangeSy;
+        AccumulatePackedRange(state, rangeStart, rangeEnd);
     }
 
     if (state.capped != 0u && CountCapHits != 0)

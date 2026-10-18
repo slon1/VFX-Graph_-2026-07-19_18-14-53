@@ -42,6 +42,10 @@ function Get-RunRows($File) {
     foreach ($run in $runs) {
         if (-not $run.Done) { continue }
         $reasons = @(Get-M3dLenientReasons $run)
+        $walkValue = $(if ([string]::IsNullOrWhiteSpace($run.Done["walk"])) { "na" } else { $run.Done["walk"] })
+        if ($run.Done.ContainsKey("walkeff") -and -not [string]::IsNullOrWhiteSpace($run.Done["walkeff"]) -and $run.Done["walkeff"] -ne $walkValue) {
+            $reasons += "walk fallback"
+        }
         $frame = Get-M3dNumber $run.Done["frameAvg"]
         $long = Get-M3dNumber $run.Done["long"]
         $rows += [pscustomobject]@{
@@ -51,7 +55,7 @@ function Get-RunRows($File) {
             FrameAvg = $frame
             Long = $long
             Wake = $wake
-            Walk = $(if ([string]::IsNullOrWhiteSpace($run.Done["walk"])) { "na" } else { $run.Done["walk"] })
+            Walk = $walkValue
             Res = $run.Done["res"]
             Valid = ($reasons.Count -eq 0 -and $null -ne $frame -and $null -ne $long)
             Reason = ($reasons -join ", ")

@@ -5,6 +5,7 @@
 #pragma kernel HashScanBlockSums
 #pragma kernel HashAddOffsets
 #pragma kernel HashScatter
+#pragma kernel HashScatterPacked
 
 #include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
 
@@ -27,6 +28,7 @@ RWStructuredBuffer<uint> SortedIndices;
 RWStructuredBuffer<float2> SortedPositions;
 RWStructuredBuffer<float2> SortedDirections;
 RWStructuredBuffer<uint> SortedTeams;
+RWStructuredBuffer<uint4> SortedPacked;
 
 groupshared uint ScanTemp[SCAN_BLOCK_SIZE];
 
@@ -160,4 +162,29 @@ void HashScatter(uint3 id : SV_DispatchThreadID)
     SortedPositions[slot] = position[id.x].xz;
     SortedDirections[slot] = heading[id.x].xz;
     SortedTeams[slot] = teamId[id.x];
+}
+
+[numthreads(THREADS, 1, 1)]
+void HashScatterPacked(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    uint slot;
+    InterlockedAdd(CellCursors[ParticleCells[id.x]], 1u, slot);
+
+    SortedIndices[slot] = id.x;
+    SortedPositions[slot] = position[id.x].xz;
+    SortedDirections[slot] = heading[id.x].xz;
+    SortedTeams[slot] = teamId[id.x];
+
+    uint team = min(teamId[id.x], 7u);
+    uint packedZ = ((asuint(heading[id.x].x) + 4u) & ~7u) | team;
+    SortedPacked[slot] = uint4(
+        asuint(position[id.x].x),
+        asuint(position[id.x].z),
+        packedZ,
+        asuint(heading[id.x].z));
 }
