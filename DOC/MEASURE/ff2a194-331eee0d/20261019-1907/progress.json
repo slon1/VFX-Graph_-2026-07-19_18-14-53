@@ -1,0 +1,65 @@
+{
+    "series":  "B1 B2 B1 B2 B1 B2",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "46",
+    "cap":  "",
+    "hashrep":  "",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\ff2a194-331eee0d\\20261019-1907",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B2",
+                       "status":  "ok",
+                       "file":  "02-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B3",
+                       "status":  "ok",
+                       "file":  "03-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  4,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B4",
+                       "status":  "ok",
+                       "file":  "04-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  5,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B5",
+                       "status":  "ok",
+                       "file":  "05-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  6,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B6",
+                       "status":  "ok",
+                       "file":  "06-B-720.txt",
+                       "reason":  ""
+                   }
+               ]
+}

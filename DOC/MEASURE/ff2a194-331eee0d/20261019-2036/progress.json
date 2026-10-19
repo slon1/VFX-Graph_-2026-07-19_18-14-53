@@ -1,0 +1,20 @@
+{
+    "series":  "B1",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "46",
+    "cap":  "1",
+    "hashrep":  "",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\ff2a194-331eee0d\\20261019-2036",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   }
+               ]
+}

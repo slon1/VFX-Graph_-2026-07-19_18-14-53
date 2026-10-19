@@ -1,0 +1,173 @@
+{
+    "series":  "A0 A1 A2 A0 A1 A2 A0 A1 A2 B0 B1 B2 B0 B1 B2 B0 B1 B2",
+    "stopped":  true,
+    "reason":  "нет phase=DONE за 115 с",
+    "cam":  "46",
+    "cap":  "",
+    "hashrep":  "",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\ff2a194-331eee0d\\20261019-1710",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "A",
+                       "walk":  "0",
+                       "tag":  "A1",
+                       "status":  "ok",
+                       "file":  "01-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "A",
+                       "walk":  "1",
+                       "tag":  "A2",
+                       "status":  "ok",
+                       "file":  "02-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "A",
+                       "walk":  "2",
+                       "tag":  "A3",
+                       "status":  "ok",
+                       "file":  "03-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  4,
+                       "mode":  "A",
+                       "walk":  "0",
+                       "tag":  "A4",
+                       "status":  "ok",
+                       "file":  "04-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  5,
+                       "mode":  "A",
+                       "walk":  "1",
+                       "tag":  "A5",
+                       "status":  "ok",
+                       "file":  "05-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  6,
+                       "mode":  "A",
+                       "walk":  "2",
+                       "tag":  "A6",
+                       "status":  "ok",
+                       "file":  "06-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  7,
+                       "mode":  "A",
+                       "walk":  "0",
+                       "tag":  "A7",
+                       "status":  "ok",
+                       "file":  "07-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  8,
+                       "mode":  "A",
+                       "walk":  "1",
+                       "tag":  "A8",
+                       "status":  "ok",
+                       "file":  "08-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  9,
+                       "mode":  "A",
+                       "walk":  "2",
+                       "tag":  "A9",
+                       "status":  "ok",
+                       "file":  "09-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  10,
+                       "mode":  "B",
+                       "walk":  "0",
+                       "tag":  "B1",
+                       "status":  "ok",
+                       "file":  "10-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  11,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B2",
+                       "status":  "invalid",
+                       "file":  "11-B-720.txt",
+                       "reason":  "нет phase=DONE за 115 с"
+                   },
+                   {
+                       "n":  12,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B3",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  13,
+                       "mode":  "B",
+                       "walk":  "0",
+                       "tag":  "B4",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  14,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B5",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  15,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B6",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  16,
+                       "mode":  "B",
+                       "walk":  "0",
+                       "tag":  "B7",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  17,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B8",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  18,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B9",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   }
+               ]
+}

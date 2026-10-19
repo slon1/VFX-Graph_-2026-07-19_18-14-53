@@ -1,0 +1,74 @@
+{
+    "series":  "B2 B0 B1 B2 B0 B1 B2",
+    "stopped":  true,
+    "reason":  "нет phase=DONE за 115 с",
+    "cam":  "46",
+    "cap":  "",
+    "hashrep":  "",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\ff2a194-331eee0d\\20261019-1740",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "walk":  "0",
+                       "tag":  "B2",
+                       "status":  "ok",
+                       "file":  "02-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B3",
+                       "status":  "invalid",
+                       "file":  "03-B-720.txt",
+                       "reason":  "нет phase=DONE за 115 с"
+                   },
+                   {
+                       "n":  4,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B4",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  5,
+                       "mode":  "B",
+                       "walk":  "0",
+                       "tag":  "B5",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  6,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "B6",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  7,
+                       "mode":  "B",
+                       "walk":  "2",
+                       "tag":  "B7",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   }
+               ]
+}
