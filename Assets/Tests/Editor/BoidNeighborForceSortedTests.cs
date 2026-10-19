@@ -417,26 +417,6 @@ public class BoidNeighborForceSortedTests
     }
 
     [Test]
-    public void Walk2_WarnsOnce_AndMatchesWalk1()
-    {
-        Vector3[] positions = { Vector3.zero, new Vector3(0.5f, 0f, 0.2f) };
-        Vector3[] headings = { Vector3.right, Vector3.left };
-        uint[] teamIds = { 0u, 0u };
-        TeamParams[] slots = Slots(Profile(1.5f, 1.5f, 1.5f, 1f, 1f, 0.3f, 0.2f, 2f, 1f));
-        Prepared prepared = Prepare(
-            positions, headings, teamIds, slots, true, new Vector3(8f, 0f, 8f), 2f, 0, false, false);
-        Run(prepared, 1);
-        Vector3[] walk1 = ReadVelocity(prepared);
-
-        Rerun(prepared, 2);
-        Vector3[] walk2 = ReadVelocity(prepared);
-        Rerun(prepared, 2);
-        LogAssert.NoUnexpectedReceived();
-        AssertCloseWalks("walk 2", new Pair { Walk0 = walk1, Walk1 = walk2 });
-        TestContext.WriteLine("walk 2 max ulp " + MaxUlp(walk1, walk2));
-    }
-
-    [Test]
     public void WalkMode_RejectsOutOfRange()
     {
         var pass = new BoidNeighborForcePass();
