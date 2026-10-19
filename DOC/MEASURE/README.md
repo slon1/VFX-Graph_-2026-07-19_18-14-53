@@ -23,7 +23,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/run-series.ps1 -Se
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/summarize.ps1 -Logs DOC/MEASURE/<папка> -Out DOC/MEASURE/<папка>/summary.md
 ```
 
-Токен `A0` передаёт `-m3d_walk 0`, токены `A2` и `B2` передают `-m3d_walk 2`. Токен `A` без цифры walk не задаёт. `ABABC` без пробелов остаётся прежней серией. Сводка группирует по паре режим и walk; старые строки без поля `walk` попадают в группу `na`. Строка `M3D_PERF` пишет `walkeff`. Если `walkeff` есть и не равно `walk`, прогон невалиден, причина `walk fallback`. Метка `vsync` групповая: медиана кадра ≤ 16,9 мс и разброс ≤ 0,1 по повторам группы, `valid` остаётся 1.
+Токен `A0` передаёт `-m3d_walk 0`, токены `A2` и `B2` передают `-m3d_walk 2`. Токен `A` или `B` без числа walk не задаёт: walk берётся из ассета, после F3c (коммит `b6ef2fd`) это 1. `ABABC` без пробелов остаётся прежней серией. Сводка группирует по паре режим и walk; старые строки без поля `walk` попадают в группу `na`. Строка `M3D_PERF` пишет `walkeff`. Если `walkeff` есть и не равно `walk`, прогон невалиден, причина `walk fallback`. Метка `vsync` групповая: медиана кадра ≤ 16,9 мс и разброс ≤ 0,1 по повторам группы, `valid` остаётся 1. `summarize.ps1` берёт `walk` из поля `walk=` строки `DONE`, не из аргументов запуска. До коммита `b6ef2fd` строка `DONE` без `-m3d_walk` имела `walk` 0 (у четырёх ассетов 400k–800k поле было задано явно, у остальных значение шло из кода). После него без `-m3d_walk` это 1 ([ADR-048](../ADR/ADR-048-Default-Walk-Mode.md) §4). Строка каталога «после F3» добавится, когда владелец снимет прогон части В ТЗ F3c.
 
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/capture-streamline.ps1 -Mode B -ApcName Capture_B.apc
