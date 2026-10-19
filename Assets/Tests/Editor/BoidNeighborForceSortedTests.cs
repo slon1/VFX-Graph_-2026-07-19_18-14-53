@@ -440,7 +440,7 @@ public class BoidNeighborForceSortedTests
     public void WalkMode_RejectsOutOfRange()
     {
         var pass = new BoidNeighborForcePass();
-        Assert.AreEqual(0, pass.WalkMode);
+        Assert.AreEqual(1, pass.WalkMode);
         Assert.Throws<ArgumentOutOfRangeException>(() => pass.WalkMode = 3);
         Assert.Throws<ArgumentOutOfRangeException>(() => pass.WalkMode = -1);
         Assert.DoesNotThrow(() => pass.WalkMode = 2);

@@ -195,7 +195,7 @@ MonoBehaviour:
         enabled: 1
         maxNeighbors: 48
         countCapHits: 0
-        walkMode: 0
+        walkMode: 1
     - rid: 5854237596249489733
       type: {class: TeamHeadingSteerPass, ns: , asm: Assembly-CSharp}
       data:

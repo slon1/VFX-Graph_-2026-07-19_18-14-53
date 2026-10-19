@@ -32,7 +32,9 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
 
     [SerializeField] private int maxNeighbors = 48;
     [SerializeField] private bool countCapHits;
-    [SerializeField] private int walkMode;
+
+    // Default 1. Modes 0 and 2 are frozen (ADR-048).
+    [SerializeField] private int walkMode = 1;
 
     private readonly uint[] capClear = new uint[1];
     private readonly List<float> capWindow = new List<float>(CapWindow);
@@ -65,6 +67,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         }
     }
 
+    // Requested walk. Default 1. Modes 0 and 2 are frozen (ADR-048).
     public int WalkMode
     {
         get => walkMode;

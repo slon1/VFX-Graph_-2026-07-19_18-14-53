@@ -435,6 +435,7 @@ public class BoidNeighborForceTests
         {
             MaxNeighbors = maxNeighbors,
             CountCapHits = countCapHits,
+            WalkMode = 0,
         };
         owned.Add(force);
         clear.Initialize(context);
