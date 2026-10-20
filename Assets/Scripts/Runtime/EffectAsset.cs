@@ -32,6 +32,7 @@ public sealed class EffectAsset : ScriptableObject
     [SerializeReference] private List<SimPass> passes = new List<SimPass>();
     [SerializeField] private List<DebugFieldQuadSlot> debugFieldQuads = new List<DebugFieldQuadSlot>();
     [SerializeField] private List<TeamProfile> teams = new List<TeamProfile>();
+    [SerializeField] private List<SwarmPoint> swarmPoints = new List<SwarmPoint>();
     [SerializeField] private ParticleRenderMode particleRenderMode = ParticleRenderMode.Vfx;
     [SerializeField, Min(0f)] private float particleSize = 0.05f;
     [SerializeField] private Color particleColor = Color.white;
@@ -67,6 +68,26 @@ public sealed class EffectAsset : ScriptableObject
         teams = value == null
             ? new List<TeamProfile>()
             : new List<TeamProfile>(value);
+    }
+
+    public IReadOnlyList<SwarmPoint> SwarmPoints
+    {
+        get
+        {
+            if (swarmPoints == null)
+            {
+                swarmPoints = new List<SwarmPoint>();
+            }
+
+            return swarmPoints;
+        }
+    }
+
+    public void SetSwarmPoints(IReadOnlyList<SwarmPoint> value)
+    {
+        swarmPoints = value == null
+            ? new List<SwarmPoint>()
+            : new List<SwarmPoint>(value);
     }
     public ParticleRenderMode ParticleRenderMode => particleRenderMode;
     public float ParticleSize => particleSize;

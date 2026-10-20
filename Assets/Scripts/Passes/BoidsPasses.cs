@@ -404,3 +404,45 @@ public sealed class TeamHeadingSteerPass : ParticleKernelPass
         SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
     }
 }
+
+/// <summary>
+/// Adds editor-placed attraction and repulsion to the force sum (ADR-049).
+/// No dt. Does not read teamId or the hash snapshot. Sits between neighbor force and heading steer.
+/// </summary>
+[Serializable]
+public sealed class SwarmPointForcePass : ParticleKernelPass
+{
+    private static readonly int SwarmPointsId = Shader.PropertyToID("SwarmPoints");
+    private static readonly int SwarmPointCountId = Shader.PropertyToID("SwarmPointCount");
+    private static readonly int HashWrapId = Shader.PropertyToID("HashWrap");
+
+    public override string DisplayName => "Swarm Point Force";
+    public override PassCategory Category => PassCategory.Force;
+    protected override string KernelName => "SwarmPointForce";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Position;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    protected override KernelHandle SelectKernel(SimContext context)
+    {
+        if (context == null || context.SwarmPoints == null || context.SwarmPointCount <= 0)
+        {
+            return default;
+        }
+
+        return base.SelectKernel(context);
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        BindBuffer(context, SwarmPointsId, context.SwarmPoints);
+        SetInt(context, SwarmPointCountId, context.SwarmPointCount);
+        if (context.SpatialHash != null)
+        {
+            context.SpatialHash.PushParams(context.Cmd, Kernel.Shader);
+        }
+        else
+        {
+            SetInt(context, HashWrapId, 0);
+        }
+    }
+}

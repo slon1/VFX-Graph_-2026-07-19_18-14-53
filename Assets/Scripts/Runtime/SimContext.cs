@@ -55,6 +55,14 @@ public sealed class SimContext
     public GraphicsBuffer Teams { get; internal set; }
 
     /// <summary>
+    /// 32 float4 slots, two per point (ADR-049). Null when the effect has no swarm points. Not disposed here.
+    /// </summary>
+    public GraphicsBuffer SwarmPoints { get; internal set; }
+
+    /// <summary>Live swarm points, at most <see cref="SwarmPoint.MaxPoints"/>.</summary>
+    public int SwarmPointCount { get; internal set; }
+
+    /// <summary>
     /// Largest separation, alignment or cohesion radius across teams.
     /// Zero means the sorted-walk guard does not check (ADR-047 §2.5).
     /// </summary>

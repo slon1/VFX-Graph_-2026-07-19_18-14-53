@@ -18,6 +18,7 @@ public sealed class EffectAssetEditor : Editor
     private SerializedProperty swarmSourceProperty;
     private SerializedProperty simulationSpeedProperty;
     private SerializedProperty teamsProperty;
+    private SerializedProperty swarmPointsProperty;
     private SerializedProperty fieldsProperty;
     private SerializedProperty passesProperty;
     private SerializedProperty debugFieldQuadsProperty;
@@ -36,6 +37,7 @@ public sealed class EffectAssetEditor : Editor
         swarmSourceProperty = serializedObject.FindProperty("swarmSource");
         simulationSpeedProperty = serializedObject.FindProperty("simulationSpeed");
         teamsProperty = serializedObject.FindProperty("teams");
+        swarmPointsProperty = serializedObject.FindProperty("swarmPoints");
         fieldsProperty = serializedObject.FindProperty("fields");
         passesProperty = serializedObject.FindProperty("passes");
         debugFieldQuadsProperty = serializedObject.FindProperty("debugFieldQuads");
@@ -96,6 +98,7 @@ public sealed class EffectAssetEditor : Editor
         }
 
         EditorGUILayout.PropertyField(teamsProperty, true);
+        EditorGUILayout.PropertyField(swarmPointsProperty, true);
         EditorGUILayout.PropertyField(simulationSpeedProperty);
         EditorGUILayout.PropertyField(particleColorSourceProperty);
         EditorGUILayout.PropertyField(particleColorAxisProperty);

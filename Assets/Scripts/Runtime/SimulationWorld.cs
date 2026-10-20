@@ -32,7 +32,9 @@ public sealed class SimulationWorld : MonoBehaviour
     private CommandBuffer commandBuffer;
     private GraphicsBuffer touchBuffer;
     private GraphicsBuffer teamBuffer;
+    private GraphicsBuffer swarmPointBuffer;
     private readonly TeamParams[] teamScratch = new TeamParams[TeamProfile.MaxTeams];
+    private readonly Vector4[] swarmPointScratch = new Vector4[SwarmPointParams.Float4Count];
     private readonly TeamRadiusPlayCheck teamRadiusPlayCheck = new TeamRadiusPlayCheck();
     private bool neighborForceEnabled;
     private IDataSource source;
@@ -94,6 +96,12 @@ public sealed class SimulationWorld : MonoBehaviour
         {
             TeamParams.Upload(teamBuffer, effect.Teams, teamScratch);
             context.TeamMaxRadius = MaxTeamRadius(effect.Teams);
+        }
+
+        if (swarmPointBuffer != null)
+        {
+            SwarmPointParams.Upload(swarmPointBuffer, effect.SwarmPoints, swarmPointScratch);
+            context.SwarmPointCount = LiveSwarmPointCount(effect.SwarmPoints);
         }
 
         if (neighborForceEnabled && context.SpatialHash != null)
@@ -220,6 +228,12 @@ public sealed class SimulationWorld : MonoBehaviour
             {
                 Debug.LogWarning(hashWarnings[i], this);
             }
+
+            IReadOnlyList<string> pointWarnings = SwarmPointValidator.Validate(effect.Passes, effect);
+            for (int i = 0; i < pointWarnings.Count; i++)
+            {
+                Debug.LogWarning(pointWarnings[i], this);
+            }
         }
         catch (Exception exception)
         {
@@ -252,6 +266,17 @@ public sealed class SimulationWorld : MonoBehaviour
             TeamParams.Upload(teamBuffer, effect.Teams, teamScratch);
             context.Teams = teamBuffer;
             context.TeamMaxRadius = MaxTeamRadius(effect.Teams);
+        }
+
+        if (effect.SwarmPoints.Count > 0)
+        {
+            swarmPointBuffer = new GraphicsBuffer(
+                GraphicsBuffer.Target.Structured,
+                SwarmPointParams.Float4Count,
+                sizeof(float) * 4);
+            SwarmPointParams.Upload(swarmPointBuffer, effect.SwarmPoints, swarmPointScratch);
+            context.SwarmPoints = swarmPointBuffer;
+            context.SwarmPointCount = LiveSwarmPointCount(effect.SwarmPoints);
         }
 
         IReadOnlyList<SimPass> passes = effect.Passes;
@@ -720,6 +745,8 @@ public sealed class SimulationWorld : MonoBehaviour
         touchBuffer = null;
         teamBuffer?.Dispose();
         teamBuffer = null;
+        swarmPointBuffer?.Dispose();
+        swarmPointBuffer = null;
         neighborForceEnabled = false;
         teamRadiusPlayCheck.Forget();
         commandBuffer?.Release();
@@ -727,6 +754,16 @@ public sealed class SimulationWorld : MonoBehaviour
         samplers.Clear();
         context = null;
         source = null;
+    }
+
+    private static int LiveSwarmPointCount(IReadOnlyList<SwarmPoint> points)
+    {
+        if (points == null)
+        {
+            return 0;
+        }
+
+        return points.Count < SwarmPoint.MaxPoints ? points.Count : SwarmPoint.MaxPoints;
     }
 
     private static float MaxTeamRadius(IReadOnlyList<TeamProfile> teams)

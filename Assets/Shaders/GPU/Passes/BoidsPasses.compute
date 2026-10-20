@@ -4,6 +4,7 @@
 #pragma kernel BoidNeighborForceSortedPacked
 #pragma kernel BoidReadTeamParams
 #pragma kernel TeamHeadingSteer
+#pragma kernel SwarmPointForce
 
 #include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
 
@@ -658,4 +659,28 @@ void TeamHeadingSteer(uint3 id : SV_DispatchThreadID)
 
     heading[id.x] = h;
     velocity[id.x] = h * cruise;
+}
+
+StructuredBuffer<float4> SwarmPoints; // слот 2k: (x, z, weight, radius); слот 2k+1: (edge, 0, 0, 0)
+uint SwarmPointCount;
+
+[numthreads(THREADS, 1, 1)]
+void SwarmPointForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount) return;
+    float2 x = position[id.x].xz;
+    float2 f = 0;
+    [loop] for (uint k = 0; k < SwarmPointCount; k++)
+    {
+        float4 a = SwarmPoints[2 * k];
+        float4 b = SwarmPoints[2 * k + 1];
+        float2 d = MinImage(a.xy - x);
+        float dist = length(d);
+        if (dist <= 1e-5) continue;
+        float prof = 1;
+        if (a.w > 0)
+            prof = (b.x > 0) ? 1 - smoothstep(a.w * (1 - b.x), a.w, dist) : (dist < a.w ? 1 : 0);
+        f += (d / dist) * (a.z * prof);
+    }
+    velocity[id.x] += float3(f.x, 0, f.y);
 }
