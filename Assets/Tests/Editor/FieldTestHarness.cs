@@ -48,6 +48,7 @@ internal sealed class FieldTestHarness : IDisposable
     private GraphicsBuffer readVelocityBuffer;
     private GraphicsBuffer probeUvBuffer;
     private GraphicsBuffer probeValueBuffer;
+    private GraphicsBuffer touchBuffer;
 
     internal FieldTestHarness(FieldDescriptor[] descriptors, params string[] computeAssetPaths)
     {
@@ -93,6 +94,30 @@ internal sealed class FieldTestHarness : IDisposable
     }
 
     internal SimContext Context => context;
+
+    /// <summary>
+    /// Uploads touches for the next <see cref="RunPass"/>. An empty array still
+    /// allocates a one-element buffer so a pass can bind it when TouchCount is 0.
+    /// </summary>
+    internal void SetTouches(TouchForce[] touches)
+    {
+        if (touches == null)
+        {
+            throw new ArgumentNullException(nameof(touches));
+        }
+
+        TouchForce[] payload = touches.Length == 0 ? new TouchForce[1] : touches;
+        if (touchBuffer == null || touchBuffer.count != payload.Length || touchBuffer.stride != TouchForce.Stride)
+        {
+            ReleaseBuffer(ref touchBuffer);
+            touchBuffer = new GraphicsBuffer(
+                GraphicsBuffer.Target.Structured, payload.Length, TouchForce.Stride);
+        }
+
+        touchBuffer.SetData(payload);
+        context.TouchBuffer = touchBuffer;
+        context.TouchCount = touches.Length;
+    }
 
     internal static FieldDescriptor Descriptor(
         string name,
@@ -353,6 +378,7 @@ internal sealed class FieldTestHarness : IDisposable
         ReleaseBuffer(ref readVelocityBuffer);
         ReleaseBuffer(ref probeUvBuffer);
         ReleaseBuffer(ref probeValueBuffer);
+        ReleaseBuffer(ref touchBuffer);
 
         fields?.Dispose();
 

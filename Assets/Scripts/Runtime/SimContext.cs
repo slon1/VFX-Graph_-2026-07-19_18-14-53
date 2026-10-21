@@ -41,7 +41,7 @@ public sealed class SimContext
 
     public ParticleSet Particles { get; }
     public FieldSet Fields { get; }
-    public GraphicsBuffer TouchBuffer { get; }
+    public GraphicsBuffer TouchBuffer { get; internal set; }
     public int TouchCount { get; internal set; }
     public CommandBuffer Cmd { get; internal set; }
 

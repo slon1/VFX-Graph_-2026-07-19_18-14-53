@@ -127,6 +127,7 @@ Present частиц ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)
 | **Fluid2D_Vorticity** | эксперимент: Advect → VC → Project → Wall → dye (`ε_vc=1`, `borderMargin=2`); не production; look интерьера не взят |
 | **Fluid2D_MacCormackDye** | эксперимент F2.2: VC-цепочка + limited MacCormack dye (`dyeMacScratch`); не production; look не взят (клубы как Vorticity) |
 | **Fluid2D_HighResDye** | эксперимент F3.0: Stam как Fluid2D, `dye` 512² при `velocity` 128² (тот же Size 32); visual: острее, тот же гриб; не production |
+| **Fluid2D_DyeInject** | эксперимент F3.1: HighResDye + тонкий сид `RadiusUV=0.04` + `TouchInjectScalar` в `dye`; visual принят 2026-10-21; не production |
 
 ---
 

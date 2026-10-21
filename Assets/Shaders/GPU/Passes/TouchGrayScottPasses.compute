@@ -1,8 +1,10 @@
 // Touch inject into Gray-Scott U/V (WriteInPlace multi-field Role A/B).
 // Loads/stores own texel only; max over touches (no accumulate).
 // Load without .r (RWTexture2D<float>).
+// TouchInjectScalar: additive scalar splat along the touch segment (single-field FieldWrite).
 
 #pragma kernel TouchInjectGrayScott
+#pragma kernel TouchInjectScalar
 
 #include "Assets/Shaders/GPU/Includes/FieldSampling.hlsl"
 #include "Assets/Shaders/GPU/Includes/Touch.hlsl"
@@ -41,4 +43,37 @@ void TouchInjectGrayScott(uint3 id : SV_DispatchThreadID)
 
     FieldWriteB[id.xy] = max(FieldWriteB[id.xy], saturate(boostB));
     FieldWriteA[id.xy] = FieldWriteA[id.xy] * (1.0 - saturate(erodeA));
+}
+
+RWTexture2D<float> FieldWrite;
+float ScalarInjectK;
+float ScalarInjectMax;
+float ScalarInjectRadiusScale;
+
+[numthreads(FIELD_THREADS, FIELD_THREADS, 1)]
+void TouchInjectScalar(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)FieldResolution.x || id.y >= (uint)FieldResolution.y)
+    {
+        return;
+    }
+
+    float2 uv = (float2(id.xy) + 0.5) * FieldTexelSize;
+    float3 p = FieldOrigin
+        + FieldAxisU * ((uv.x - 0.5) * FieldSize.x)
+        + FieldAxisV * ((uv.y - 0.5) * FieldSize.y);
+
+    float s = 0.0;
+    for (uint t = 0; t < TouchCount; t++)
+    {
+        TouchForce touch = Touches[t];
+        float3 a = touch.pos - touch.delta;
+        float3 ab = touch.delta;
+        float u = saturate(dot(p - a, ab) / max(dot(ab, ab), 1e-8));
+        float d = length(p - (a + ab * u));
+        s += TouchFalloff(d, touch.radius * ScalarInjectRadiusScale);
+    }
+
+    float cur = FieldWrite[id.xy];
+    FieldWrite[id.xy] = cur + max(ScalarInjectMax - cur, 0.0) * (1.0 - exp(-ScalarInjectK * s));
 }

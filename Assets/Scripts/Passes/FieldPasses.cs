@@ -946,6 +946,67 @@ public sealed class TouchInjectGrayScottPass : FieldKernelPass
 }
 
 /// <summary>
+/// Additive scalar paint along each touch segment, with a soft ceiling at maxValue.
+/// WriteInPlace, one scalar. touch.strength is ignored. K = injectRate * dt is pushed from the CPU.
+/// </summary>
+[Serializable]
+public sealed class TouchInjectScalarFieldPass : FieldKernelPass
+{
+    private static readonly int ScalarInjectKId = Shader.PropertyToID("ScalarInjectK");
+    private static readonly int ScalarInjectMaxId = Shader.PropertyToID("ScalarInjectMax");
+    private static readonly int ScalarInjectRadiusScaleId = Shader.PropertyToID("ScalarInjectRadiusScale");
+
+    [SerializeField] private string fieldName = "dye";
+    [SerializeField, Min(0f)] private float injectRate = 60f;
+    [SerializeField, Min(0f)] private float maxValue = 1f;
+    [SerializeField, Min(0.01f)] private float radiusScale = 1f;
+
+    [NonSerialized] private FieldRequest[] fieldWritesCache;
+
+    public string FieldName
+    {
+        get => fieldName;
+        set => fieldName = value;
+    }
+
+    public float InjectRate
+    {
+        get => injectRate;
+        set => injectRate = value;
+    }
+
+    public float MaxValue
+    {
+        get => maxValue;
+        set => maxValue = value;
+    }
+
+    public float RadiusScale
+    {
+        get => radiusScale;
+        set => radiusScale = value;
+    }
+
+    public override string DisplayName => "Touch Inject Scalar Field";
+    public override PassCategory Category => PassCategory.Emit;
+    protected override string KernelName => "TouchInjectScalar";
+
+    public override IReadOnlyList<FieldRequest> FieldWrites =>
+        FieldRequestSets.Single(
+            ref fieldWritesCache, fieldName,
+            FieldAccess.WriteInPlace, FieldSemantic.Scalar, 1);
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        BindBuffer(context, SimShaderIds.Touches, context.TouchBuffer);
+        SetInt(context, SimShaderIds.TouchCount, context.TouchCount);
+        SetFloat(context, ScalarInjectKId, injectRate * deltaTime);
+        SetFloat(context, ScalarInjectMaxId, maxValue);
+        SetFloat(context, ScalarInjectRadiusScaleId, radiusScale);
+    }
+}
+
+/// <summary>
 /// Raise target scalar (default V) from agent presence: max(target, saturate(presence * gain)).
 /// Read Role A + WriteInPlace Role B. Place after GrayScottPass.
 /// </summary>

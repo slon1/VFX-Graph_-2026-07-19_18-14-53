@@ -61,7 +61,7 @@
 | `DecayPasses.compute` | DecayFieldScalar |
 | `MultiFieldTestPasses.compute` | SwapFields (тест M2c) |
 | `GrayScottPasses.compute` | GrayScottReact, SeedScalarDisk |
-| `TouchGrayScottPasses.compute` | TouchInjectGrayScott |
+| `TouchGrayScottPasses.compute` | TouchInjectGrayScott, **TouchInjectScalar** |
 | `AgentFieldFeedbackPasses.compute` | AgentBoostField, AgentErodeField |
 | `PhysarumPasses.compute` | **PhysarumSteer** |
 | `SpatialHashPasses.compute` | **Build Spatial Hash** |
@@ -559,6 +559,27 @@
 | **dt** | Нет; `max` по тачам (не `+=`); `delta` не используется |
 | **Хорошо для** | Интерактивный Gray-Scott; **после** последнего `GrayScottPass` в кадре |
 | **Кисть** | `touchStrength≈1` — мягкий falloff; дефолт роутера 10 ≈ жёсткий диск |
+
+### TouchInjectScalarField
+| | |
+|--|--|
+| **Назначение** | Тач → аддитивная краска вдоль отрезка `[pos − delta, pos]` с мягким потолком |
+| **Библиотека / kernel** | `TouchGrayScottPasses` / `TouchInjectScalar` (файл назван по Gray-Scott; кернел скалярный) |
+| **Fields** | WriteInPlace Scalar ×1, слот `FieldWrite`. Дефолт `fieldName = dye`. `FieldReads` пусты |
+| **Параметры** | `injectRate` (60, 1/с), `maxValue` (1), `radiusScale` (1, множитель к `touch.radius`). `touch.strength` не читается |
+| **Закон** | `s = Σ TouchFalloff(dist_to_segment, radius·radiusScale)`; `dye ← dye + max(maxValue − dye, 0) · (1 − exp(−injectRate·dt·s))`. `K = injectRate·dt` считается на CPU |
+| **dt** | Да, только через `K`. Неподвижная кисть композируется по `dt` точно; у капсулы остаётся член порядка `dt` |
+| **Хорошо для** | `Fluid2D_DyeInject`: сразу после `SeedScalarDisk`, до Divergence. Затухание — не этот пасс, а `AdvectScalar.DissipationRate` |
+| **DissipationRate → t½** | `t½ = ln 2 / λ`, `λ` в 1/с. Через 10 с остаётся `exp(−10λ)` |
+
+| λ, 1/с | t½, с | через 10 с |
+| --- | --- | --- |
+| 0 | ∞ | 100 % |
+| 0.07 | ≈ 10 | 50 % |
+| 0.15 | ≈ 4.6 | 22 % |
+| 0.3 | ≈ 2.3 | 5 % |
+| 0.5 | ≈ 1.4 | 0.7 % |
+| 1.0 | ≈ 0.69 | 0.005 % |
 
 ### AgentBoostField
 | | |
