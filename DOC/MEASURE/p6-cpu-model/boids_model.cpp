@@ -21,6 +21,28 @@ static void unitOr(float &x, float &z, float fx, float fz) {
     if (l > 1e-12f) { float inv = 1.f / sqrtf(l); x *= inv; z *= inv; } else { x = fx; z = fz; }
 }
 
+// Rank ceil(0.95 * n), 1-based, on an ascending array.
+static int percentile95(vector<int> values) {
+    if (values.empty()) return 0;
+    sort(values.begin(), values.end());
+    int rank = (int)ceil(0.95 * (double)values.size());
+    if (rank < 1) rank = 1;
+    if (rank > (int)values.size()) rank = (int)values.size();
+    return values[rank - 1];
+}
+
+static int percentile95Hist(const vector<long long> &hist, long long count) {
+    if (count <= 0) return 0;
+    long long rank = (long long)ceil(0.95 * (double)count);
+    if (rank < 1) rank = 1;
+    long long seen = 0;
+    for (int v = 0; v < (int)hist.size(); v++) {
+        seen += hist[v];
+        if (seen >= rank) return v;
+    }
+    return (int)hist.size() - 1;
+}
+
 int main(int argc, char **argv) {
     float dt = argc > 1 ? atof(argv[1]) : 1.f / 60.f;
     float mult = argc > 2 ? atof(argv[2]) : 4.f;
@@ -30,6 +52,8 @@ int main(int argc, char **argv) {
     int perTeam = argc > 6 ? atoi(argv[6]) : 1500;
     float discR = argc > 7 ? atof(argv[7]) : 12.f;
     int mode = argc > 8 ? atoi(argv[8]) : 0; // 0 visited-cap, 1 accepted-cap, 2 centre-first order, 3 symmetric stable key
+    int maxVisited = argc > 9 ? atoi(argv[9]) : 0; // 0 = no visit ceiling; mode 1 only
+    if (maxVisited < 0) maxVisited = 0;
 
     const float R = 3.f, wS = 1.2f, wA = 0.8f, wC = 0.6f, cruise = 6.f, turn = 4.f;
     mt19937 rng(seed);
@@ -47,6 +71,12 @@ int main(int argc, char **argv) {
     vector<float> fx(N), fz(N);
     vector<char> capped(N);
     int steps = (int)(T / dt), report = (int)(2.5f / dt);
+    auto stepOf = [&](float t) { return (int)floorf(t / dt + 0.5f); };
+    int s1 = stepOf(1.f), s5 = stepOf(5.f), s15 = stepOf(15.f);
+    vector<int> frameVis(N), frameAcc(N), frameStop(N);
+    long long runVisSum = 0, runVisCount = 0;
+    int runVisMax = 0;
+    vector<long long> hist;
     printf("# dt=%.4f mult=%.1f cap=%d seed=%u N=%d\n", dt, mult, cap, seed, N);
     printf("# t  centroidDist  fireCx iceCx  crossContact%%  enemyShare%%  cap%%  fireFlocks iceFlocks\n");
 
@@ -88,6 +118,36 @@ int main(int argc, char **argv) {
             printf("%5.2f  %6.1f  %6.1f %6.1f  %6.1f  %6.1f  %6.1f   %d %d\n", s * dt, sqrtf(dx * dx + dz * dz), cxm[0], cxm[1],
                    100.f * cross / N, tot ? 100.f * enemy / tot : 0.f, 100.f * capN / N, fl[0], fl[1]);
         }
+        bool takeSnap = (s == s1 || s == s5 || s == s15);
+        float snapContact = 0.f, snapEnemy = 0.f;
+        int snapF0 = 0, snapF1 = 0;
+        if (takeSnap) {
+            int cross = 0; long enemy = 0, tot = 0;
+            vector<int> uf(N); iota(uf.begin(), uf.end(), 0);
+            auto find = [&](int a) { while (uf[a] != a) { uf[a] = uf[uf[a]]; a = uf[a]; } return a; };
+            for (int i = 0; i < N; i++) {
+                int cx = cellc(p[i].x), cz = cellc(p[i].z); bool hasEnemy = false;
+                for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
+                    auto &c = cells[((cz + dz + RES) % RES) * RES + (cx + dx + RES) % RES];
+                    for (int j : c) {
+                        if (j == i) continue;
+                        float ddx = minimg(p[j].x - p[i].x), ddz = minimg(p[j].z - p[i].z);
+                        if (ddx * ddx + ddz * ddz >= R * R) continue;
+                        tot++;
+                        if (p[j].team != p[i].team) { enemy++; hasEnemy = true; }
+                        else uf[find(i)] = find(j);
+                    }
+                }
+                if (hasEnemy) cross++;
+            }
+            vector<int> sz(N, 0); for (int i = 0; i < N; i++) sz[find(i)]++;
+            int fl[2] = {0, 0};
+            for (int i = 0; i < N; i++) if (find(i) == i && sz[i] >= 30) fl[p[i].team]++;
+            snapContact = 100.f * cross / N;
+            snapEnemy = tot ? 100.f * enemy / tot : 0.f;
+            snapF0 = fl[0];
+            snapF1 = fl[1];
+        }
         if (s == steps) break;
 
         // force from snapshot (positions + headings at frame start)
@@ -95,6 +155,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < N; i++) {
             int cx = cellc(snap[i].x), cz = cellc(snap[i].z);
             float sx = 0, sz = 0, ax = 0, az = 0, kx = 0, kz = 0; int sN = 0, aN = 0, cN = 0; int visited = 0; bool cp = false;
+            int stopReason = 0;
             int start = i % 9;
             int accepted = 0;
             int n9 = 0;
@@ -115,9 +176,12 @@ int main(int argc, char **argv) {
                         }
                         visited++;
                     } else if (mode == 1) {
-                        if (r2 < R * R) { if (cap > 0 && accepted >= cap) { cp = true; break; } }
+                        if (maxVisited > 0 && visited >= maxVisited) { cp = true; stopReason = 2; break; }
+                        visited++;
+                        if (r2 >= R * R) continue;
+                        if (cap > 0 && accepted >= cap) { cp = true; stopReason = 1; break; }
                     } else {
-                        if (cap > 0 && visited >= cap) { cp = true; break; }
+                        if (cap > 0 && visited >= cap) { cp = true; stopReason = 3; break; }
                         visited++;
                     }
                     if (r2 >= R * R) continue;
@@ -129,11 +193,45 @@ int main(int argc, char **argv) {
                 }
             }
             capped[i] = cp;
+            if (takeSnap) {
+                frameVis[i] = visited;
+                frameAcc[i] = accepted;
+                frameStop[i] = stopReason;
+            }
+            if (s >= s1) {
+                runVisSum += visited;
+                runVisCount++;
+                if (visited > runVisMax) runVisMax = visited;
+                if ((int)hist.size() <= visited) hist.resize(visited + 1, 0);
+                hist[visited]++;
+            }
             float Fx = 0, Fz = 0;
             if (sN) { Fx += sx / sN * wS; Fz += sz / sN * wS; }
             if (ax * ax + az * az > 1e-6f) { float l = sqrtf(ax * ax + az * az); Fx += ax / l * wA; Fz += az / l * wA; }
             if (cN) { float mx = kx / cN, mz = kz / cN; if (mx * mx + mz * mz > 1e-6f) { float l = sqrtf(mx * mx + mz * mz); Fx += mx / l * wC; Fz += mz / l * wC; } }
             fx[i] = Fx; fz[i] = Fz;
+        }
+        if (takeSnap) {
+            long long visSum = 0, accSum = 0;
+            int visMax = 0, nCeil = 0, nAcc = 0, nVis = 0;
+            for (int i = 0; i < N; i++) {
+                visSum += frameVis[i];
+                accSum += frameAcc[i];
+                if (frameVis[i] > visMax) visMax = frameVis[i];
+                if (frameStop[i] == 2) nCeil++;
+                else if (frameStop[i] == 1) nAcc++;
+                else if (frameStop[i] == 3) nVis++;
+            }
+            vector<int> ordered = frameVis;
+            sort(ordered.begin(), ordered.end());
+            int rank = (int)ceil(0.95 * N);
+            if (rank < 1) rank = 1;
+            if (rank > N) rank = N;
+            int visP95 = ordered[rank - 1];
+            printf("#f5 t=%.2f contact=%.6f enemy=%.6f flocks=%d,%d visMean=%.6f visP95=%d visMax=%d accMean=%.6f stopCeil=%.6f stopAcc=%.6f stopVis=%.6f\n",
+                s * dt, snapContact, snapEnemy, snapF0, snapF1,
+                (double)visSum / N, visP95, visMax, (double)accSum / N,
+                (double)nCeil / N, (double)nAcc / N, (double)nVis / N);
         }
         // steer + integrate + wrap
         for (int i = 0; i < N; i++) {
@@ -151,4 +249,16 @@ int main(int argc, char **argv) {
             p[i].x = nx; p[i].z = nz;
         }
     }
+    int runP95 = 0;
+    if (runVisCount > 0) {
+        long long rank = (long long)ceil(0.95 * (double)runVisCount);
+        if (rank < 1) rank = 1;
+        long long seen = 0;
+        for (int bin = 0; bin < (int)hist.size(); bin++) {
+            seen += hist[bin];
+            if (seen >= rank) { runP95 = bin; break; }
+        }
+    }
+    printf("#f5 run visMean=%.6f visP95=%d visMax=%d\n",
+        runVisCount ? (double)runVisSum / (double)runVisCount : 0.0, runP95, runVisMax);
 }
