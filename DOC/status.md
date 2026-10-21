@@ -60,7 +60,7 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 ## F3.4 — VC поверх DyeInject (готово, 2026-10-21)
 
-`Fluid2D_DyeInjectVC.asset`: цепочка DyeInject плюс `VorticityConfinement` перед Divergence, на пресете `EpsilonVc = 25`. Гейты гонялись при `ε=1`: P1, P2, L1–L3 зелёные, `max|uV1−uV0|=2.218` на кадре 179, к 3 с кольцо рамки 0.636 против 0.455, `elapsedMs/N=0.563` (cpu/driver, не порог). Visual принят: завитки вдоль нити, нить распадается на жилки, торнадо у рамки нет, жизнь вихря зависит от `DissipationRate`. [`ADR-051`](ADR/ADR-051-Vorticity-On-Dye-Inject.md), [`play-F3.4-touch.md`](last/play-F3.4-touch.md).
+`Fluid2D_DyeInjectVC.asset`: цепочка DyeInject плюс `VorticityConfinement` перед Divergence, на пресете `EpsilonVc = 25`. Гейты гонялись при `ε=1`: P1, P2, L1–L3 зелёные, `max|uV1−uV0|=2.218` на кадре 179, к 3 с кольцо рамки 0.636 против 0.455, `elapsedMs/N=0.563` (cpu/driver, не порог). Visual принят: завитки вдоль нити, нить распадается на клубы, торнадо у рамки нет, жизнь вихря зависит от `DissipationRate`. [`ADR-051`](ADR/ADR-051-Vorticity-On-Dye-Inject.md), [`play-F3.4-touch.md`](last/play-F3.4-touch.md).
 
 ## ADR-040 — гистограмма хэша (EditMode)
 
