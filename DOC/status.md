@@ -58,6 +58,10 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 `Fluid2D_DyeInject.asset`: Stam как HighResDye, сид `RadiusUV=0.04`, пасс `TouchInjectScalar` после сида. G1–G9 и живая цепочка зелёные. Пик на оси в прогоне без сида 0.78–0.92 при оценке 0.71. `elapsedMs/N=0.373` (cpu/driver, не порог). Visual принят владельцем 2026-10-21. [`ADR-050`](ADR/ADR-050-Continuous-Dye-Injection.md), [`play-F3.1-touch.md`](last/play-F3.1-touch.md).
 
+## F3.4 — VC поверх DyeInject (EditMode, 2026-10-21)
+
+`Fluid2D_DyeInjectVC.asset`: цепочка DyeInject плюс `VorticityConfinement` перед Divergence. P1, P2, L1–L3 зелёные. `max|uV1−uV0|=2.218` на кадре 179. К 3 с `max|ω|` V1 5.44 против V0 2.97; кольцо рамки 0.636 против 0.455. `elapsedMs/N=0.563` (cpu/driver, не порог). Visual не сдан. [`ADR-051`](ADR/ADR-051-Vorticity-On-Dye-Inject.md), [`play-F3.4-touch.md`](last/play-F3.4-touch.md).
+
 ## ADR-040 — гистограмма хэша (EditMode)
 
 `Hash Counts To Field` пишет число частиц в ячейке в скалярное поле. Пресет `Assets/Effects/Boids_hash.asset` и сцена `Assets/Scenes/Boids_Hash.unity` создаёт меню `Tools/M3D/Create Boids Hash Effect` (3000 частиц, `maxNeighbors` 48). 5c закрыт: порог 1% снят замером (86–99.8% на трёх конфигурациях), на диске первая. Журнал: [`play-5c-boids-hash.md`](last/play-5c-boids-hash.md).
@@ -373,7 +377,7 @@ Assets/Tests/Editor/       ValuePalettePassTests, PrimitiveParticleBinderLutTest
 Assets/Scripts/Editor/     M3DDemoTools.cs, Adr030PrimitiveRenderSetup.cs, PostProcessingSetup.cs, Adr012BoidsMk1Setup.cs
 Assets/Scripts/Runtime/    …, PostFX/M3DVolumeMobileGate.cs
 Assets/Settings/           M3DVolumeProfile.asset (Bloom + ACES; не DefaultVolumeProfile)
-Assets/Effects/            Fluid2D.asset, Fluid2D_HarrisOrder.asset, Fluid2D_Vorticity.asset, Fluid2D_MacCormackDye.asset, Fluid2D_HighResDye.asset, Fluid2D_DyeInject.asset (эксперименты, не production)
+Assets/Effects/            Fluid2D.asset, Fluid2D_HarrisOrder.asset, Fluid2D_Vorticity.asset, Fluid2D_MacCormackDye.asset, Fluid2D_HighResDye.asset, Fluid2D_DyeInject.asset, Fluid2D_DyeInjectVC.asset (эксперименты, не production)
 ```
 
 ---

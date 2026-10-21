@@ -23,6 +23,7 @@ public static class M3DDemoTools
     private const string Fluid2DMacCormackDyePath = EffectsFolder + "/Fluid2D_MacCormackDye.asset";
     private const string Fluid2DHighResDyePath = EffectsFolder + "/Fluid2D_HighResDye.asset";
     private const string Fluid2DDyeInjectPath = EffectsFolder + "/Fluid2D_DyeInject.asset";
+    private const string Fluid2DDyeInjectVcPath = EffectsFolder + "/Fluid2D_DyeInjectVC.asset";
     private const string PhysarumPath = EffectsFolder + "/Physarum.asset";
     private const string PhysarumFluidPath = EffectsFolder + "/Physarum_Fluid.asset";
     private const string HashProbe30kPath = EffectsFolder + "/HashProbe_30k.asset";
@@ -1460,6 +1461,183 @@ public static class M3DDemoTools
         EditorSceneManager.MarkSceneDirty(active);
         EditorSceneManager.SaveScene(active);
         Debug.Log("M3D: active scene assigned Fluid2D DyeInject (GroundXZ). visualEffect left in place.");
+    }
+
+    [MenuItem("Tools/M3D/Create Fluid2D DyeInjectVC Experiment")]
+    public static void CreateFluid2DDyeInjectVcExperiment()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        Vector2Int res128 = new Vector2Int(128, 128);
+        Vector2Int res512 = new Vector2Int(512, 512);
+        Vector2 planeSize = new Vector2(32f, 32f);
+
+        FieldDescriptor velocity = FieldDescriptor.CreateDefault("velocity", FieldSemantic.Velocity);
+        FieldDescriptor fluidD = FieldDescriptor.CreateDefault("fluidD", FieldSemantic.Scalar);
+        FieldDescriptor fluidPhi = FieldDescriptor.CreateDefault("fluidPhi", FieldSemantic.Scalar);
+        FieldDescriptor dye = FieldDescriptor.CreateDefault("dye", FieldSemantic.Scalar);
+
+        DebugFieldQuadSlot velocityQuad = DebugFieldQuadSlot.Velocity();
+        velocityQuad.colorScale = 0.125f;
+
+        CreateEffect(
+            Fluid2DDyeInjectVcPath,
+            cubeResolution: 1,
+            simulationSpeed: 1f,
+            kind: DataSourceKind.None,
+            fields: new[] { velocity, fluidD, fluidPhi, dye },
+            debugQuads: new[] { velocityQuad, DebugFieldQuadSlot.Density("dye") },
+            new TouchInjectVelocityFieldPass(),
+            new SeedScalarDiskPass
+            {
+                FieldName = "dye",
+                CenterUV = new Vector2(0.5f, 0.5f),
+                RadiusUV = 0.04f,
+                Value = 1f,
+            },
+            new TouchInjectScalarFieldPass
+            {
+                FieldName = "dye",
+                InjectRate = 60f,
+                MaxValue = 1f,
+                RadiusScale = 1f,
+            },
+            new VorticityConfinementPass
+            {
+                VelocityField = "velocity",
+                EpsilonVc = 1f,
+                BorderMargin = 2,
+            },
+            new DivergenceFieldPass(),
+            new ZeroMeanScalarPass(),
+            new JacobiPhiPass { Iterations = 40 },
+            new SubtractPhiGradientPass(),
+            new SolidWallVelocityPass(),
+            new AdvectVelocityFieldPass
+            {
+                FieldName = "velocity",
+                DissipationRate = 0f,
+            },
+            new SolidWallVelocityPass(),
+            new AdvectScalarPass
+            {
+                ScalarField = "dye",
+                VelocityField = "velocity",
+                DissipationRate = 0f,
+            });
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(Fluid2DDyeInjectVcPath);
+        SerializedObject so = new SerializedObject(asset);
+        SerializedProperty fieldsProp = so.FindProperty("fields");
+        for (int i = 0; i < fieldsProp.arraySize; i++)
+        {
+            SerializedProperty f = fieldsProp.GetArrayElementAtIndex(i);
+            string name = f.FindPropertyRelative("id.name").stringValue;
+            f.FindPropertyRelative("resolution").vector2IntValue =
+                name == "dye" ? res512 : res128;
+            f.FindPropertyRelative("size").vector2Value = planeSize;
+            f.FindPropertyRelative("origin").vector3Value = Vector3.zero;
+            f.FindPropertyRelative("axisU").vector3Value = Vector3.right;
+            f.FindPropertyRelative("axisV").vector3Value = Vector3.forward;
+            f.FindPropertyRelative("clearValue").colorValue = Color.clear;
+            if (name == "velocity")
+            {
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16G16_SFloat;
+            }
+            else if (name == "dye")
+            {
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R16_SFloat;
+            }
+            else
+            {
+                f.FindPropertyRelative("format").intValue = (int)GraphicsFormat.R32_SFloat;
+            }
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+
+        System.Text.StringBuilder log = new System.Text.StringBuilder();
+        log.Append("M3D: created Fluid2D DyeInjectVC. Passes:");
+        for (int i = 0; i < asset.Passes.Count; i++)
+        {
+            log.Append(' ');
+            log.Append(asset.Passes[i].GetType().Name);
+            if (i < asset.Passes.Count - 1)
+            {
+                log.Append(',');
+            }
+        }
+
+        log.Append(" Formats:");
+        for (int i = 0; i < asset.Fields.Count; i++)
+        {
+            log.Append(' ');
+            log.Append(asset.Fields[i].Name);
+            log.Append('=');
+            log.Append(asset.Fields[i].Format);
+            log.Append('@');
+            log.Append(asset.Fields[i].Resolution.x);
+        }
+
+        Debug.Log(log.ToString());
+    }
+
+    [MenuItem("Tools/M3D/Assign Fluid2D DyeInjectVC Experiment To Scene")]
+    public static void AssignFluid2DDyeInjectVcToScene()
+    {
+        UnityEngine.SceneManagement.Scene active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+        SimulationWorld world = null;
+        GameObject[] roots = active.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            world = roots[i].GetComponentInChildren<SimulationWorld>(true);
+            if (world != null)
+            {
+                break;
+            }
+        }
+
+        EffectAsset fluid = AssetDatabase.LoadAssetAtPath<EffectAsset>(Fluid2DDyeInjectVcPath);
+        if (fluid == null)
+        {
+            Debug.LogError(
+                "M3D: Fluid2D_DyeInjectVC.asset missing — " +
+                "run Tools/M3D/Create Fluid2D DyeInjectVC Experiment.");
+            return;
+        }
+
+        if (world == null)
+        {
+            Debug.LogError(
+                "M3D: active scene '" + active.name +
+                "' has no SimulationWorld. Nothing was changed.");
+            return;
+        }
+
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = fluid;
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        InputRouter router = world.GetComponent<InputRouter>();
+        if (router != null)
+        {
+            SerializedObject routerSo = new SerializedObject(router);
+            routerSo.FindProperty("planeMode").enumValueIndex = (int)InteractionPlaneMode.GroundXZ;
+            routerSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        SerializedProperty library = worldSo.FindProperty("passLibrary");
+        EnsurePassLibrary(library);
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.MarkSceneDirty(active);
+        EditorSceneManager.SaveScene(active);
+        Debug.Log("M3D: active scene assigned Fluid2D DyeInjectVC (GroundXZ). visualEffect left in place.");
     }
 
     [MenuItem("Tools/M3D/Add F2.3 Scripted Stroke To Scene")]
