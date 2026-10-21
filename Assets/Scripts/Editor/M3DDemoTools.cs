@@ -1508,7 +1508,7 @@ public static class M3DDemoTools
             new VorticityConfinementPass
             {
                 VelocityField = "velocity",
-                EpsilonVc = 1f,
+                EpsilonVc = 25f,
                 BorderMargin = 2,
             },
             new DivergenceFieldPass(),

@@ -99,7 +99,7 @@ public class Fluid2DDyeInjectVcPresetTests
 
         VorticityConfinementPass vc = (VorticityConfinementPass)asset.Passes[3];
         Assert.AreEqual("velocity", vc.VelocityField);
-        Assert.AreEqual(1f, vc.EpsilonVc, 1e-6f);
+        Assert.AreEqual(25f, vc.EpsilonVc, 1e-6f);
         Assert.AreEqual(2, vc.BorderMargin);
         Assert.IsInstanceOf<DivergenceFieldPass>(asset.Passes[4]);
 

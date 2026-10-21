@@ -1,6 +1,6 @@
 ## Ручной тач F3.4 — VC поверх DyeInject
 
-**Открыто 2026-10-21.** EditMode зелёный. Картинка записана 2026-10-21. Вердикт «взято / не взято» владелец ещё не назвал. Production остаётся `Fluid2D.asset`. [ADR-051](../ADR/ADR-051-Vorticity-On-Dye-Injection.md).
+**Принято владельцем 2026-10-21.** EditMode зелёный при `ε=1`. На пресете `EpsilonVc = 25`. Production остаётся `Fluid2D.asset`. [ADR-051](../ADR/ADR-051-Vorticity-On-Dye-Injection.md).
 
 Картинка:
 
@@ -14,20 +14,20 @@ Visual **не** гейтит NUnit. «Готово» в плане ставит 
 Активная сцена должна содержать `SimulationWorld`. Меню `Assign Fluid2D DyeInjectVC Experiment To Scene` пишет эффект только в неё. Существующие `Fluid2D*.asset` не Create.
 
 - **A** = `Fluid2D_DyeInject.asset` — принятая база F3.1.
-- **B** = `Fluid2D_DyeInjectVC.asset`, `EpsilonVc = 1`, `BorderMargin = 2`, `DissipationRate = 0`.
+- **B** = `Fluid2D_DyeInjectVC.asset`, `EpsilonVc = 25`, `BorderMargin = 2`, `DissipationRate = 0`.
 - **B-ε** = B с `EpsilonVc` 0.5, затем 2.
 - **B-fade** = B с `AdvectScalar.DissipationRate` 0.15.
 
 `SimulationSpeed=1`. GroundXZ. Мышь в Play **не трогать**.
 
-После B-ε и B-fade вернуть `EpsilonVc = 1` и `DissipationRate = 0` и не сохранять ассет с крутилкой.
+После B-ε и B-fade вернуть `EpsilonVc = 25` и `DissipationRate = 0` и не сохранять ассет с крутилкой.
 
 ### Прогон
 
 1. Stop. `ScriptedTouchStroke` с F2.3: StartUV `(0.5, 0.25)`, EndUV `(0.5, 0.75)`, Duration `0.5`.
 2. Назначить **A**. Play → кадр. Stop.
 3. `Tools/M3D/Assign Fluid2D DyeInjectVC Experiment To Scene`. Это **B**. Play → те же кадры. Stop.
-4. **B-ε:** `Vorticity Confinement → Epsilon Vc` сначала `0.5`, Play → кадр, Stop; затем `2`, Play → кадр, Stop. Вернуть `1`.
+4. **B-ε:** `Vorticity Confinement → Epsilon Vc` сначала `0.5`, Play → кадр, Stop; затем `2`, Play → кадр, Stop. Вернуть `25`.
 5. **B-fade:** `Advect Scalar → Dissipation Rate` = `0.15`, Play → кадр, Stop. Вернуть `0`.
 6. Выключить `ScriptedTouchStroke`.
 

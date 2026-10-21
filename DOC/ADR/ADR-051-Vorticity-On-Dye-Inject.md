@@ -1,6 +1,6 @@
 ## ADR-051: Vorticity Confinement поверх DyeInject (F3.4, вариант E1)
 
-**Статус:** Предложено. EditMode зелёный (2026-10-21, §4). Станет «Принято» только после visual владельца (§5) и явного слова владельца.
+**Статус:** Принято владельцем 2026-10-21. EditMode зелёный при `ε=1`. На пресете после visual `EpsilonVc = 25`.
 **Дата:** 2026-10-21
 **Контекст:** M3D Framework, после F3.1 ([ADR-050](ADR-050-Continuous-Dye-Injection.md), принят). Ветка `feature/reynolds-boids`, трек stable-fluid.
 **План:** [`plan-stable-fluid.md`](../plan-stable-fluid.md) §4, новая строка F3.4 (F3.2 и F3.3 не открыты; номер взят следующим по порядку)
@@ -27,14 +27,14 @@ Vorticity Confinement (VC) на `velocity` 128² уже есть и провер
 
 Новый ассет: **`Assets/Effects/Fluid2D_DyeInjectVC.asset`**. Клон `Fluid2D_DyeInject.asset` (поля, форматы, `Size`, параметры `SeedScalarDiskPass` (`RadiusUV = 0.04`) и `TouchInjectScalarFieldPass` (`injectRate = 60`, `maxValue = 1`, `radiusScale = 1`), `DissipationRate = 0`) с **одним** отличием:
 
-- добавлен `VorticityConfinementPass { VelocityField = "velocity", EpsilonVc = 1, BorderMargin = 2 }` **сразу после `TouchInjectScalarFieldPass` и перед `DivergenceFieldPass`**.
+- добавлен `VorticityConfinementPass { VelocityField = "velocity", EpsilonVc = 25, BorderMargin = 2 }` **сразу после `TouchInjectScalarFieldPass` и перед `DivergenceFieldPass`**. Гейты §4 гонялись при `ε=1`. `25` — значение пресета, которое владелец поставил при закрытии.
 
 ```
-TouchInjectVelocity → SeedScalarDisk(dye, r=0.04) → TouchInjectScalar(dye) → VorticityConfinement(ε=1, m=2)
+TouchInjectVelocity → SeedScalarDisk(dye, r=0.04) → TouchInjectScalar(dye) → VorticityConfinement(ε=25, m=2)
   → Divergence → ZeroMean → Jacobi×40 → Subtract → SolidWall → AdvectVelocity → SolidWall → AdvectScalar(dye, velocity)
 ```
 
-12 пассов. Параметры VC — как на `Fluid2D_Vorticity` ([ADR-027](ADR-027-Vorticity-Confinement-Pass.md), F2.1b); `ε` меняется оператором в Play, это live-параметр.
+12 пассов. `BorderMargin = 2` как на `Fluid2D_Vorticity` ([ADR-027](ADR-027-Vorticity-Confinement-Pass.md), F2.1b). Дефолт класса `VorticityConfinementPass` и `ε` того пресета остаются 1. На `Fluid2D_DyeInjectVC` записано 25. В Play `ε` по-прежнему крутится живьём.
 
 **Почему перед Divergence, а не после `AdvectVelocity`.** VC добавляет силу в velocity. Если поставить его после проекции, сила останется непроецированной: `AdvectScalar` перенесёт dye по скорости с ненулевой дивергенцией. Перед `Divergence` сила попадает в проекцию. Так же устроен `Fluid2D_Vorticity` (VC перед Divergence), хотя там порядок Harris (Advect → Project): относительно проекции позиция та же. Отличие по кадру: в `Fluid2D_Vorticity` `AdvectVelocity` идёт до VC в том же кадре, а здесь после проекции, то есть VC читает velocity, перенесённую в прошлом кадре. Это сдвиг на кадр, не повод менять порядок; E2/E3 вне этого тикета.
 
@@ -64,7 +64,7 @@ TouchInjectVelocity → SeedScalarDisk(dye, r=0.04) → TouchInjectScalar(dye) �
 
 | # | Что | Гейт |
 | --- | --- | --- |
-| P1 | Состав пресета (не GPU) | 4 поля как у DyeInject; **12 пассов** строго в порядке §1; ровно один `VorticityConfinementPass` (`VelocityField = "velocity"`, `EpsilonVc = 1`, `BorderMargin = 2`) между `TouchInjectScalar` и `Divergence`; один `SeedScalarDiskPass` (`RadiusUV = 0.04`, `Value = 1`); один `TouchInjectScalarFieldPass` (`injectRate = 60`, `maxValue = 1`, `radiusScale = 1`); нет `CopyScalar`, `LimitedMacCormackCombine`; два `SolidWall`; `DissipationRate = 0`; `Jacobi = 40` |
+| P1 | Состав пресета (не GPU) | 4 поля как у DyeInject; **12 пассов** строго в порядке §1; ровно один `VorticityConfinementPass` (`VelocityField = "velocity"`, `EpsilonVc = 25`, `BorderMargin = 2`) между `TouchInjectScalar` и `Divergence`; один `SeedScalarDiskPass` (`RadiusUV = 0.04`, `Value = 1`); один `TouchInjectScalarFieldPass` (`injectRate = 60`, `maxValue = 1`, `radiusScale = 1`); нет `CopyScalar`, `LimitedMacCormackCombine`; два `SolidWall`; `DissipationRate = 0`; `Jacobi = 40` |
 | P2 | World smoke | ассет **с диска**, `Rebuild()` не бросает, `world.enabled == true`; список `passLibrary` скопировать целиком из `Fluid2DVorticityWorldSmokeTests` (кернел `VorticityConfinement` лежит в `FluidPasses.compute`; списки Vorticity- и DyeInject-теста совпадают, `TouchGrayScottPasses.compute` включён, добавлять ничего не нужно) |
 | L1 | Живая цепочка, прогон S (сид как в пресете) | на каждом кадре: нет NaN/Inf в `dye` и `velocity`; `min(dye) ≥ 0`; `max(dye) ≤ maxValue + 1e-3`. Проверка NaN/Inf — **и в базовом прогоне V0-N**: разность скоростей не должна сравниваться с битой базой |
 | L2 | Живая цепочка, прогон N (`Seed.Value = 0`) | то же, что L1; плюс (а) в кадре, когда кисть проходит каждую из пяти точек пути `UV.y ∈ {0.25, 0.35, 0.5, 0.65, 0.75}`, `dye > 0.05` в окне `±radius` вокруг этой точки (инъекция работает при VC в цепочке); (б) сразу после последнего кадра штриха `dye > 0.05` в окне `±radius` у **головы** (`UV.y = 0.75`). Четыре ранние точки после штриха — **только в лог**: гипотеза в том, что нить за 0.5 с свернётся и уйдёт с оси, и жёсткий гейт остановил бы удачный прогон |
@@ -88,11 +88,13 @@ TouchInjectVelocity → SeedScalarDisk(dye, r=0.04) → TouchInjectScalar(dye) �
 Протокол по образцу [`play-F3.1-touch.md`](../last/play-F3.1-touch.md). Жест — `ScriptedTouchStroke` F2.3 (`(0.5,0.25)→(0.5,0.75)`, `Duration 0.5`), `SimulationSpeed = 1`, GroundXZ, мышь в Play не трогать.
 
 - **A** = `Fluid2D_DyeInject.asset` — принятая база F3.1.
-- **B** = `Fluid2D_DyeInjectVC.asset`, `ε = 1`.
+- **B** = `Fluid2D_DyeInjectVC.asset`, `ε = 25`.
 - **B-ε** = B с `EpsilonVc` 0.5 и 2 (live, в инспекторе).
 - **B-fade** = B с `AdvectScalarPass.DissipationRate` 0.15 (при желании; 0.5 уже смотрел как для F3.1).
 
-После B-ε и B-fade вернуть `EpsilonVc = 1` и `DissipationRate = 0` и не сохранять ассет с крутилкой: иначе правка уедет в коммит (как радиус сида когда-то уехал с 0.08 на 0.16).
+После B-ε и B-fade вернуть `EpsilonVc = 25` и `DissipationRate = 0` и не сохранять ассет с крутилкой: иначе правка уедет в коммит (как радиус сида когда-то уехал с 0.08 на 0.16).
+
+**Visual владельца (2026-10-21).** [`play-F3.4-touch.md`](../last/play-F3.4-touch.md): завитки вдоль нити есть; нить распадается на клубы и жилки; кольца торнадо у рамки нет; жизнь вихря после жеста зависит от `DissipationRate`. F3.4 закрыт. Production не меняли.
 
 Что смотреть:
 
@@ -109,11 +111,11 @@ TouchInjectVelocity → SeedScalarDisk(dye, r=0.04) → TouchInjectScalar(dye) �
 
 **Сразу три варианта (VC + Harris + MacCormack) в одном пресете.** Три переменные в одном кадре, причину не отделить. Владелец выбрал E1 «а там посмотрим».
 
-**Правка `BorderMargin` или `ε` по умолчанию.** Ширина маски зафиксирована F2.1b, дефолт `ε` не пересматривается.
+**Правка `BorderMargin` или дефолта `ε` класса.** Ширина маски зафиксирована F2.1b. Дефолт класса `VorticityConfinementPass` не пересматривается. Значение 25 записано только на пресете `Fluid2D_DyeInjectVC`.
 
 ### EditMode замерено (2026-10-21)
 
-P1, P2, L1–L3 зелёные. `Rebuild` ассета с диска: 4 поля, 12 пассов. Живой жест F2.3, `dt=1/60`, 3 с. Кадры прохождения точек тест выбрал по `Evaluate`: 0, 6, 15, 24 и последний кадр штриха 29 для головы.
+P1, P2, L1–L3 зелёные при `EpsilonVc = 1`. После visual на пресете записано 25, живой прогон при 25 не повторяли. `Rebuild` ассета с диска: 4 поля, 12 пассов. Живой жест F2.3, `dt=1/60`, 3 с. Кадры прохождения точек тест выбрал по `Evaluate`: 0, 6, 15, 24 и последний кадр штриха 29 для головы.
 
 `max |u_V1−u_V0|` внутри = `2.218` на кадре 179. Порог `1e-6` только отмечает, что буферы различаются. Число одно и на dye 512², и на dye 128²: velocity в обоих прогонах 128², dye на скорость не пишет.
 

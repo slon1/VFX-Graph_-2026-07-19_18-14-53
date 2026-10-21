@@ -58,9 +58,9 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 `Fluid2D_DyeInject.asset`: Stam как HighResDye, сид `RadiusUV=0.04`, пасс `TouchInjectScalar` после сида. G1–G9 и живая цепочка зелёные. Пик на оси в прогоне без сида 0.78–0.92 при оценке 0.71. `elapsedMs/N=0.373` (cpu/driver, не порог). Visual принят владельцем 2026-10-21. [`ADR-050`](ADR/ADR-050-Continuous-Dye-Injection.md), [`play-F3.1-touch.md`](last/play-F3.1-touch.md).
 
-## F3.4 — VC поверх DyeInject (EditMode, 2026-10-21)
+## F3.4 — VC поверх DyeInject (готово, 2026-10-21)
 
-`Fluid2D_DyeInjectVC.asset`: цепочка DyeInject плюс `VorticityConfinement` перед Divergence. P1, P2, L1–L3 зелёные. `max|uV1−uV0|=2.218` на кадре 179. К 3 с `max|ω|` V1 5.44 против V0 2.97; кольцо рамки 0.636 против 0.455. `elapsedMs/N=0.563` (cpu/driver, не порог). Visual не сдан. [`ADR-051`](ADR/ADR-051-Vorticity-On-Dye-Inject.md), [`play-F3.4-touch.md`](last/play-F3.4-touch.md).
+`Fluid2D_DyeInjectVC.asset`: цепочка DyeInject плюс `VorticityConfinement` перед Divergence, на пресете `EpsilonVc = 25`. Гейты гонялись при `ε=1`: P1, P2, L1–L3 зелёные, `max|uV1−uV0|=2.218` на кадре 179, к 3 с кольцо рамки 0.636 против 0.455, `elapsedMs/N=0.563` (cpu/driver, не порог). Visual принят: завитки вдоль нити, нить распадается на жилки, торнадо у рамки нет, жизнь вихря зависит от `DissipationRate`. [`ADR-051`](ADR/ADR-051-Vorticity-On-Dye-Inject.md), [`play-F3.4-touch.md`](last/play-F3.4-touch.md).
 
 ## ADR-040 — гистограмма хэша (EditMode)
 
