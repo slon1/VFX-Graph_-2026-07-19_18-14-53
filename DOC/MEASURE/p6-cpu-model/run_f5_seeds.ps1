@@ -99,17 +99,28 @@ while ($queue.Count -gt 0 -or $running.Count -gt 0) {
 }
 Write-Host ("done {0}/{1}" -f $done, $work.Count)
 
+function Format-CsvField($value) {
+    if ($null -eq $value) { return "" }
+    if ($value -is [string]) { return $value }
+    if ($value -is [double] -or $value -is [float] -or $value -is [decimal]) {
+        return ([double]$value).ToString("G17", $inv)
+    }
+    return $value.ToString($inv)
+}
+
 $csvPath = Join-Path $root "F5-accepted-vs-visited.csv"
 $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine("density,discR,perTeam,mode,cap,maxVisited,seed,t,contact,enemy,flocks0,flocks1,visMean,visP95,visMax,accMean,stopCeil,stopAcc,stopVis")
 foreach ($row in $all) {
     $disc = ([double]$row.DiscR).ToString("G17", $inv)
-    $line = @(
+    $fields = @(
         $row.Density, $disc, $row.PerTeam, $row.Mode, $row.Cap, $row.MaxVis, $row.Seed, $row.T,
         $row.Contact, $row.Enemy, $row.F0, $row.F1, $row.VisMean, $row.VisP95, $row.VisMax,
         $row.AccMean, $row.StopCeil, $row.StopAcc, $row.StopVis
-    ) -join ","
-    [void]$sb.AppendLine($line)
+    )
+    $parts = New-Object System.Collections.Generic.List[string]
+    foreach ($field in $fields) { $parts.Add((Format-CsvField $field)) }
+    [void]$sb.AppendLine(($parts -join ","))
 }
 [IO.File]::WriteAllText($csvPath, $sb.ToString(), (New-Object System.Text.UTF8Encoding $true))
 

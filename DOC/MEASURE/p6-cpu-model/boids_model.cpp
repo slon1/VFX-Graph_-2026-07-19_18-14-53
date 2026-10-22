@@ -232,6 +232,22 @@ int main(int argc, char **argv) {
                 s * dt, snapContact, snapEnemy, snapF0, snapF1,
                 (double)visSum / N, visP95, visMax, (double)accSum / N,
                 (double)nCeil / N, (double)nAcc / N, (double)nVis / N);
+            {
+                vector<int> order; order.reserve(N);
+                for (auto &c : cells) for (int j : c) order.push_back(j);
+                const int Ws[3] = {8, 16, 32};
+                double eff[3];
+                for (int w = 0; w < 3; w++) {
+                    long long tot = 0;
+                    for (int g = 0; g < N; g += Ws[w]) {
+                        int mx = 0, cnt = 0;
+                        for (int k = g; k < g + Ws[w] && k < N; k++) { mx = max(mx, frameVis[order[k]]); cnt++; }
+                        tot += (long long)mx * cnt;
+                    }
+                    eff[w] = (double)tot / N;
+                }
+                printf("#f5 wave t=%.2f eff8=%.6f eff16=%.6f eff32=%.6f\n", s * dt, eff[0], eff[1], eff[2]);
+            }
         }
         // steer + integrate + wrap
         for (int i = 0; i < N; i++) {
