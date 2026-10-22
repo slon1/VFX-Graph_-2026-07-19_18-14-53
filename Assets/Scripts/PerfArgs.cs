@@ -27,6 +27,8 @@ public sealed class PerfArgs
 	public bool Cap { get; private set; }
 	public bool HasHashRep { get; private set; }
 	public int HashRep { get; private set; } = 1;
+	public bool HasForceRep { get; private set; }
+	public int ForceRep { get; private set; } = 1;
 	public bool HasWarmup { get; private set; }
 	public float WarmupSeconds { get; private set; } = DefaultSeconds;
 	public bool HasMeasure { get; private set; }
@@ -103,6 +105,12 @@ public sealed class PerfArgs
 			if (token == "-m3d_hashrep")
 			{
 				parsed.ReadHashRep(NextValue(args, ref i));
+				continue;
+			}
+
+			if (token == "-m3d_forcerep")
+			{
+				parsed.ReadForceRep(NextValue(args, ref i));
 				continue;
 			}
 
@@ -298,6 +306,21 @@ public sealed class PerfArgs
 		}
 
 		warnings.Add(value == null ? "hashrep=" : "hashrep=" + value);
+	}
+
+	private void ReadForceRep(string value)
+	{
+		if (value != null
+			&& int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int repeats)
+			&& repeats >= 1
+			&& repeats <= 16)
+		{
+			HasForceRep = true;
+			ForceRep = repeats;
+			return;
+		}
+
+		warnings.Add(value == null ? "forcerep=" : "forcerep=" + value);
 	}
 
 	private void ReadSeconds(string value, bool warmup)

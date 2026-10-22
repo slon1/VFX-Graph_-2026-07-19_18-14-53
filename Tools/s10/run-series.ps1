@@ -14,7 +14,9 @@ param(
     [string]$Scene = "",
     [string]$Cam = "",
     [string]$Cap = "",
-    [string]$HashRep = ""
+    [string]$HashRep = "",
+    [string]$ForceRep = "",
+    [string]$MaxN = ""
 )
 
 <#
@@ -90,24 +92,26 @@ function Save-Progress($State, [string]$Path) {
 function Get-ExpectedArgs($Point) {
     $sw = Get-ModeSwitches $Point.mode
     $text = ("force={0},render={1},maxn={2},warmup={3},measure={4},autorun=1,quit=1,tag={5}" -f `
-        $sw.Force, $sw.Render, $maxNeighbors, $WarmupSec, $MeasureSec, $Point.tag)
+        $sw.Force, $sw.Render, $maxNeighborsText, $WarmupSec, $MeasureSec, $Point.tag)
     if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + ",scene=$Scene" }
     if (-not [string]::IsNullOrWhiteSpace([string]$Point.walk)) { $text = $text + ",walk=$($Point.walk)" }
     if (-not [string]::IsNullOrWhiteSpace($script:camText)) { $text = $text + ",cam=$script:camText" }
     if (-not [string]::IsNullOrWhiteSpace($script:capText)) { $text = $text + ",cap=$script:capText" }
     if (-not [string]::IsNullOrWhiteSpace($script:hashRepText)) { $text = $text + ",hashrep=$script:hashRepText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:forceRepText)) { $text = $text + ",forcerep=$script:forceRepText" }
     return $text
 }
 
 function Get-UnityArgs($Point) {
     $sw = Get-ModeSwitches $Point.mode
     $text = ("-m3d_force {0} -m3d_render {1} -m3d_maxn {2} -m3d_warmup {3} -m3d_measure {4} -m3d_autorun -m3d_quit -m3d_tag {5}" -f `
-        $sw.Force, $sw.Render, $maxNeighbors, $WarmupSec, $MeasureSec, $Point.tag)
+        $sw.Force, $sw.Render, $script:maxNeighborsText, $WarmupSec, $MeasureSec, $Point.tag)
     if (-not [string]::IsNullOrWhiteSpace($Scene)) { $text = $text + " -m3d_scene $Scene" }
     if (-not [string]::IsNullOrWhiteSpace([string]$Point.walk)) { $text = $text + " -m3d_walk $($Point.walk)" }
     if (-not [string]::IsNullOrWhiteSpace($script:camText)) { $text = $text + " -m3d_cam $script:camText" }
     if (-not [string]::IsNullOrWhiteSpace($script:capText)) { $text = $text + " -m3d_cap $script:capText" }
     if (-not [string]::IsNullOrWhiteSpace($script:hashRepText)) { $text = $text + " -m3d_hashrep $script:hashRepText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:forceRepText)) { $text = $text + " -m3d_forcerep $script:forceRepText" }
     return $text
 }
 
@@ -133,6 +137,22 @@ if (-not [string]::IsNullOrWhiteSpace($HashRep)) {
     $hashRepText = [string]$hashRepValue
 }
 
+$forceRepText = ""
+if (-not [string]::IsNullOrWhiteSpace($ForceRep)) {
+    $forceRepValue = 0
+    $forceOk = [int]::TryParse($ForceRep, [ref]$forceRepValue)
+    if (-not $forceOk -or $forceRepValue -lt 1 -or $forceRepValue -gt 16) { throw "Повтор силы: '$ForceRep' не разобран. Нужно целое от 1 до 16." }
+    $forceRepText = [string]$forceRepValue
+}
+
+$maxNeighborsText = [string]$maxNeighbors
+if (-not [string]::IsNullOrWhiteSpace($MaxN)) {
+    $maxNValue = 0
+    $maxNOk = [int]::TryParse($MaxN, [ref]$maxNValue)
+    if (-not $maxNOk -or $maxNValue -lt 0) { throw "Кап соседей: '$MaxN' не разобран. Нужно целое не меньше 0." }
+    $maxNeighborsText = [string]$maxNValue
+}
+
 $adbPath = Resolve-M3dAdb -Adb $Adb
 $activePath = Join-Path (Get-M3dOutDir) "active-series.txt"
 $measureRoot = Join-Path (Get-M3dRepoRoot) "DOC\MEASURE"
@@ -153,6 +173,12 @@ if ($Resume) {
     }
     if ([string]::IsNullOrWhiteSpace($hashRepText) -and -not [string]::IsNullOrWhiteSpace([string]$state.hashrep)) {
         $hashRepText = [string]$state.hashrep
+    }
+    if ([string]::IsNullOrWhiteSpace($forceRepText) -and -not [string]::IsNullOrWhiteSpace([string]$state.forcerep)) {
+        $forceRepText = [string]$state.forcerep
+    }
+    if ($maxNeighborsText -eq [string]$maxNeighbors -and -not [string]::IsNullOrWhiteSpace([string]$state.maxn)) {
+        $maxNeighborsText = [string]$state.maxn
     }
     if ($state.stopped) {
         Write-M3dLine ("Серия остановлена: {0}. -Resume её не продолжает." -f $state.reason)
@@ -185,6 +211,8 @@ if ($Resume) {
         cam = $camText
         cap = $capText
         hashrep = $hashRepText
+        forcerep = $forceRepText
+        maxn = $maxNeighborsText
         resultDir = $resultDir
         points = $points
     }

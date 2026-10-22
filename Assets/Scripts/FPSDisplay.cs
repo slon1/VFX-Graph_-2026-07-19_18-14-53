@@ -1132,6 +1132,8 @@ public sealed class FPSDisplay : MonoBehaviour
 		text.Append(CapFractionText());
 		text.Append(" hashrep=");
 		text.Append(HashRepText());
+		text.Append(" forcerep=");
+		text.Append(ForceRepText());
 
 		string line = text.ToString();
 		Debug.Log(line);
@@ -1354,6 +1356,11 @@ public sealed class FPSDisplay : MonoBehaviour
 			args += ",hashrep=" + perfArgs.HashRep.ToString(CultureInfo.InvariantCulture);
 		}
 
+		if (perfArgs.HasForceRep)
+		{
+			args += ",forcerep=" + perfArgs.ForceRep.ToString(CultureInfo.InvariantCulture);
+		}
+
 		Debug.Log(
 			"M3D_PERF_INFO device=" + SystemInfo.deviceModel
 			+ " api=" + SystemInfo.graphicsDeviceType
@@ -1403,6 +1410,18 @@ public sealed class FPSDisplay : MonoBehaviour
 				hashBuilder.RepeatCount = perfArgs.HashRep;
 			}
 		}
+
+		if (perfArgs.HasForceRep)
+		{
+			if (forcePass == null)
+			{
+				Debug.Log("M3D_PERF_WARN forcerep=" + perfArgs.ForceRep.ToString(CultureInfo.InvariantCulture));
+			}
+			else
+			{
+				forcePass.ForceRepeatCount = perfArgs.ForceRep;
+			}
+		}
 	}
 
 	private string CapFractionText()
@@ -1430,6 +1449,21 @@ public sealed class FPSDisplay : MonoBehaviour
 
 		int repeats = hashBuilder.RepeatCount < 1 ? 1 : hashBuilder.RepeatCount;
 		return repeats.ToString(CultureInfo.InvariantCulture);
+	}
+
+	internal static string ForceRepLogField(BoidNeighborForcePass pass)
+	{
+		if (pass == null)
+		{
+			return "na";
+		}
+
+		return pass.ForceRepeatCount.ToString(CultureInfo.InvariantCulture);
+	}
+
+	private string ForceRepText()
+	{
+		return ForceRepLogField(forcePass);
 	}
 
 	private static string CameraText()

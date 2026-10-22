@@ -30,6 +30,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     private static readonly int CountCapHitsId = Shader.PropertyToID("CountCapHits");
     private static readonly int SeparationSumId = Shader.PropertyToID("SeparationSum");
     private static readonly int CapHitsId = Shader.PropertyToID("CapHits");
+    private static readonly int VelocityId = Shader.PropertyToID("velocity");
 
     [SerializeField] private int maxNeighbors = 48;
     [SerializeField] private bool countCapHits;
@@ -41,7 +42,13 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     // Default 1. Modes 0 and 2 are frozen (ADR-048).
     [SerializeField] private int walkMode = 1;
 
+    // Diagnostic only. Not RepeatCount: the world would add the force to velocity that many times.
+    private int forceRepeatCount = 1;
+
     private readonly uint[] capClear = new uint[1];
+    private GraphicsBuffer forceScratch;
+    private int forceScratchCount;
+    private Vector3[] scratchZeros;
     private readonly List<float> capWindow = new List<float>(CapWindow);
 
     private GraphicsBuffer capCounter;
@@ -109,6 +116,19 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         set => sumSeparation = value;
     }
 
+    /// <summary>
+    /// Extra dispatches of the same kernel inside one Execute. Default 1.
+    /// Does not override <see cref="SimPass.RepeatCount"/>.
+    /// </summary>
+    public int ForceRepeatCount
+    {
+        get => forceRepeatCount;
+        set => forceRepeatCount = Mathf.Clamp(value, 1, 16);
+    }
+
+    /// <summary>Scratch velocity used by repeats 2..R. Null while <see cref="ForceRepeatCount"/> is 1.</summary>
+    internal GraphicsBuffer ForceScratch => forceScratch;
+
     /// <summary>Cap-hit counter. Tests write it directly. Null before Initialize and after Dispose.</summary>
     internal GraphicsBuffer CapCounter => capCounter;
 
@@ -163,6 +183,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
             capCounter = null;
         }
 
+        ReleaseScratch();
         capCounter = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
         disposed = false;
         generation++;
@@ -193,6 +214,8 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
             capCounter.Release();
             capCounter = null;
         }
+
+        ReleaseScratch();
     }
 
     protected override void SetParams(SimContext context, float deltaTime)
@@ -338,6 +361,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
 
     protected override void OnDispatched(SimContext context)
     {
+        DispatchForceRepeats(context);
         if (!countCapHits || capCounter == null || disposed || inflight >= MaxInflight)
         {
             return;
@@ -349,6 +373,72 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         context.Cmd.RequestAsyncReadback(
             capCounter,
             request => OnCapReadback(request, generationAtRequest, countAtRequest));
+    }
+
+    private void DispatchForceRepeats(SimContext context)
+    {
+        int repeats = forceRepeatCount;
+        if (repeats <= 1 || disposed || context == null || context.Particles == null)
+        {
+            return;
+        }
+
+        int count = context.Particles.Count;
+        if (count <= 0)
+        {
+            return;
+        }
+
+        EnsureScratch(count);
+        if (scratchZeros == null || scratchZeros.Length != count)
+        {
+            scratchZeros = new Vector3[count];
+        }
+        else
+        {
+            Array.Clear(scratchZeros, 0, scratchZeros.Length);
+        }
+
+        CommandBuffer cmd = context.Cmd;
+        cmd.SetBufferData(forceScratch, scratchZeros);
+        cmd.SetComputeBufferParam(Kernel.Shader, Kernel.Index, VelocityId, forceScratch);
+        cmd.SetComputeIntParam(Kernel.Shader, CountCapHitsId, 0);
+        int groups = (count + ThreadGroupSize - 1) / ThreadGroupSize;
+        for (int repeat = 2; repeat <= repeats; repeat++)
+        {
+            cmd.DispatchCompute(Kernel.Shader, Kernel.Index, groups, 1, 1);
+        }
+
+        cmd.SetComputeIntParam(Kernel.Shader, CountCapHitsId, countCapHits ? 1 : 0);
+        cmd.SetComputeBufferParam(
+            Kernel.Shader,
+            Kernel.Index,
+            VelocityId,
+            context.Particles.Get(BuiltinAttributes.Velocity));
+    }
+
+    private void EnsureScratch(int count)
+    {
+        if (forceScratch != null && forceScratchCount == count)
+        {
+            return;
+        }
+
+        ReleaseScratch();
+        forceScratch = new GraphicsBuffer(GraphicsBuffer.Target.Structured, count, sizeof(float) * 3);
+        forceScratchCount = count;
+    }
+
+    private void ReleaseScratch()
+    {
+        if (forceScratch != null)
+        {
+            forceScratch.Release();
+            forceScratch = null;
+        }
+
+        forceScratchCount = 0;
+        scratchZeros = null;
     }
 
     private void OnCapReadback(AsyncGPUReadbackRequest request, int generationAtRequest, int countAtRequest)

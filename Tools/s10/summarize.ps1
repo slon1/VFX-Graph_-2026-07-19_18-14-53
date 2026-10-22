@@ -68,6 +68,8 @@ function Get-RunRows($File) {
             Wake = $wake
             Walk = $walkValue
             Cam = $camValue
+            ForceRep = $(if ($run.Done.ContainsKey("forcerep") -and $run.Done["forcerep"] -match '^\d+$') { $run.Done["forcerep"] } else { $null })
+            MaxN = $(if ($run.Done.ContainsKey("forcerep") -and $run.Done["forcerep"] -match '^\d+$' -and $run.Done.ContainsKey("maxNeighbors") -and $run.Done["maxNeighbors"] -match '^\d+$') { $run.Done["maxNeighbors"] } else { $null })
             Res = $run.Done["res"]
             Valid = ($reasons.Count -eq 0 -and $null -ne $frame -and $null -ne $long)
             Compare = ($reasons.Count -eq 0 -and $null -ne $frame -and $null -ne $long -and $marks.Count -eq 0)
@@ -77,20 +79,27 @@ function Get-RunRows($File) {
     return $rows
 }
 
+function Get-SeriesGroupKey($Mode, $Walk, $ForceRep, $MaxN) {
+    $key = "$Mode|$Walk"
+    if (-not [string]::IsNullOrWhiteSpace([string]$ForceRep)) {
+        $key += "|fr=$ForceRep"
+        if (-not [string]::IsNullOrWhiteSpace([string]$MaxN)) { $key += "|mn=$MaxN" }
+    }
+    return $key
+}
+
 function Add-VsyncMarks($Rows) {
-    foreach ($mode in @("A", "B", "C")) {
-        $walks = @($Rows | Where-Object { $_.Mode -eq $mode -and $_.Compare } | ForEach-Object { $_.Walk } | Select-Object -Unique)
-        foreach ($walk in $walks) {
-            $valid = @($Rows | Where-Object { $_.Mode -eq $mode -and $_.Walk -eq $walk -and $_.Compare })
-            if ($valid.Count -eq 0) { continue }
-            $frames = @($valid | ForEach-Object { [double]$_.FrameAvg })
-            $median = Get-M3dMedian $frames
-            $spread = [Math]::Round(([double]($frames | Measure-Object -Maximum).Maximum) - ([double]($frames | Measure-Object -Minimum).Minimum), 3)
-            if ($median -le 16.9 -and $spread -le 0.1) {
-                foreach ($row in $valid) {
-                    if ([string]::IsNullOrWhiteSpace($row.Reason)) { $row.Reason = "vsync" }
-                    else { $row.Reason = "$($row.Reason), vsync" }
-                }
+    $keys = @($Rows | Where-Object { $_.Compare } | ForEach-Object { Get-SeriesGroupKey $_.Mode $_.Walk $_.ForceRep $_.MaxN } | Select-Object -Unique)
+    foreach ($key in $keys) {
+        $valid = @($Rows | Where-Object { $_.Compare -and (Get-SeriesGroupKey $_.Mode $_.Walk $_.ForceRep $_.MaxN) -eq $key })
+        if ($valid.Count -eq 0) { continue }
+        $frames = @($valid | ForEach-Object { [double]$_.FrameAvg })
+        $median = Get-M3dMedian $frames
+        $spread = [Math]::Round(([double]($frames | Measure-Object -Maximum).Maximum) - ([double]($frames | Measure-Object -Minimum).Minimum), 3)
+        if ($median -le 16.9 -and $spread -le 0.1) {
+            foreach ($row in $valid) {
+                if ([string]::IsNullOrWhiteSpace($row.Reason)) { $row.Reason = "vsync" }
+                else { $row.Reason = "$($row.Reason), vsync" }
             }
         }
     }
@@ -125,37 +134,47 @@ $groupOrder = @()
 foreach ($mode in @("A", "B", "C")) {
     $walks = @($results | Where-Object { $_.Mode -eq $mode -and $_.Valid } | ForEach-Object { $_.Walk } | Select-Object -Unique)
     foreach ($walk in $walks) {
-        $valid = @($results | Where-Object { $_.Mode -eq $mode -and $_.Walk -eq $walk -and $_.Compare })
-        if ($valid.Count -eq 0) { continue }
-        $frames = @($valid | ForEach-Object { [double]$_.FrameAvg })
-        $longs = @($valid | ForEach-Object { [double]$_.Long })
-        $median = Get-M3dMedian $frames
-        $spread = ([double]($frames | Measure-Object -Maximum).Maximum) - ([double]($frames | Measure-Object -Minimum).Minimum)
-        $medianLong = Get-M3dMedian $longs
-        $key = "$mode|$walk"
-        $byKey[$key] = [pscustomobject]@{ Mode = $mode; Walk = $walk; Median = $median; Spread = $spread; Long = $medianLong; N = $valid.Count }
-        $groupOrder += $key
-        $lines.Add(("| {0} | {1} | {2} | {3} | {4} | {5} |" -f $mode, $walk, $valid.Count, `
-            $median.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
-            $spread.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
-            $medianLong.ToString("0.000", [Globalization.CultureInfo]::InvariantCulture)))
-        Write-M3dLine ("mode={0} walk={1} n={2} median={3} spread={4} long={5}" -f $mode, $walk, $valid.Count, `
-            $median.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
-            $spread.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
-            $medianLong.ToString("0.000", [Globalization.CultureInfo]::InvariantCulture))
+        $rows = @($results | Where-Object { $_.Mode -eq $mode -and $_.Walk -eq $walk -and $_.Compare })
+        if ($rows.Count -eq 0) { continue }
+        $keys = @($rows | ForEach-Object { Get-SeriesGroupKey $mode $walk $_.ForceRep $_.MaxN } | Select-Object -Unique)
+        foreach ($key in $keys) {
+            $valid = @($rows | Where-Object { (Get-SeriesGroupKey $mode $walk $_.ForceRep $_.MaxN) -eq $key })
+            $frames = @($valid | ForEach-Object { [double]$_.FrameAvg })
+            $longs = @($valid | ForEach-Object { [double]$_.Long })
+            $median = Get-M3dMedian $frames
+            $spread = ([double]($frames | Measure-Object -Maximum).Maximum) - ([double]($frames | Measure-Object -Minimum).Minimum)
+            $medianLong = Get-M3dMedian $longs
+            $byKey[$key] = [pscustomobject]@{ Mode = $mode; Walk = $walk; Median = $median; Spread = $spread; Long = $medianLong; N = $valid.Count }
+            $groupOrder += $key
+            $walkCell = [string]$walk
+            if ($key -match '\|fr=(\d+)(?:\|mn=(\d+))?') {
+                $walkCell = "$walk fr=$($Matches[1])"
+                if ($Matches[2]) { $walkCell += " mn=$($Matches[2])" }
+            }
+            $lines.Add(("| {0} | {1} | {2} | {3} | {4} | {5} |" -f $mode, $walkCell, $valid.Count, `
+                $median.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
+                $spread.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
+                $medianLong.ToString("0.000", [Globalization.CultureInfo]::InvariantCulture)))
+            Write-M3dLine ("mode={0} walk={1} n={2} median={3} spread={4} long={5}" -f $mode, $walkCell, $valid.Count, `
+                $median.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
+                $spread.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture), `
+                $medianLong.ToString("0.000", [Globalization.CultureInfo]::InvariantCulture))
+        }
     }
 }
 
-$walksForCost = @($groupOrder | ForEach-Object { $byKey[$_].Walk } | Select-Object -Unique)
-foreach ($walk in $walksForCost) {
-    $keyA = "A|$walk"
-    $keyB = "B|$walk"
-    if (-not $byKey.ContainsKey($keyA) -or -not $byKey.ContainsKey($keyB)) { continue }
+foreach ($keyA in @($groupOrder | Where-Object { $_ -like "A|*" })) {
+    $suffix = $keyA.Substring(1)
+    $keyB = "B" + $suffix
+    if (-not $byKey.ContainsKey($keyB)) { continue }
+    $walk = $byKey[$keyA].Walk
+    $extra = ""
+    if ($keyA -match '\|(fr=.+)$') { $extra = " $($Matches[1])" }
     $cost = $byKey[$keyA].Median - $byKey[$keyB].Median
     $costText = $cost.ToString("0.00", [Globalization.CultureInfo]::InvariantCulture)
     $lines.Add("")
-    $lines.Add("Render cost A-B walk=${walk}: $costText ms")
-    Write-M3dLine "renderCost=$costText walk=$walk"
+    $lines.Add("Render cost A-B walk=${walk}${extra}: $costText ms")
+    Write-M3dLine "renderCost=$costText walk=$walk$extra"
 }
 
 if ($Baseline) {

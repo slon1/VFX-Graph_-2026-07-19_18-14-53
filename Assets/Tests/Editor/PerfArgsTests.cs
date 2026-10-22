@@ -345,4 +345,84 @@ public class PerfArgsTests
 		Assert.That(text.Warnings, Is.EqualTo(new[] { "hashrep=abc" }));
 		Assert.That(missing.Warnings, Is.EqualTo(new[] { "hashrep=" }));
 	}
+
+	[Test]
+	public void Parse_ForceRep_AcceptsOneThroughSixteen()
+	{
+		PerfArgs once = PerfArgs.Parse(new[] { "-m3d_forcerep", "1" });
+		PerfArgs sixteen = PerfArgs.Parse(new[] { "-m3d_forcerep", "16" });
+
+		Assert.That(once.HasForceRep, Is.True);
+		Assert.That(once.ForceRep, Is.EqualTo(1));
+		Assert.That(sixteen.ForceRep, Is.EqualTo(16));
+		Assert.That(once.HasOverride, Is.False);
+		Assert.That(once.Warnings, Is.Empty);
+		Assert.That(
+			PerfArgs.FormatRun(true, false, 48, 60f, 25f, true, true, "B1", null, 1),
+			Does.Not.Contain("forcerep="));
+	}
+
+	[Test]
+	public void Parse_ForceRep_RejectsOutOfRange()
+	{
+		PerfArgs zero = PerfArgs.Parse(new[] { "-m3d_forcerep", "0" });
+		PerfArgs big = PerfArgs.Parse(new[] { "-m3d_forcerep", "17" });
+		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_forcerep", "abc" });
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_forcerep" });
+
+		Assert.That(zero.HasForceRep, Is.False);
+		Assert.That(big.HasForceRep, Is.False);
+		Assert.That(text.HasForceRep, Is.False);
+		Assert.That(missing.HasForceRep, Is.False);
+		Assert.That(zero.Warnings, Is.EqualTo(new[] { "forcerep=0" }));
+		Assert.That(big.Warnings, Is.EqualTo(new[] { "forcerep=17" }));
+		Assert.That(text.Warnings, Is.EqualTo(new[] { "forcerep=abc" }));
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "forcerep=" }));
+	}
+
+	[Test]
+	public void Parse_MaxNeighbors_AcceptsZeroAndTheSweep()
+	{
+		PerfArgs zero = PerfArgs.Parse(new[] { "-m3d_maxn", "0" });
+		PerfArgs wide = PerfArgs.Parse(new[] { "-m3d_maxn", "96" });
+		PerfArgs cap128 = PerfArgs.Parse(new[] { "-m3d_maxn", "128" });
+		PerfArgs cap192 = PerfArgs.Parse(new[] { "-m3d_maxn", "192" });
+
+		Assert.That(zero.HasMaxNeighbors, Is.True);
+		Assert.That(zero.MaxNeighbors, Is.EqualTo(0));
+		Assert.That(wide.MaxNeighbors, Is.EqualTo(96));
+		Assert.That(cap128.MaxNeighbors, Is.EqualTo(128));
+		Assert.That(cap192.MaxNeighbors, Is.EqualTo(192));
+		Assert.That(zero.HasOverride, Is.True);
+		Assert.That(zero.Warnings, Is.Empty);
+	}
+
+	[Test]
+	public void Parse_MaxNeighbors_RejectsGarbage()
+	{
+		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_maxn", "abc" });
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_maxn" });
+		PerfArgs negative = PerfArgs.Parse(new[] { "-m3d_maxn", "-1" });
+
+		Assert.That(text.HasMaxNeighbors, Is.False);
+		Assert.That(missing.HasMaxNeighbors, Is.False);
+		Assert.That(negative.HasMaxNeighbors, Is.False);
+		Assert.That(text.Warnings, Is.EqualTo(new[] { "maxn=abc" }));
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "maxn=" }));
+		Assert.That(negative.Warnings, Is.EqualTo(new[] { "maxn=-1" }));
+	}
+
+	[Test]
+	public void ForceRepLogField_PrintsThePassValueOrNa()
+	{
+		Assert.That(FPSDisplay.ForceRepLogField(null), Is.EqualTo("na"));
+		var pass = new BoidNeighborForcePass();
+		Assert.That(FPSDisplay.ForceRepLogField(pass), Is.EqualTo("1"));
+		pass.ForceRepeatCount = 4;
+		Assert.That(FPSDisplay.ForceRepLogField(pass), Is.EqualTo("4"));
+		pass.ForceRepeatCount = 0;
+		Assert.That(pass.ForceRepeatCount, Is.EqualTo(1));
+		pass.ForceRepeatCount = 99;
+		Assert.That(pass.ForceRepeatCount, Is.EqualTo(16));
+	}
 }
