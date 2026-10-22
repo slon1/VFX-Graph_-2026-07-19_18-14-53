@@ -35,6 +35,36 @@ StructuredBuffer<uint> CellCounts;
 
 int MaxNeighbors;
 int CountCapHits;
+// Temporary look (2026-10-22). 0: average, denominator r^2+1e-3.
+// 1: sum, no division by neighbor count, denominator r^2+0.01.
+int SeparationSum;
+
+void AccumulateSep(inout float2 sep, float2 d, float r2, float mul)
+{
+    if (SeparationSum != 0)
+    {
+        sep += (-d / (r2 + 0.01)) * mul;
+    }
+    else
+    {
+        sep += (-d / (r2 + 1e-3)) * mul;
+    }
+}
+
+float2 SeparationTerm(float2 sep, uint sepN, float weight)
+{
+    if (sepN == 0)
+    {
+        return 0;
+    }
+
+    if (SeparationSum != 0)
+    {
+        return sep * weight;
+    }
+
+    return (sep / (float)sepN) * weight;
+}
 RWStructuredBuffer<uint> CapHits;
 
 RWStructuredBuffer<float4> TeamParamsRead;
@@ -123,7 +153,7 @@ void BoidNeighborForce(uint3 id : SV_DispatchThreadID)
             if (r2 < sepR2)
             {
                 float mul = same ? 1.0 : inter;
-                sep += (-d / (r2 + 1e-3)) * mul;
+                AccumulateSep(sep, d, r2, mul);
                 sepN++;
             }
 
@@ -147,10 +177,7 @@ void BoidNeighborForce(uint3 id : SV_DispatchThreadID)
     }
 
     float2 force = 0;
-    if (sepN > 0)
-    {
-        force += (sep / (float)sepN) * wSep;
-    }
+    force += SeparationTerm(sep, sepN, wSep);
 
     if (dot(align, align) > 1e-6)
     {
@@ -220,7 +247,7 @@ void AccumulateSortedRange(inout NeighborWalk state, uint rangeStart, uint range
         if (r2 < state.sepR2)
         {
             float mul = same ? 1.0 : state.inter;
-            state.sep += (-d / (r2 + 1e-3)) * mul;
+            AccumulateSep(state.sep, d, r2, mul);
             state.sepN++;
         }
 
@@ -379,10 +406,7 @@ void BoidNeighborForceSorted(uint3 id : SV_DispatchThreadID)
     }
 
     float2 force = 0;
-    if (state.sepN > 0)
-    {
-        force += (state.sep / (float)state.sepN) * team.Weights.x;
-    }
+    force += SeparationTerm(state.sep, state.sepN, team.Weights.x);
 
     if (dot(state.align, state.align) > 1e-6)
     {
@@ -433,7 +457,7 @@ void AccumulatePackedRange(inout NeighborWalk state, uint rangeStart, uint range
         if (r2 < state.sepR2)
         {
             float mul = same ? 1.0 : state.inter;
-            state.sep += (-d / (r2 + 1e-3)) * mul;
+            AccumulateSep(state.sep, d, r2, mul);
             state.sepN++;
         }
 
@@ -594,10 +618,7 @@ void BoidNeighborForceSortedPacked(uint3 id : SV_DispatchThreadID)
     }
 
     float2 force = 0;
-    if (state.sepN > 0)
-    {
-        force += (state.sep / (float)state.sepN) * team.Weights.x;
-    }
+    force += SeparationTerm(state.sep, state.sepN, team.Weights.x);
 
     if (dot(state.align, state.align) > 1e-6)
     {
