@@ -130,32 +130,6 @@ public class BoidNeighborForceTests
     }
 
     [Test]
-    public void SumSeparation_SumsWithWiderEpsilon_DefaultStaysAverage()
-    {
-        Vector3[] positions =
-        {
-            Vector3.zero,
-            new Vector3(0.4f, 0f, 0f),
-            new Vector3(-0.3f, 0f, 0f),
-        };
-        Vector3[] headings = { Vector3.right, Vector3.right, Vector3.right };
-        uint[] teamIds = { 0u, 0u, 0u };
-        TeamParams[] slots = Slots(Profile(1f, 0f, 0f, 1f, 1f, 0f, 0f, 0f, 0f));
-        Vector3 extents = new Vector3(8f, 0f, 8f);
-        Vector3[] average = RunForce(
-            positions, headings, teamIds, slots, false, extents, 2f, 0, false);
-        AssertMatchesOracle(average, positions, headings, teamIds, slots, false, extents, 2f);
-
-        Vector3[] summed = RunForce(
-            positions, headings, teamIds, slots, false, extents, 2f, 0, false, sumSeparation: true);
-        float expected = SepSum(0.4f, 0.01f) + SepSum(-0.3f, 0.01f);
-        AssertClose(summed[0].x, expected);
-        Assert.AreEqual(0f, summed[0].y, 1e-5f);
-        Assert.AreEqual(0f, summed[0].z, 1e-5f);
-        Assert.Greater(Mathf.Abs(summed[0].x - average[0].x), 1e-3f);
-    }
-
-    [Test]
     public void Seam_Wrap_MatchesMinImageOracle()
     {
         Vector3[] positions = { new Vector3(-7.7f, 0f, 0f), new Vector3(7.7f, 0f, 0f) };
@@ -389,12 +363,9 @@ public class BoidNeighborForceTests
         float minCell,
         int maxNeighbors,
         bool countCapHits,
-        bool directSlot7 = false,
-        bool sumSeparation = false)
+        bool directSlot7 = false)
     {
-        Prepare(
-            positions, headings, teamIds, slots, wrap, extents, minCell,
-            maxNeighbors, countCapHits, directSlot7, sumSeparation);
+        Prepare(positions, headings, teamIds, slots, wrap, extents, minCell, maxNeighbors, countCapHits, directSlot7);
         ExecutePrepared();
         return ReadVelocity();
     }
@@ -409,8 +380,7 @@ public class BoidNeighborForceTests
         float minCell,
         int maxNeighbors,
         bool countCapHits,
-        bool directSlot7,
-        bool sumSeparation = false)
+        bool directSlot7)
     {
         AssumeCompute();
         preparedCount = positions.Length;
@@ -466,7 +436,6 @@ public class BoidNeighborForceTests
             MaxNeighbors = maxNeighbors,
             CountCapHits = countCapHits,
             WalkMode = 0,
-            SumSeparation = sumSeparation,
         };
         owned.Add(force);
         clear.Initialize(context);
@@ -504,12 +473,6 @@ public class BoidNeighborForceTests
         TeamParams[] slots = Slots(Profile(2f, 2f, 2f, 1f, 1f, 0f, 0f, 0f, 0f));
         Prepare(positions, headings, teamIds, slots, false, new Vector3(8f, 0f, 8f), 2f, maxNeighbors, countCapHits, false);
         return force;
-    }
-
-    private static float SepSum(float delta, float eps)
-    {
-        float r2 = delta * delta;
-        return -delta / (r2 + eps);
     }
 
     private BoidNeighborForcePass DispatchCap(int maxNeighbors, bool countCapHits, int particlesInCell, bool wait)

@@ -28,16 +28,11 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     private static readonly int CellCountsId = Shader.PropertyToID("CellCounts");
     private static readonly int MaxNeighborsId = Shader.PropertyToID("MaxNeighbors");
     private static readonly int CountCapHitsId = Shader.PropertyToID("CountCapHits");
-    private static readonly int SeparationSumId = Shader.PropertyToID("SeparationSum");
     private static readonly int CapHitsId = Shader.PropertyToID("CapHits");
     private static readonly int VelocityId = Shader.PropertyToID("velocity");
 
     [SerializeField] private int maxNeighbors = 48;
     [SerializeField] private bool countCapHits;
-
-    // Temporary. Off: average separation, denominator r^2+0.001. On: sum, denominator r^2+0.01.
-    [SerializeField, Tooltip("Временно. Выкл: среднее и +0,001. Вкл: сумма без деления на число соседей и +0,01.")]
-    private bool sumSeparation;
 
     // Default 1. Modes 0 and 2 are frozen (ADR-048).
     [SerializeField] private int walkMode = 1;
@@ -105,15 +100,6 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     {
         get => countCapHits;
         set => countCapHits = value;
-    }
-
-    /// <summary>
-    /// Temporary separation variant. Off keeps the accepted average. On sums and uses epsilon 0.01.
-    /// </summary>
-    public bool SumSeparation
-    {
-        get => sumSeparation;
-        set => sumSeparation = value;
     }
 
     /// <summary>
@@ -245,7 +231,6 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         SetInt(context, MaxNeighborsId, maxNeighbors);
         BindBuffer(context, CapHitsId, capCounter);
         SetInt(context, CountCapHitsId, countCapHits ? 1 : 0);
-        SetInt(context, SeparationSumId, sumSeparation ? 1 : 0);
         if (countCapHits)
         {
             capClear[0] = 0u;
