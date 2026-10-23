@@ -109,10 +109,19 @@ F5 завершается отчётом о расстоянии до M2 (60 к�
 
 **F5.0b.** Первый прогон гейта остановился на одной ячейке (плотность 1, t = 5 с, accepted-64 с потолком 192, `eff16`: модель 181,2523, в ADR редакции 2 стояло 181,2). Причина: ошибка округления в ADR (среднее 181,25 из значений с двумя знаками записано как 181,2); независимая перепроверка Claude даёт для четырёх ячеек accepted разницу с моделью не больше 0,003. Значения таблиц §1.1 заменены на значения `F5-wave-proxy.md` с двумя знаками, допуск гейта 0,01.
 
-**F5.1.** Повтор выбранного кернела силы живёт в `OnDispatched`: `ForceRepeatCount` 1..16, `RepeatCount` остаётся 1, повторы 2..R пишут в скрэтч `float3[N]` через командный буфер, `CountCapHits` на них 0, readback `CapHits` после цикла. Аргумент `-m3d_forcerep` не входит в `HasOverride`. Кернелы `BoidNeighborForce`, `BoidNeighborForceSorted`, `BoidNeighborForceSortedPacked`, `HashScatter*` и `NeighborWalk` в этом коммите не менялись: `git diff` по `BoidsPasses.compute` пуст. `TeamProfile.cs` в коммит не входит.
+**F5.1.** Повтор выбранного кернела силы живёт в `OnDispatched`: `ForceRepeatCount` 1..16, `RepeatCount` остаётся 1, повторы 2..R пишут в скрэтч `float3[N]` через командный буфер, `CountCapHits` на них 0, readback `CapHits` после цикла. Аргумент `-m3d_forcerep` не входит в `HasOverride`. Кернелы `BoidNeighborForce`, `BoidNeighborForceSorted`, `BoidNeighborForceSortedPacked`, `HashScatter*` и `NeighborWalk` в коммите F5.1 не менялись; после отката `git diff` по `BoidsPasses.compute` пуст на всей ветке относительно `0290088`. `TeamProfile.cs` в коммит не входит.
 
 EditMode после правок: 419 тестов, 412 прошли, 7 упали. Новые тесты `BoidNeighborForceRepeatTests` (6) и добавленные в `PerfArgsTests` (5) прошли. Отдельный прогон «до» не снимался: тесты добавлены в уже грязное дерево, число новых — 11. Семь падений в чужих грязных фикстурах, их F5.1 не менял: `BoidsHashTwoTeamsPresetTests.Preset_MatchesTwoTeams` (радиус 9 против 3) и шесть `SwarmPointForceTests` (ожидаемая сила не совпала с текущим шейдером). APK не собирался. Серия и Play не запускались.
 
 Сводка: старый каталог `DOC/MEASURE/ff2a194-331eee0d/20261019-1623` даёт тот же `summary.md` (хеш `6CFB362B…`). Искусственный лог с `forcerep` 4/4/8 и `maxNeighbors` 48/128/48 распадается на три группы `1 fr=4 mn=48`, `1 fr=4 mn=128`, `1 fr=8 mn=48`.
 
-Отклонение: полный EditMode не зелёный из-за чужого грязного дерева. F5.2 и F5.3 не начаты.
+Полный EditMode на чистом дереве (F5.1b): `b9a70fb` 407 из 407, голова после отката 418 из 418, падений и пропусков нет. Семь падений грязного прогона F5.1 на этих коммитах не воспроизводятся. F5.2 и F5.3 не начаты.
+
+**F5.1b.** Сумма separation снята с ветки коммитом `1e4f5e3`. Код эксперимента в `experiment/sum-separation` (`96164fe`). ADR-053 отложен.
+
+| Коммит | Смысл | всего | прошло | упало | пропущено |
+|---|---|---:|---:|---:|---:|
+| `b9a70fb` | до: без `forcerep` и без SeparationSum | 407 | 407 | 0 | 0 |
+| `1e4f5e3` | после: F5.1 без SeparationSum | 418 | 418 | 0 | 0 |
+
+`0290088` не запускался: на `b9a70fb` падений нет. В `BoidNeighborForceRepeatTests` добавлены проверка `EffectiveWalkMode`, обнуление скрэтча перед каждым прогоном и пересоздание скрэтча при сжатии числа частиц с 6 до 3 без второго `Initialize`. Вынос `forcerep` из `LogDeviceInfo` в помощник пропущен: правка `FPSDisplay.cs` вышла бы больше пяти строк. F5.2 и F5.3 не начаты.

@@ -96,6 +96,42 @@ public class BoidNeighborForceRepeatTests
     }
 
     [Test]
+    public void Scratch_IsClearedBeforeEachRepeatRun()
+    {
+        Prepared prepared = Prepare(ClosePair(), walkMode: 1, wrap: false, maxNeighbors: 48, countCapHits: false);
+        Rerun(prepared, 4);
+        Vector3[] first = ReadScratch(prepared);
+        var seeded = new Vector3[prepared.Count];
+        for (int i = 0; i < seeded.Length; i++)
+        {
+            seeded[i] = new Vector3(7f, 7f, 7f);
+        }
+
+        prepared.Force.ForceScratch.SetData(seeded);
+        Rerun(prepared, 4);
+        AssertBits(ReadScratch(prepared), first);
+    }
+
+    [Test]
+    public void Scratch_IsRecreatedWhenCountShrinksWithoutInitialize()
+    {
+        Prepared prepared = Prepare(SixParticles(), walkMode: 1, wrap: false, maxNeighbors: 48, countCapHits: false);
+        prepared.Force.ForceRepeatCount = 4;
+        prepared.Force.Execute(prepared.Context, 0f);
+        Graphics.ExecuteCommandBuffer(prepared.Cmd);
+        GraphicsBuffer before = prepared.Force.ForceScratch;
+        Assert.AreEqual(6, before.count);
+
+        prepared.Particles.EnsureCapacity(3);
+        prepared.Cmd.Clear();
+        prepared.Force.Execute(prepared.Context, 0f);
+        Graphics.ExecuteCommandBuffer(prepared.Cmd);
+
+        Assert.AreEqual(3, prepared.Force.ForceScratch.count);
+        Assert.AreNotSame(before, prepared.Force.ForceScratch);
+    }
+
+    [Test]
     public void SwitchOneToFourToOne_RestoresTheSingleResult()
     {
         Prepared prepared = Prepare(ClosePair(), walkMode: 1, wrap: false, maxNeighbors: 48, countCapHits: false);
@@ -110,6 +146,7 @@ public class BoidNeighborForceRepeatTests
         Layout layout = torus ? TorusSeam() : ClosePair();
         Prepared prepared = Prepare(layout, walkMode, wrap, maxNeighbors, countCapHits);
         Vector3[] once = Run(prepared, 1);
+        Assert.AreEqual(walkMode, prepared.Force.EffectiveWalkMode, "walk " + walkMode);
         Vector3[] repeated = Rerun(prepared, 4);
         Assert.AreEqual(1, prepared.Force.RepeatCount, "walk " + walkMode);
         AssertBits(repeated, once);
@@ -289,6 +326,13 @@ public class BoidNeighborForceRepeatTests
             Teams = teams,
             Extents = new Vector3(40f, 0f, 40f),
         };
+    }
+
+    private static Vector3[] ReadScratch(Prepared prepared)
+    {
+        var values = new Vector3[prepared.Count];
+        prepared.Force.ForceScratch.GetData(values);
+        return values;
     }
 
     private static Vector3[] ReadVelocity(Prepared prepared)

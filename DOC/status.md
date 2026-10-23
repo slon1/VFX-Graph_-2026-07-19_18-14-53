@@ -58,6 +58,10 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 `Fluid2D_DyeInject.asset`: Stam как HighResDye, сид `RadiusUV=0.04`, пасс `TouchInjectScalar` после сида. G1–G9 и живая цепочка зелёные. Пик на оси в прогоне без сида 0.78–0.92 при оценке 0.71. `elapsedMs/N=0.373` (cpu/driver, не порог). Visual принят владельцем 2026-10-21. [`ADR-050`](ADR/ADR-050-Continuous-Dye-Injection.md), [`play-F3.1-touch.md`](last/play-F3.1-touch.md).
 
+## F5.1b — SeparationSum вынесен (2026-10-23)
+
+SeparationSum снят с `feature/reynolds-boids` и лежит в `experiment/sum-separation`. ADR-053 отложен.
+
 ## F5.1 — повтор пасса силы (готово, 2026-10-23)
 
 `-m3d_forcerep` 1..16 повторяет выбранный кернел силы в скрэтч внутри `OnDispatched`. `RepeatCount` остаётся 1, иначе мир прибавил бы силу к `velocity`. `CapHits` читается после повторов. Кернелы обхода не менялись. Серия и Play не запускались.
