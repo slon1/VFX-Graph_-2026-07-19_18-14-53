@@ -54,8 +54,8 @@ public class BoidsHashTwoTeamsPresetTests
         AssertSpawn(swarm.Spawns[1], 1, 1500, new Vector2(22f, 0f), new Vector2(-1f, 0f));
 
         Assert.AreEqual(2, asset.Teams.Count);
-        AssertTeam(asset.Teams[0], "RedBlue");
-        AssertTeam(asset.Teams[1], "YellowGreen");
+        AssertTeam(asset.Teams[0], "RedBlue", 0.5f, 3f, 2f);
+        AssertTeam(asset.Teams[1], "YellowGreen", 0.75f, 6f, 1f);
         AssertTwoKeys(asset.Teams[0].Color, "RedBlue", new Color(1f, 0f, 0f, 1f), new Color(0f, 0.15f, 1f, 1f));
         AssertTwoKeys(asset.Teams[1].Color, "YellowGreen", new Color(0.98f, 1f, 0f, 1f), new Color(0.02f, 1f, 0f, 1f));
 
@@ -74,7 +74,7 @@ public class BoidsHashTwoTeamsPresetTests
         BoxBoundsPass box = (BoxBoundsPass)passes[6];
         Assert.AreEqual(Vector3.zero, hash.Center);
         Assert.AreEqual(new Vector3(45f, 0f, 45f), hash.Extents);
-        Assert.AreEqual(3f, hash.MinCellSize);
+        Assert.AreEqual(9f, hash.MinCellSize);
         Assert.IsTrue(hash.Wrap);
         Assert.AreEqual(hash.Center, box.Center);
         Assert.AreEqual(hash.Extents, box.Extents);
@@ -89,7 +89,7 @@ public class BoidsHashTwoTeamsPresetTests
         Assert.AreEqual(1, asset.Fields.Count);
         FieldDescriptor field = asset.Fields[0];
         Assert.AreEqual("hashCount", field.Name);
-        Assert.AreEqual(new Vector2Int(30, 30), field.Resolution);
+        Assert.AreEqual(new Vector2Int(10, 10), field.Resolution);
         Assert.AreEqual(new Vector2(90f, 90f), field.Size);
     }
 
@@ -231,16 +231,17 @@ public class BoidsHashTwoTeamsPresetTests
         Assert.AreEqual(direction, spawn.InitialDirection);
     }
 
-    private static void AssertTeam(TeamProfile team, string name)
+    private static void AssertTeam(
+        TeamProfile team, string name, float separation, float alignment, float cohesion)
     {
         Assert.AreEqual(name, team.Name);
-        Assert.AreEqual(3f, team.SeparationRadius);
-        Assert.AreEqual(3f, team.AlignmentRadius);
-        Assert.AreEqual(3f, team.CohesionRadius);
-        Assert.AreEqual(4f, team.InterGroupSeparationMultiplier);
-        Assert.AreEqual(1.2f, team.SeparationWeight);
-        Assert.AreEqual(0.8f, team.AlignmentWeight);
-        Assert.AreEqual(0.6f, team.CohesionWeight);
+        Assert.AreEqual(9f, team.SeparationRadius);
+        Assert.AreEqual(9f, team.AlignmentRadius);
+        Assert.AreEqual(9f, team.CohesionRadius);
+        Assert.AreEqual(2f, team.InterGroupSeparationMultiplier);
+        Assert.AreEqual(separation, team.SeparationWeight);
+        Assert.AreEqual(alignment, team.AlignmentWeight);
+        Assert.AreEqual(cohesion, team.CohesionWeight);
         Assert.AreEqual(6f, team.Cruise);
         Assert.AreEqual(4f, team.Turn);
     }
