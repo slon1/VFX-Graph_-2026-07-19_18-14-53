@@ -103,7 +103,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/gpu-metrics.ps1 -T
 
 ## Каталог `521a98b-a9d40c4d`
 
-Сборка `521a98b`, `dirty=0`, `dirtyhash=a9d40c4d`, `powersave=0`, камера 46, экран `1520×720`. F5.3: сила без рендера, `walk` 1, `forcerep` 4 и 8. Заряд на старте 75%, в конце 53%, зарядка включена. Числа и оговорки: [F5-report.md](521a98b-a9d40c4d/F5-report.md). Захватов Streamline в каталоге нет.
+Сборка `521a98b`, `dirty=0`, `dirtyhash=a9d40c4d`, `powersave=0`, камера 46, экран `1520×720`. F5.3: сила без рендера, `walk` 1, `forcerep` 4 и 8. Заряд на старте 75%, в конце 53%, зарядка включена. F5.3b: заряд 57% → 49%, правило выше 15%. Числа и оговорки: [F5-report.md](521a98b-a9d40c4d/F5-report.md). Захватов Streamline в каталоге нет.
 
 | Папка | Что измерено |
 |---|---|
@@ -113,10 +113,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Tools/s10/gpu-metrics.ps1 -T
 | `20261027-0023/` … `20261027-0102/` | Серия 2, `Boids_Hash_testx4`, капы 48/128/192, `forcerep` 4 и 8 |
 | `20261027-0058/` | Первый заход капа 192, `forcerep` 8: нет `DONE` за 115 с, ячейка переснята в `20261027-0102/` |
 | `20261027-0109/`, `0111/`, `0113/` | Счётчик капа, по одному прогону, капы 48, 128, 192. В цену обхода не входят |
+| `20261027-1225/`, `1233/`, `1241/`, `1248/` | F5.3b, S200. `1225` кап 48 `forcerep` 4; `1233` кап 48 `forcerep` 8; `1241` кап 128 `forcerep` 1; `1248` кап 192 `forcerep` 1. По три прогона |
 
 ## Как читать логи
 
-Строка `M3D_PERF` пишет `count`, `maxNeighbors`, `force`, `render`, `debug`, `phase` (`WARMUP`, `MEASURE`, `DONE`), `t`, `frameAvg`, `frameP95`, `frameMax`, `long` (доля длинных кадров), `cpuFrame`, `cpuMain*`, `cpuRender*`, `cpuWait*`, `gpuAvg`, `gpuP95`, `thermal`, `thermalStart`, `thermalMax`, `buckets`, `res`, `hist`. `debug=na` значит, что оверлей `FieldDebugQuads` не найден. Кнопка силы отключает только обход соседей: хэш и steer продолжают работать. Кнопка рендера отключает только отрисовку частиц (`RenderParticles = false`). Окно харнесса `Assets/Scripts/FPSDisplay.cs`: 30 с прогрева и 30 с замера.
+Строка `M3D_PERF` пишет `count`, `maxNeighbors`, `force`, `render`, `debug`, `phase` (`WARMUP`, `MEASURE`, `DONE`), `t`, `frameAvg`, `frameP95`, `frameMax`, `long` (доля длинных кадров), `cpuFrame`, `cpuMain*`, `cpuRender*`, `cpuWait*`, `gpuAvg`, `gpuP95`, `thermal`, `thermalStart`, `thermalMax`, `buckets`, `res`, `hist`. Ориентацию определяет `res` в фазах `MEASURE` и `DONE`; `INFO.screen` на старте может быть портретным у годного прогона. `debug=na` значит, что оверлей `FieldDebugQuads` не найден. Кнопка силы отключает только обход соседей: хэш и steer продолжают работать. Кнопка рендера отключает только отрисовку частиц (`RenderParticles = false`). Окно харнесса `Assets/Scripts/FPSDisplay.cs`: 30 с прогрева и 30 с замера.
 
 `hist` — шесть корзин с границами 15, 18, 25, 36, 55 мс. Примерные кластеры кадров: 16,7 / 33 / 50 / 67+ мс.
 

@@ -60,7 +60,9 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 ## F5.3 — серия капа на S10 (2026-10-27)
 
-Сборка `521a98b`, `dirty=0`. S200 и S100×4, сила без рендера, `walk` 1, `forcerep` 4 и 8. Цена одного обхода на S200: кап 48 — 6,94 мс GPU, кап 192 — 28,96 мс. На плотной стае `capfrac` около 0,998 даже при капе 192. Циклов нет: захваты Streamline не сняты. M2 не закрыта, кап для поставки не выбран. Отчёт: [`F5-report.md`](MEASURE/521a98b-a9d40c4d/F5-report.md).
+Сборка `521a98b`, `dirty=0`. S200 и S100×4, сила без рендера, `walk` 1, `forcerep` 4 и 8. Цена одного обхода на S200: кап 48 по шести прогонам — 6,99 мс GPU, кап 128 — 18,92 мс (в 2,71 раза, крайние отношения 2,52–3,28, оценка 2,7 лежит внутри диапазона), кап 192 — 28,96 мс. На плотной стае `capfrac` около 0,998 даже при капе 192. Циклов нет: захваты Streamline не сняты. M2 по циклам не закрыта, значение капа не выбрано. Отчёт: [`F5-report.md`](MEASURE/521a98b-a9d40c4d/F5-report.md).
+
+EditMode на чистом worktree головы `d52d092` (от `79cdb9f` этот коммит отличается только логами замеров): 420 тестов, прошло 413, упало 7 — `BoidsHashTwoTeamsPresetTests.Preset_MatchesTwoTeams`, `SwarmPointForceTests.AddsToExistingVelocity`, `Profile_PlateauFalloffAndUnbounded`, `Sum_AddsPoints_AndDropsTheSeventeenth`, `VerticalPosition_DoesNotChangeVelocityY`, `Weight_ScalesSpring_AndFlipsSign`, `Wrap_UsesShortestVector_WrapOffUsesStraightDifference`. Часть ожиданий в `BoidsHashTwoTeamsPresetTests` и `SwarmPointForceTests` идёт впереди кода по решению владельца (коммит `521a98b`). Тесты, шейдер и ассеты не менялись.
 
 ## F5.2 — Play капа (2026-10-23)
 
