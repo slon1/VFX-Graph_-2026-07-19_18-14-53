@@ -1,0 +1,40 @@
+{
+    "series":  "B1 B1 B1",
+    "stopped":  true,
+    "reason":  "resume без -Scene ушёл в Boids_Hash_test, 100000 частиц, res=720x1520. Точка 2 не годится. Точка 1 (200000, 1520x720) остаётся.",
+    "cam":  "46",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "4",
+    "maxn":  "64",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\521a98b-a9d40c4d\\20261023-1249",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn64B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn64B2",
+                       "status":  "invalid",
+                       "file":  "02-B-720.txt",
+                       "reason":  "scene=Boids_Hash_test count=100000 res=720x1520"
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn64B3",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   }
+               ]
+}

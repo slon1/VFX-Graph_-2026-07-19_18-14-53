@@ -1,0 +1,4 @@
+﻿"file","mode","frameAvg","long","wakefulness","walk","cam","valid","reason"
+"01-B-720.txt","B","16,72","0,001","Awake","1","46","1","vsync"
+"02-B-720.txt","B","16,72","0","Awake","1","46","1","vsync"
+"03-B-720.txt","B","16,71","0","Awake","1","46","1","vsync"

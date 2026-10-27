@@ -58,6 +58,14 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 
 `Fluid2D_DyeInject.asset`: Stam как HighResDye, сид `RadiusUV=0.04`, пасс `TouchInjectScalar` после сида. G1–G9 и живая цепочка зелёные. Пик на оси в прогоне без сида 0.78–0.92 при оценке 0.71. `elapsedMs/N=0.373` (cpu/driver, не порог). Visual принят владельцем 2026-10-21. [`ADR-050`](ADR/ADR-050-Continuous-Dye-Injection.md), [`play-F3.1-touch.md`](last/play-F3.1-touch.md).
 
+## F5.3 — серия капа на S10 (2026-10-27)
+
+Сборка `521a98b`, `dirty=0`. S200 и S100×4, сила без рендера, `walk` 1, `forcerep` 4 и 8. Цена одного обхода на S200: кап 48 — 6,94 мс GPU, кап 192 — 28,96 мс. На плотной стае `capfrac` около 0,998 даже при капе 192. Циклов нет: захваты Streamline не сняты. M2 не закрыта, кап для поставки не выбран. Отчёт: [`F5-report.md`](MEASURE/521a98b-a9d40c4d/F5-report.md).
+
+## F5.2 — Play капа (2026-10-23)
+
+Владелец: кап 128 не принят, кап 192 принят. Кап 48 визуально худший. Опорные ячейки F5.3 — 48 и 192.
+
 ## F5.1b — SeparationSum вынесен (2026-10-23)
 
 SeparationSum снят с `feature/reynolds-boids` и лежит в `experiment/sum-separation`. ADR-053 отложен.

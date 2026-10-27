@@ -1,0 +1,40 @@
+{
+    "series":  "B1 B1 B1",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "46",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "8",
+    "maxn":  "48",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\521a98b-a9d40c4d\\20261023-1242",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr8-mn48B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr8-mn48B2",
+                       "status":  "ok",
+                       "file":  "02-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr8-mn48B3",
+                       "status":  "ok",
+                       "file":  "03-B-720.txt",
+                       "reason":  ""
+                   }
+               ]
+}

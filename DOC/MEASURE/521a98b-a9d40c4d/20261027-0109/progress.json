@@ -1,0 +1,22 @@
+{
+    "series":  "B1",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "46",
+    "cap":  "1",
+    "hashrep":  "",
+    "forcerep":  "",
+    "maxn":  "48",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\521a98b-a9d40c4d\\20261027-0109",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "sx4-cap-mn48B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   }
+               ]
+}
