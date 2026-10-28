@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-10-15  
-**Итерация:** F3c, `walk 1` по умолчанию, ADR-048.  
+**Итерация:** P9.1, классический хвост `TeamClassicSteer`, ADR-054. Пресет и Play не делались.  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  
@@ -9,6 +9,10 @@
 **ADR / roadmap:** [`adr-001`](ADR/adr-001-field-resources-m2a.md) · [`ADR-002`](ADR/ADR-002-Generic-P2G-Scatter.md) · [`ADR-003`](ADR/ADR-003-Generic-Field-Slot-Naming.md) · [`ADR-004`](ADR/ADR-004-Gradient-Sample-Pass.md) · [`ADR-005`](ADR/ADR-005-Presence-Density-P2G-Scatter.md) · [`ADR-006`](ADR/ADR-006-Diffuse-Field-Pass.md) · [`ADR-007`](ADR/ADR-007-Scalar-Field-Decay.md) · [`ADR-008`](ADR/ADR-008-Multi-Field-Per-Kernel-Binding.md) · [`ADR-009`](ADR/ADR-009-Gray-Scott-Reaction-Diffusion.md) · [`ADR-011`](ADR/ADR-011-Boids-Alignment-DeltaTime-And-Blur.md) · [`ADR-012`](ADR/ADR-012-Kinematic-Heading-Boids.md) · [`ADR-013`](ADR/ADR-013-Sampler-Verification+Velocity-Field-Self-Advection.md) · [`ADR-014`](ADR/ADR-014-GPU-Numeric-Test-Harness.md) · [`ADR-015`](ADR/ADR-015-World-Owned-Repeat-Loop.md) · [`ADR-016`](ADR/ADR-016-Units-By-Pass-Family.md) · [`ADR-017`](ADR/ADR-017-Divergence-Pass-And-Square-Texel-Contract.md) · [`ADR-018`](ADR/ADR-018-Jacobi-Phi-Pass.md) · [`ADR-019`](ADR/ADR-019-Fluid2D-Solver.md) · [`ADR-020`](ADR/ADR-020-Subtract-Phi-Gradient-Pass.md) · [`ADR-021`](ADR/ADR-021-Solid-Wall-Velocity-Pass.md) · [`ADR-022`](ADR/ADR-022-Fluid2D-Preset.md) · [`ADR-023`](ADR/ADR-023-Advect-Scalar-Pass.md) · [`ADR-024`](ADR/ADR-024-Harris-Order-Experiment.md) · [`ADR-025`](ADR/ADR-025-PostFX-HDR-Bloom-ACES.md) · [`ADR-026`](ADR/ADR-026-F2-Small-Scale-Structure.md) · [`ADR-027`](ADR/ADR-027-Vorticity-Confinement-Pass.md) · [`ADR-028`](ADR/ADR-028-Limited-MacCormack-Dye.md) · [`ADR-029`](ADR/ADR-029-Cross-Resolution-Dye.md) · [`ADR-030`](ADR/ADR-030-Particle-Render-Primitives-Binder.md) · [`ADR-031`](ADR/ADR-031-Primitive-Only-And-Value-Palette.md) · [`ADR-032`](ADR/ADR-032-Physarum-Steer.md) · [`ADR-033`](ADR/ADR-033-Physarum-Trail-Advect.md) · [`ADR-034`](ADR/ADR-034-Spatial-Hash-And-Teams.md) · [`ADR-035`](ADR/ADR-035-Vulkan-Dummy-Lut-Bind.md) · [`ADR-036`](ADR/ADR-036-Swarm-Source.md) · [`ADR-037`](ADR/ADR-037-Team-Profile.md) · [`ADR-038`](ADR/ADR-038-Boid-Neighbor-Force.md) · [`ADR-039`](ADR/ADR-039-Team-Heading-Steer.md) · [`ADR-040`](ADR/ADR-040-Boids-Hash-Preset-And-Play-Gate.md) · [`ADR-041`](ADR/ADR-041-Team-Palette.md) · [`ADR-042`](ADR/ADR-042-Two-Team-Preset.md) · [`ADR-043`](ADR/ADR-043-Team-Palette-Followups.md) · [`roadmap`](last/roadmap_m2a.md)
 
 ---
+
+## P9.1 — классический хвост (2026-10-28)
+
+`TeamClassicSteer` на `feature/classic-boids`: `inertialVelocity`, `TeamParams` 64 байта, коридор скорости команды. Пресет, сцена и Play не делались. EditMode до кода: 420 тестов, прошло 410, упало 10. После: 441, прошло 431, упало те же 10 (грязные ассеты и ожидания впереди кода). Подробности: [ADR-054](ADR/ADR-054-Classic-Boids-Tail.md) §8.
 
 ## Замеры S10 недействительны (2026-10-14)
 

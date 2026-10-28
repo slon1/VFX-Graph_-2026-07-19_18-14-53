@@ -28,9 +28,10 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 | **teams** | Список команд на эффекте, максимум 8. Буфер читают сила соседей и курс. Цвет — `TeamProfile.Color`, его читает билборд |
 | **Boid Neighbor Force** | Сила соседей есть. Пресет `Boids_hash`. `walkMode` по умолчанию 1; режимы 0 и 2 заморожены (ADR-048). Режим 2 читает упакованную запись и откатывается на 1, если пакета в кадре нет, или на 0, если радиус больше ячейки. `-m3d_forcerep N` (1..16) повторяет выбранный кернел в скрэтч и не входит в `HasOverride`; `RepeatCount` остаётся 1 |
 | **Team Heading Steer** | Курс и скорость берутся из команды. Пресет `Boids_hash` |
+| **Team Classic Steer** | Вместо `Team Heading Steer`, после силы соседей и `Swarm Point Force`. До пасса `velocity` — сумма сил, после — реальная скорость в коридоре команды (`minSpeed`, `maxSpeed`, `maxForce`, `forceGain`; старт 4 / 8 / 12 / 5, числа гипотезы до Play). Пресет ещё не создан |
 | **Hash Counts To Field** | Гистограмма ячеек хэша в скалярное поле `hashCount`. Пресет `Boids_hash`, меню `Tools/M3D/Create Boids Hash Effect` |
 
-Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`.  
+Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`, `inertialVelocity` (скорость между кадрами классического хвоста; ноль значит «ещё не было шага»).  
 Авторегистрация атрибутов по Reads/Writes — **пропускается** при Capacity=0 (None).
 
 Present частиц ([ADR-031](ADR/ADR-031-Primitive-Only-And-Value-Palette.md)): при `Count > 0` всегда `PrimitiveParticleBinder` + `M3D/ParticleBillboard`. `VisualEffect` для `Build` не нужен. Инспекторные **Particle Size / Color / Gradient / Value Scale** читаются при сборке мира. **Particle Render Mode** и меню Enable/Disable пишут ассет и на кадр не влияют (`VfxParticleBinder` не создаётся). По умолчанию цвет берётся из вертикали скорости (мировая +Z): есть атрибут `velocity` — LUT по `DirectionToValue`, `_UseDirection=1`. Нет скорости — прежний путь: есть `value` — LUT 256×1, `_UseLut=1`; нет — плоский `_Color`, `_UseLut=0`. `particleSize` — мировые единицы квада: при 0.05 и рое на весь кадр квад меньше пикселя и мигает (проверено 2026-09-25 без LUT; 0.2 почти убрало мигание). Писатели `value`: `SpeedToValue`, `HeadingToValue`. `TeamToValue` — класс без ядра, `Initialize` падает.

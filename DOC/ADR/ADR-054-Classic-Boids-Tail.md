@@ -163,4 +163,16 @@ inertialVelocity = v;  heading = dir;  velocity = v
 
 ## 8. Результат
 
-Заполняется после выполнения ТЗ.
+P9.1 сделан на ветке `feature/classic-boids` от головы `feature/reynolds-boids` `7da0e6610ef5013663064606430f2bc4dcb3443b`. Коммит 0 (ADR и ТЗ) — `841c22614658af4ea01d762a2eb25a322557cdd8`. Коммит А (атрибут, `TeamParams` 64, ядро, пасс, оба валидатора, тесты) — `3698549ba6fdafe989719a0369dfa8b7299ad02b`. Пресет, сцена, меню и Play не делались.
+
+**Разведка А.**
+
+1. `TeamHeadingSteerPass` кроме `SpatialHashValidator` и `SwarmPointValidator` создаётся в фабриках `M3DDemoTools` (`CreateBoidsHashAsset`, `CreateBoidsHashTwoTeamsAsset`). Инспектор собирает список пассов через `TypeCache`, отдельной регистрации нет. `PerfArgs`, `FPSDisplay` и `SimulationWorld` про тип хвоста не знают. В P9.1 их и фабрики не меняли.
+2. После `float4 Classic` в обеих структурах, до правки `Stride_Is48`: EditMode 420 тестов, прошло 409, упало 11. Новый отказ один: `TeamProfileTests.Stride_Is48` (Expected 48, But was 64). Остальные десять те же, что до кода.
+3. `PrimitiveParticleBinder` отдаёт в шейдер буфер `_Velocities`. `DirectionToValue` нормализует скорость, длина на цвет не влияет. Отдельной иглы по `heading` в билборде нет: квад смотрит в камеру. После хвоста `velocity` совпадает с `heading` и несёт реальную скорость, так что раскраска по направлению остаётся верной.
+4. Шаг `Teams[team]` вырос вместе в C# и HLSL (64 байта). Текст обходов не менялся. Тесты обходов, оракула и капа зелёные без правки ожиданий.
+5. Рецепт `CreateBoidsHashAsset` задаёт `simulationSpeed` 1.
+
+**EditMode.** До кода: 420 / 410 / 10. После коммита А: 441 / 431 / 10. Двадцать один новый тест прошёл. Десять старых отказов: `BoidsHashTwoTeamsPresetTests.Chain_ThreeHundredFrames_StaysFiniteInsideBox`, `Preset_MatchesTwoTeams`, `Fluid2DDyeInjectPresetTests.Preset_MatchesDyeInjectComposition`, `Fluid2DDyeInjectVcPresetTests.Preset_MatchesDyeInjectVcComposition`, и шесть `SwarmPointForceTests` (`AddsToExistingVelocity`, `Profile_PlateauFalloffAndUnbounded`, `Sum_AddsPoints_AndDropsTheSeventeenth`, `VerticalPosition_DoesNotChangeVelocityY`, `Weight_ScalesSpring_AndFlipsSign`, `Wrap_UsesShortestVector_WrapOffUsesStraightDifference`). Это грязные ассеты и ожидания впереди кода, не хвост. Единственная правка старого теста — `Stride_Is64` (оба ожидания 64).
+
+**Отклонения.** Формулу ядра не меняли. `DOC/architecture.md` размер `TeamParams` не описывает, раздел не добавлялся. Чужие грязные `Assets/Effects/Boids_hash_2teams.asset`, `Fluid2D_DyeInject.asset`, `Fluid2D_DyeInjectVC.asset` и неотслеживаемый `DOC/MEASURE/nabuild-na/` в коммиты не входили.
