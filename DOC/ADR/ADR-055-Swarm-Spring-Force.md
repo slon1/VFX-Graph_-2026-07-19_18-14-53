@@ -61,4 +61,24 @@
 
 ## 6. Результат
 
-Заполняется после выполнения ТЗ.
+Сделано на `feature/classic-boids`. Голова до работы: `a2dce99f25aacf33bda9fd3809bf1479dbc4426c`. Коммит N (три ассета, содержимое не менялось): `147147c8aed8ee48a5de4b63faf2747e9ce61283`. Коммит 0 (этот ADR и ТЗ): `8fc8e36bfe368981478ad87450861b7455241681`. Между ними владелец записал `822cfd8568ba9637042aee1321225099038d5ae9` (CurlNoise2D). Коммит S1: `4867f199e87f89ead994b961d73eed438edab1d6`.
+
+**Разведка.**
+
+1. `SimulationWorld` заливает `SwarmPoints` и `SwarmPointCount` из `effect.SwarmPoints`, когда список не пуст (сборка около строки 271, кадр около строки 103). `LiveSwarmPointCount` (около строки 759) смотрит только на длину списка. Тип пасса не участвует. По типу `SwarmPointForcePass` упоминается в `SwarmPointValidator`, `SwarmPointForceTests`, `TeamClassicSteerValidatorTests` и в ассетах `Boids_hash_points`, `Boids_hash200k_points`. После N тот же пасс есть и в записанном `Boids_hash_2teams` (чужая правка пресета). Новому пассу отдельная регистрация не нужна: инспектор берёт его через `TypeCache`, буфер мира уже общий.
+2. `SwarmPointForceTests.cs` до S1 менялся только в `03e7cd2` и `521a98b`.
+3. Ядро `SwarmPointForce` содержит `f += (d / dist) * (a.z * prof);`. `SwarmPoints`, `SwarmPointCount` и `MinImage` видны ядру в конце файла.
+4. EditMode непосредственно перед кодом S1: 444 теста, прошло 434, упало 10 (шесть `SwarmPointForceTests` и четыре теста пресетов).
+
+**EditMode после S1:** 459 / 455 / 4. Шесть старых тестов точек зелёные на файле `521a98b^`. Пятнадцать новых `SwarmSpringForceTests` зелёные. `git diff 521a98b^ -- Assets/Tests/Editor/SwarmPointForceTests.cs` пуст.
+
+**Красные в конце:** `BoidsHashTwoTeamsPresetTests.Chain_ThreeHundredFrames_StaysFiniteInsideBox`, `BoidsHashTwoTeamsPresetTests.Preset_MatchesTwoTeams`, `Fluid2DDyeInjectPresetTests.Preset_MatchesDyeInjectComposition`, `Fluid2DDyeInjectVcPresetTests.Preset_MatchesDyeInjectVcComposition`.
+
+| Тест | Причина | Чьё расхождение |
+| --- | --- | --- |
+| `Preset_MatchesTwoTeams` | Ассет на диске против констант теста. Первое падение: `ParticleSize` 0,5 против 5. Дальше спавны по 32 000, веса 1/3/2 и 1/6/1, девять пассов, `maxNeighbors` 128, поле 30×30. Тест с `521a98b` ждёт радиусы 9, веса 0,5/3/2 и 0,75/6/1, ячейку 9, поле 10×10. Фабрика пишет старый рецепт (размер 0,5, по 1500, радиусы 3, веса 1,2/0,8/0,6, ячейка 3, поле 30×30) и совпадает с ассетом до N. | Ассет. Тест впереди и фабрики, и ассета до N. |
+| `Chain_ThreeHundredFrames_StaysFiniteInsideBox` | `HashCountsToFieldPass.Initialize`: поле `hashCount` 30×30, хэш при `MinCellSize` 9 получается 10×10. | Ассет: ячейку подняли, разрешение поля оставили. |
+| `Preset_MatchesDyeInjectComposition` | `RadiusScale` 1 против 1,5, дальше `DissipationRate` 0 против 0,05. Фабрика пишет 1 и 0. | Ассет. |
+| `Preset_MatchesDyeInjectVcComposition` | `RadiusScale` 1 против 1,5, дальше `DissipationRate` 0 против 0,1. Фабрика пишет 1 и 0. | Ассет. |
+
+**Отклонения.** Формула `SwarmPointForce` не менялась. `WarnPointData` по-прежнему называет только `Swarm Point Force`. Текст «больше одного» для двух пружин называет оба пасса, как в ТЗ. Записи «Swarm Point Force» в каталоге не было: добавлены обе. В коммиты S1 и S2 не входили чужие `.gitignore`, `CurlNoise2D.asset`, `DOC/MEASURE/nabuild-na/` и `DOC/last/todo-F6-default-maxn-128.md`. Полный прогон один раз оборвался падением редактора; повтор после перезапуска дал числа выше.

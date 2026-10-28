@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-10-15  
-**Итерация:** P9.1, классический хвост `TeamClassicSteer`, ADR-054. Пресет и Play не делались.  
+**Итерация:** S1, пружинный пасс `SwarmSpringForce` рядом с нормализованным `SwarmPointForce`, ADR-055. Пресет и Play не делались.  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  
@@ -13,6 +13,10 @@
 ## P9.1 — классический хвост (2026-10-28)
 
 `TeamClassicSteer` на `feature/classic-boids`: `inertialVelocity`, `TeamParams` 64 байта, коридор скорости команды. Пресет, сцена и Play не делались. EditMode до кода: 420 тестов, прошло 410, упало 10. После: 441, прошло 431, упало те же 10 (грязные ассеты и ожидания впереди кода). Подробности: [ADR-054](ADR/ADR-054-Classic-Boids-Tail.md) §8.
+
+## S1 — пружина точек (2026-10-29)
+
+`SwarmSpringForce` читает тот же список точек, что `SwarmPointForce`. Старое ядро остаётся нормализованным. EditMode до кода: 444 теста, прошло 434, упало 10. После: 459, прошло 455, упало 4 теста пресетов. Подробности: [ADR-055](ADR/ADR-055-Swarm-Spring-Force.md) §6.
 
 ## Замеры S10 недействительны (2026-10-14)
 

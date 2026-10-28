@@ -28,6 +28,8 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 | **teams** | Список команд на эффекте, максимум 8. Буфер читают сила соседей и курс. Цвет — `TeamProfile.Color`, его читает билборд |
 | **Boid Neighbor Force** | Сила соседей есть. Пресет `Boids_hash`. `walkMode` по умолчанию 1; режимы 0 и 2 заморожены (ADR-048). Режим 2 читает упакованную запись и откатывается на 1, если пакета в кадре нет, или на 0, если радиус больше ячейки. `-m3d_forcerep N` (1..16) повторяет выбранный кернел в скрэтч и не входит в `HasOverride`; `RepeatCount` остаётся 1 |
 | **Team Heading Steer** | Курс и скорость берутся из команды. Пресет `Boids_hash` |
+| **Swarm Point Force** | Точки редактора. Вес равен длине силы (направление нормализовано). Пресеты `Boids_hash_points`, `Boids_hash200k_points` |
+| **Swarm Spring Force** | Те же точки, вес это жёсткость: длина силы `расстояние · |weight| · профиль`. Вместе со `Swarm Point Force` нельзя: список один |
 | **Team Classic Steer** | Вместо `Team Heading Steer`, после силы соседей и `Swarm Point Force`. До пасса `velocity` — сумма сил, после — реальная скорость в коридоре команды (`minSpeed`, `maxSpeed`, `maxForce`, `forceGain`; старт 4 / 8 / 12 / 5, числа гипотезы до Play). Пресет ещё не создан |
 | **Hash Counts To Field** | Гистограмма ячеек хэша в скалярное поле `hashCount`. Пресет `Boids_hash`, меню `Tools/M3D/Create Boids Hash Effect` |
 
