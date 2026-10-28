@@ -37,10 +37,10 @@ public class TeamProfileTests
     }
 
     [Test]
-    public void Stride_Is48()
+    public void Stride_Is64()
     {
-        Assert.AreEqual(48, Marshal.SizeOf<TeamParams>());
-        Assert.AreEqual(48, TeamParams.Stride);
+        Assert.AreEqual(64, Marshal.SizeOf<TeamParams>());
+        Assert.AreEqual(64, TeamParams.Stride);
     }
 
     [Test]

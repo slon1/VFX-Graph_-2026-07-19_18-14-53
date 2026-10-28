@@ -4,6 +4,7 @@
 #pragma kernel BoidNeighborForceSortedPacked
 #pragma kernel BoidReadTeamParams
 #pragma kernel TeamHeadingSteer
+#pragma kernel TeamClassicSteer
 #pragma kernel SwarmPointForce
 
 #include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
@@ -15,6 +16,7 @@ struct TeamParams
     float4 Radii;
     float4 Weights;
     float4 Motion;
+    float4 Classic;
 };
 
 RWStructuredBuffer<float3> position;
@@ -683,4 +685,47 @@ void SwarmPointForce(uint3 id : SV_DispatchThreadID)
         f += (d / dist) * (a.z * prof);
     }
     velocity[id.x] += float3(f.x, 0, f.y);
+}
+
+RWStructuredBuffer<float3> inertialVelocity;
+
+float3 TeamClampLen(float3 v, float maxLen)
+{
+    float lenSq = dot(v, v);
+    return (lenSq > maxLen * maxLen && lenSq > 1e-12) ? v * (maxLen * rsqrt(lenSq)) : v;
+}
+
+[numthreads(THREADS, 1, 1)]
+void TeamClassicSteer(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount) return;
+
+    uint team = min(teamId[id.x], 7u);
+    float4 c = Teams[team].Classic;          // (minSpeed, maxSpeed, maxForce, forceGain)
+    float minSpeed = c.x;
+    float maxSpeed = c.y;
+    float maxForce = c.z;
+    float gain = c.w;
+
+    float3 h = heading[id.x];
+    h.y = 0.0;
+    h = UnitOr(h, float3(1, 0, 0));
+
+    float3 a = velocity[id.x] * gain;        // сумма сил кадра
+    a.y = 0.0;
+    if (maxForce > 0.0) a = TeamClampLen(a, maxForce);
+
+    float3 v = inertialVelocity[id.x];
+    if (dot(v, v) < 1e-12) v = h * (0.5 * (minSpeed + maxSpeed));   // старт и Rebuild
+    v += a * DeltaTime;
+    v.y = 0.0;
+
+    float speed = length(v);
+    float3 dir = UnitOr(v, h);
+    speed = clamp(speed, minSpeed, maxSpeed);
+    v = dir * speed;
+
+    heading[id.x] = dir;
+    inertialVelocity[id.x] = v;
+    velocity[id.x] = v;
 }

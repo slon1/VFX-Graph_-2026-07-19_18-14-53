@@ -496,6 +496,54 @@ public sealed class TeamHeadingSteerPass : ParticleKernelPass
 }
 
 /// <summary>
+/// Classic Reynolds tail (ADR-054). Force sum in velocity becomes acceleration.
+/// Speed is kept in inertialVelocity between frames and clamped to the team corridor.
+/// </summary>
+[Serializable]
+public sealed class TeamClassicSteerPass : ParticleKernelPass
+{
+    private static readonly AttributeId[] ReadHeadingVelocityTeamInertial =
+    {
+        BuiltinAttributes.Heading,
+        BuiltinAttributes.Velocity,
+        BuiltinAttributes.TeamId,
+        BuiltinAttributes.InertialVelocity,
+    };
+
+    private static readonly AttributeId[] WriteHeadingVelocityInertial =
+    {
+        BuiltinAttributes.Heading,
+        BuiltinAttributes.Velocity,
+        BuiltinAttributes.InertialVelocity,
+    };
+
+    private static readonly int TeamsId = Shader.PropertyToID("Teams");
+
+    public override string DisplayName => "Team Classic Steer";
+    public override PassCategory Category => PassCategory.Dynamics;
+    protected override string KernelName => "TeamClassicSteer";
+    public override IReadOnlyList<AttributeId> Reads => ReadHeadingVelocityTeamInertial;
+    public override IReadOnlyList<AttributeId> Writes => WriteHeadingVelocityInertial;
+
+    public override void Initialize(SimContext context)
+    {
+        if (context.Teams == null)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: Team Classic Steer requires a non-empty team list.");
+        }
+
+        base.Initialize(context);
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        BindBuffer(context, TeamsId, context.Teams);
+        SetFloat(context, SimShaderIds.DeltaTime, deltaTime);
+    }
+}
+
+/// <summary>
 /// Adds editor-placed attraction and repulsion to the force sum (ADR-049).
 /// No dt. Does not read teamId or the hash snapshot. Sits between neighbor force and heading steer.
 /// </summary>

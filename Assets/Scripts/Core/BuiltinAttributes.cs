@@ -13,6 +13,9 @@ public static class BuiltinAttributes
     /// <summary>Persistent unit heading for kinematic boids (ADR-012). Written by HeadingSteerPass.</summary>
     public static readonly AttributeId Heading = new AttributeId("heading", AttributeType.Float3, true);
 
+    /// <summary>Speed kept between frames for the classic tail (ADR-054). Written by TeamClassicSteerPass. Zero means uninitialized.</summary>
+    public static readonly AttributeId InertialVelocity = new AttributeId("inertialVelocity", AttributeType.Float3, true);
+
     public static readonly AttributeId Value = new AttributeId("value", AttributeType.Float1, true);
 
     /// <summary>Swarm membership (ADR-034). Zero when no source writes it.</summary>

@@ -22,6 +22,10 @@ public sealed class TeamProfile
     [SerializeField] private float cohesionWeight;
     [SerializeField] private float cruise;
     [SerializeField] private float turn;
+    [SerializeField] private float minSpeed = 4f;
+    [SerializeField] private float maxSpeed = 8f;
+    [SerializeField] private float maxForce = 12f;
+    [SerializeField] private float forceGain = 5f;
     [SerializeField] private Gradient color = new Gradient();
 
     public string Name
@@ -82,6 +86,30 @@ public sealed class TeamProfile
     {
         get => turn;
         set => turn = NonNegative(value, nameof(value));
+    }
+
+    public float MinSpeed
+    {
+        get => minSpeed;
+        set => minSpeed = NonNegative(value, nameof(value));
+    }
+
+    public float MaxSpeed
+    {
+        get => maxSpeed;
+        set => maxSpeed = NonNegative(value, nameof(value));
+    }
+
+    public float MaxForce
+    {
+        get => maxForce;
+        set => maxForce = NonNegative(value, nameof(value));
+    }
+
+    public float ForceGain
+    {
+        get => forceGain;
+        set => forceGain = NonNegative(value, nameof(value));
     }
 
     public Gradient Color
@@ -152,7 +180,7 @@ public sealed class SwarmPoint
 }
 
 /// <summary>
-/// GPU slot for one team. Three float4s, 48 bytes. Name and color stay on <see cref="TeamProfile"/>.
+/// GPU slot for one team. Four float4s, 64 bytes. Name and color stay on <see cref="TeamProfile"/>.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct TeamParams
@@ -160,8 +188,9 @@ public struct TeamParams
     public Vector4 Radii;
     public Vector4 Weights;
     public Vector4 Motion;
+    public Vector4 Classic;
 
-    public const int Stride = 48;
+    public const int Stride = 64;
 
     public static void Upload(GraphicsBuffer buffer, IReadOnlyList<TeamProfile> teams)
     {
@@ -217,6 +246,7 @@ public struct TeamParams
                     profile.CohesionWeight,
                     0f),
                 Motion = new Vector4(profile.Cruise, profile.Turn, 0f, 0f),
+                Classic = new Vector4(profile.MinSpeed, profile.MaxSpeed, profile.MaxForce, profile.ForceGain),
             };
         }
 

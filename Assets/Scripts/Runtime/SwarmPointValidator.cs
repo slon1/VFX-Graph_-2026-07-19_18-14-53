@@ -18,6 +18,7 @@ internal static class SwarmPointValidator
 
         int clearIndex = -1;
         int steerIndex = -1;
+        string steerLabel = null;
         int pointPasses = 0;
         int pointIndex = -1;
         bool wrap = false;
@@ -38,6 +39,13 @@ internal static class SwarmPointValidator
             if (pass is TeamHeadingSteerPass && steerIndex < 0)
             {
                 steerIndex = i;
+                steerLabel = "Team Heading Steer";
+            }
+
+            if (pass is TeamClassicSteerPass && steerIndex < 0)
+            {
+                steerIndex = i;
+                steerLabel = "Team Classic Steer";
             }
 
             if (pass is BuildSpatialHashPass hash && hash.Wrap)
@@ -74,7 +82,7 @@ internal static class SwarmPointValidator
             if (steerIndex >= 0 && pointIndex > steerIndex)
             {
                 warnings.Add(
-                    "SimulationWorld: Swarm Point Force stands after Team Heading Steer. " +
+                    "SimulationWorld: Swarm Point Force stands after " + steerLabel + ". " +
                     "The heading will not turn toward the point.");
             }
         }

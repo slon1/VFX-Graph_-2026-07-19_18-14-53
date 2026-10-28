@@ -150,6 +150,7 @@ internal static class SpatialHashValidator
         }
 
         IReadOnlyList<TeamProfile> teams = effect.Teams;
+        bool classicSteer = HasEnabled<TeamClassicSteerPass>(passes);
         if (teams.Count > TeamProfile.MaxTeams)
         {
             throw new InvalidOperationException(
@@ -172,6 +173,24 @@ internal static class SpatialHashValidator
             RequireNonNegative(profile.InterGroupSeparationMultiplier, "interGroupSeparationMultiplier");
             RequireNonNegative(profile.Cruise, "cruise");
             RequireNonNegative(profile.Turn, "turn");
+            RequireNonNegative(profile.MinSpeed, "minSpeed");
+            RequireNonNegative(profile.MaxSpeed, "maxSpeed");
+            RequireNonNegative(profile.MaxForce, "maxForce");
+            RequireNonNegative(profile.ForceGain, "forceGain");
+            if (classicSteer)
+            {
+                if (!(profile.MaxSpeed > 0f))
+                {
+                    throw new InvalidOperationException(
+                        "SimulationWorld: team " + i + " maxSpeed must be > 0.");
+                }
+
+                if (profile.MinSpeed > profile.MaxSpeed)
+                {
+                    throw new InvalidOperationException(
+                        "SimulationWorld: team " + i + " minSpeed exceeds maxSpeed.");
+                }
+            }
         }
 
         if (effect.ResolveSource() is SwarmSource swarm && swarm.Spawns != null)
@@ -209,6 +228,13 @@ internal static class SpatialHashValidator
             }
         }
 
+        if (HasEnabled<TeamHeadingSteerPass>(passes) && classicSteer)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: Team Heading Steer and Team Classic Steer are both enabled. " +
+                "Both write velocity and heading.");
+        }
+
         if (passes == null || teams.Count > 0)
         {
             return;
@@ -227,7 +253,31 @@ internal static class SpatialHashValidator
                 throw new InvalidOperationException(
                     "SimulationWorld: Team Heading Steer requires a non-empty team list.");
             }
+
+            if (passes[i] is TeamClassicSteerPass classic && classic.Enabled)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Team Classic Steer requires a non-empty team list.");
+            }
         }
+    }
+
+    private static bool HasEnabled<T>(IReadOnlyList<SimPass> passes) where T : SimPass
+    {
+        if (passes == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < passes.Count; i++)
+        {
+            if (passes[i] is T candidate && candidate.Enabled)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void RequireNonNegative(float value, string name)
