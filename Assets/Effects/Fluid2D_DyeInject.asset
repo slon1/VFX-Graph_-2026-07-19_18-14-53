@@ -216,7 +216,7 @@ MonoBehaviour:
         fieldName: dye
         injectRate: 60
         maxValue: 1
-        radiusScale: 1
+        radiusScale: 1.5
     - rid: 4319234002542919746
       type: {class: DivergenceFieldPass, ns: , asm: Assembly-CSharp}
       data:
@@ -263,6 +263,6 @@ MonoBehaviour:
         enabled: 1
         scalarField: dye
         velocityField: velocity
-        dissipationRate: 0
+        dissipationRate: 0.05
         reverse: 0
         wrapUv: 0

@@ -217,7 +217,7 @@ MonoBehaviour:
         fieldName: dye
         injectRate: 60
         maxValue: 1
-        radiusScale: 1
+        radiusScale: 1.5
     - rid: 4319234002542919757
       type: {class: VorticityConfinementPass, ns: , asm: Assembly-CSharp}
       data:
@@ -271,6 +271,6 @@ MonoBehaviour:
         enabled: 1
         scalarField: dye
         velocityField: velocity
-        dissipationRate: 0
+        dissipationRate: 0.1
         reverse: 0
         wrapUv: 0

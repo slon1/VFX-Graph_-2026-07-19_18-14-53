@@ -28,18 +28,18 @@ MonoBehaviour:
   swarmSource:
     spawns:
     - teamIndex: 0
-      count: 1500
+      count: 32000
       center: {x: -22, y: 0}
       radius: 12
       initialDirection: {x: 1, y: 0}
     - teamIndex: 1
-      count: 1500
+      count: 32000
       center: {x: 22, y: 0}
       radius: 12
       initialDirection: {x: -1, y: 0}
     seed: 1
     jitterDegrees: 0
-  simulationSpeed: 1
+  simulationSpeed: 2
   fields:
   - id:
       name: hashCount
@@ -56,6 +56,7 @@ MonoBehaviour:
   - rid: 5854237702274154596
   - rid: 5854237702274154597
   - rid: 5854237702274154598
+  - rid: 4319234161878499392
   - rid: 5854237702274154599
   - rid: 5854237702274154600
   - rid: 5854237702274154601
@@ -97,13 +98,13 @@ MonoBehaviour:
     hdrIntensity: 1
   teams:
   - name: RedBlue
-    separationRadius: 3
-    alignmentRadius: 3
-    cohesionRadius: 3
+    separationRadius: 9
+    alignmentRadius: 9
+    cohesionRadius: 9
     interGroupSeparationMultiplier: 4
-    separationWeight: 1.2
-    alignmentWeight: 0.8
-    cohesionWeight: 0.6
+    separationWeight: 1
+    alignmentWeight: 3
+    cohesionWeight: 2
     cruise: 6
     turn: 4
     color:
@@ -137,13 +138,13 @@ MonoBehaviour:
       m_NumColorKeys: 2
       m_NumAlphaKeys: 2
   - name: YellowGreen
-    separationRadius: 3
-    alignmentRadius: 3
-    cohesionRadius: 3
+    separationRadius: 9
+    alignmentRadius: 9
+    cohesionRadius: 9
     interGroupSeparationMultiplier: 4
-    separationWeight: 1.2
-    alignmentWeight: 0.8
-    cohesionWeight: 0.6
+    separationWeight: 1
+    alignmentWeight: 6
+    cohesionWeight: 1
     cruise: 6
     turn: 4
     color:
@@ -176,8 +177,13 @@ MonoBehaviour:
       m_ColorSpace: -1
       m_NumColorKeys: 2
       m_NumAlphaKeys: 2
-  particleRenderMode: 0
-  particleSize: 0.5
+  swarmPoints:
+  - positionXZ: {x: 0, y: 0}
+    weight: 10
+    radius: 0
+    edge: 0
+  particleRenderMode: 1
+  particleSize: 5
   particleColor: {r: 1, g: 1, b: 1, a: 1}
   particleGradient:
     serializedVersion: 2
@@ -210,23 +216,29 @@ MonoBehaviour:
     m_NumColorKeys: 4
     m_NumAlphaKeys: 2
   particleValueScale: 1
+  particleColorSource: 1
+  particleColorAxis: {x: 0, y: 0, z: 1}
   showVelocityFieldQuad: 0
   showDensityFieldQuad: 0
   references:
     version: 2
     RefIds:
+    - rid: 4319234161878499392
+      type: {class: SwarmPointForcePass, ns: , asm: Assembly-CSharp}
+      data:
+        enabled: 1
     - rid: 5854237702274154595
       type: {class: BuildSpatialHashPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         center: {x: 0, y: 0, z: 0}
         extents: {x: 45, y: 0, z: 45}
-        minCellSize: 3
+        minCellSize: 9
         wrap: 1
     - rid: 5854237702274154596
       type: {class: HashCountsToFieldPass, ns: , asm: Assembly-CSharp}
       data:
-        enabled: 1
+        enabled: 0
         fieldName: hashCount
     - rid: 5854237702274154597
       type: {class: ClearVelocityPass, ns: , asm: Assembly-CSharp}
@@ -236,8 +248,11 @@ MonoBehaviour:
       type: {class: BoidNeighborForcePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-        maxNeighbors: 48
+        maxNeighbors: 128
         countCapHits: 0
+        sumSeparation: 1
+        sameTeamCap: 1
+        walkMode: 1
     - rid: 5854237702274154599
       type: {class: TeamHeadingSteerPass, ns: , asm: Assembly-CSharp}
       data:
