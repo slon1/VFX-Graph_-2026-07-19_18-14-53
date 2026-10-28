@@ -6,6 +6,7 @@
 #pragma kernel TeamHeadingSteer
 #pragma kernel TeamClassicSteer
 #pragma kernel SwarmPointForce
+#pragma kernel SwarmSpringForce
 
 #include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
 
@@ -728,4 +729,25 @@ void TeamClassicSteer(uint3 id : SV_DispatchThreadID)
     heading[id.x] = dir;
     inertialVelocity[id.x] = v;
     velocity[id.x] = v;
+}
+
+[numthreads(THREADS, 1, 1)]
+void SwarmSpringForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount) return;
+    float2 x = position[id.x].xz;
+    float2 f = 0;
+    [loop] for (uint k = 0; k < SwarmPointCount; k++)
+    {
+        float4 a = SwarmPoints[2 * k];
+        float4 b = SwarmPoints[2 * k + 1];
+        float2 d = MinImage(a.xy - x);
+        float dist = length(d);
+        if (dist <= 1e-5) continue;
+        float prof = 1;
+        if (a.w > 0)
+            prof = (b.x > 0) ? 1 - smoothstep(a.w * (1 - b.x), a.w, dist) : (dist < a.w ? 1 : 0);
+        f += d * (a.z * prof);
+    }
+    velocity[id.x] += float3(f.x, 0, f.y);
 }

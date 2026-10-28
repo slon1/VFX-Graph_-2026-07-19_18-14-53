@@ -584,3 +584,45 @@ public sealed class SwarmPointForcePass : ParticleKernelPass
         }
     }
 }
+
+/// <summary>
+/// Spring form of the editor-placed point force (ADR-055). Same points and placement as
+/// <see cref="SwarmPointForcePass"/>. Weight is stiffness: force length is distance times weight times profile.
+/// </summary>
+[Serializable]
+public sealed class SwarmSpringForcePass : ParticleKernelPass
+{
+    private static readonly int SwarmPointsId = Shader.PropertyToID("SwarmPoints");
+    private static readonly int SwarmPointCountId = Shader.PropertyToID("SwarmPointCount");
+    private static readonly int HashWrapId = Shader.PropertyToID("HashWrap");
+
+    public override string DisplayName => "Swarm Spring Force";
+    public override PassCategory Category => PassCategory.Force;
+    protected override string KernelName => "SwarmSpringForce";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Position;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    protected override KernelHandle SelectKernel(SimContext context)
+    {
+        if (context == null || context.SwarmPoints == null || context.SwarmPointCount <= 0)
+        {
+            return default;
+        }
+
+        return base.SelectKernel(context);
+    }
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        BindBuffer(context, SwarmPointsId, context.SwarmPoints);
+        SetInt(context, SwarmPointCountId, context.SwarmPointCount);
+        if (context.SpatialHash != null)
+        {
+            context.SpatialHash.PushParams(context.Cmd, Kernel.Shader);
+        }
+        else
+        {
+            SetInt(context, HashWrapId, 0);
+        }
+    }
+}

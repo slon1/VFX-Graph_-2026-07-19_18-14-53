@@ -63,16 +63,16 @@ public class SwarmPointForceTests
     }
 
     [Test]
-    public void Weight_ScalesSpring_AndFlipsSign()
+    public void Weight_ScalesUnitDirection_AndFlipsSign()
     {
         Vector3[] position = { Vector3.zero };
         Vector3[] velocity = { Vector3.zero };
         Prepare(1);
         Vector3[] pull = Run(position, velocity, new[] { Point(new Vector2(3f, 0f), 0.6f, 0f, 0f) }, 0.2f, null);
-        AssertClose(pull[0], new Vector3(1.8f, 0f, 0f), UnitTolerance);
+        AssertClose(pull[0], new Vector3(0.6f, 0f, 0f), UnitTolerance);
 
         Vector3[] push = Run(position, velocity, new[] { Point(new Vector2(3f, 0f), -0.6f, 0f, 0f) }, 0.2f, null);
-        AssertClose(push[0], new Vector3(-1.8f, 0f, 0f), UnitTolerance);
+        AssertClose(push[0], new Vector3(-0.6f, 0f, 0f), UnitTolerance);
     }
 
     [Test]
@@ -84,24 +84,24 @@ public class SwarmPointForceTests
         Prepare(1);
         SpatialHashSet wrapped = Hash(new Vector3(8f, 0f, 8f), 2f, true);
         Vector3[] throughSeam = Run(position, velocity, new[] { point }, 0.1f, wrapped);
-        AssertClose(throughSeam[0], new Vector3(-1.2f, 0f, 0f), UnitTolerance);
+        AssertClose(throughSeam[0], new Vector3(-0.6f, 0f, 0f), UnitTolerance);
 
         SpatialHashSet open = Hash(new Vector3(8f, 0f, 8f), 2f, false);
         Vector3[] straight = Run(position, velocity, new[] { point }, 0.1f, open);
-        AssertClose(straight[0], new Vector3(8.4f, 0f, 0f), UnitTolerance);
+        AssertClose(straight[0], new Vector3(0.6f, 0f, 0f), UnitTolerance);
     }
 
     [Test]
     public void Profile_PlateauFalloffAndUnbounded()
     {
         Prepare(1);
-        AssertClose(ForceAt(4f, 10f, 0.5f)[0], new Vector3(2.4f, 0f, 0f), UnitTolerance);
-        AssertClose(ForceAt(7.5f, 10f, 0.5f)[0], new Vector3(2.25f, 0f, 0f), 1e-4f);
+        AssertClose(ForceAt(4f, 10f, 0.5f)[0], new Vector3(0.6f, 0f, 0f), UnitTolerance);
+        AssertClose(ForceAt(7.5f, 10f, 0.5f)[0], new Vector3(0.3f, 0f, 0f), 1e-5f);
         AssertClose(ForceAt(10f, 10f, 0.5f)[0], Vector3.zero, UnitTolerance);
         AssertClose(ForceAt(12f, 10f, 0.5f)[0], Vector3.zero, UnitTolerance);
-        AssertClose(ForceAt(9.9f, 10f, 0f)[0], new Vector3(5.94f, 0f, 0f), UnitTolerance);
+        AssertClose(ForceAt(9.9f, 10f, 0f)[0], new Vector3(0.6f, 0f, 0f), UnitTolerance);
         AssertClose(ForceAt(10.1f, 10f, 0f)[0], Vector3.zero, UnitTolerance);
-        AssertClose(ForceAt(1000f, 0f, 0f)[0], new Vector3(600f, 0f, 0f), UnitTolerance);
+        AssertClose(ForceAt(1000f, 0f, 0f)[0], new Vector3(0.6f, 0f, 0f), UnitTolerance);
     }
 
     [Test]
@@ -114,7 +114,7 @@ public class SwarmPointForceTests
             Point(new Vector2(0f, 4f), 0.6f, 0f, 0f),
         };
         Vector3[] summed = Run(new[] { Vector3.zero }, new[] { Vector3.zero }, two, 0.1f, null);
-        AssertClose(summed[0], new Vector3(1.8f, 0f, 2.4f), UnitTolerance);
+        AssertClose(summed[0], new Vector3(0.6f, 0f, 0.6f), UnitTolerance);
 
         SwarmPoint[] many = new SwarmPoint[17];
         for (int i = 0; i < many.Length; i++)
@@ -142,7 +142,7 @@ public class SwarmPointForceTests
         Vector3[] velocity = { new Vector3(1f, 2f, 3f) };
         Vector3[] result = Run(position, velocity, new[] { Point(new Vector2(0f, 0f), 0.6f, 0f, 0f) }, 0.3f, null);
         Assert.AreEqual(2f, result[0].y, UnitTolerance);
-        AssertClose(result[0], new Vector3(1f, 2f, 0.6f), UnitTolerance);
+        AssertClose(result[0], new Vector3(1f, 2f, 2.4f), UnitTolerance);
     }
 
     [Test]
@@ -155,7 +155,7 @@ public class SwarmPointForceTests
             new[] { Point(new Vector2(4f, 0f), 0.6f, 0f, 0f) },
             0.2f,
             null);
-        AssertClose(result[0], new Vector3(3.4f, 0f, 0f), UnitTolerance);
+        AssertClose(result[0], new Vector3(1.6f, 0f, 0f), UnitTolerance);
     }
 
     [Test]

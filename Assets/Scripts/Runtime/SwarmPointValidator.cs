@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Build-time warnings for <see cref="SwarmPointForcePass"/> (ADR-049).
+/// Build-time warnings for <see cref="SwarmPointForcePass"/> and <see cref="SwarmSpringForcePass"/> (ADR-049, ADR-055).
 /// Warnings only: a throw in <see cref="SimulationWorld"/> teardown would stop the world.
 /// </summary>
 internal static class SwarmPointValidator
@@ -21,6 +21,8 @@ internal static class SwarmPointValidator
         string steerLabel = null;
         int pointPasses = 0;
         int pointIndex = -1;
+        string pointLabel = null;
+        bool springSeen = false;
         bool wrap = false;
 
         for (int i = 0; i < passes.Count; i++)
@@ -53,21 +55,31 @@ internal static class SwarmPointValidator
                 wrap = true;
             }
 
-            if (pass is SwarmPointForcePass)
+            if (pass is SwarmPointForcePass || pass is SwarmSpringForcePass)
             {
                 pointPasses++;
                 if (pointIndex < 0)
                 {
                     pointIndex = i;
+                    pointLabel = pass is SwarmSpringForcePass
+                        ? "Swarm Spring Force"
+                        : "Swarm Point Force";
+                }
+
+                if (pass is SwarmSpringForcePass)
+                {
+                    springSeen = true;
                 }
             }
         }
 
         if (pointPasses > 1)
         {
-            warnings.Add(
-                "SimulationWorld: more than one Swarm Point Force pass. " +
-                "One pass applies every point; extra passes repeat the same sum.");
+            warnings.Add(springSeen
+                ? "SimulationWorld: more than one swarm point pass (Swarm Point Force and Swarm Spring Force apply the same point list). " +
+                  "Each pass applies every point; extra passes repeat the sum."
+                : "SimulationWorld: more than one Swarm Point Force pass. " +
+                  "One pass applies every point; extra passes repeat the same sum.");
         }
 
         if (pointIndex >= 0)
@@ -75,14 +87,14 @@ internal static class SwarmPointValidator
             if (clearIndex < 0 || pointIndex < clearIndex)
             {
                 warnings.Add(
-                    "SimulationWorld: Swarm Point Force stands before Clear Velocity. " +
+                    "SimulationWorld: " + pointLabel + " stands before Clear Velocity. " +
                     "Clear Velocity wipes the point contribution before the heading reads it.");
             }
 
             if (steerIndex >= 0 && pointIndex > steerIndex)
             {
                 warnings.Add(
-                    "SimulationWorld: Swarm Point Force stands after " + steerLabel + ". " +
+                    "SimulationWorld: " + pointLabel + " stands after " + steerLabel + ". " +
                     "The heading will not turn toward the point.");
             }
         }
