@@ -212,6 +212,54 @@ public sealed class NoiseForcePass : ParticleKernelPass
     }
 }
 
+/// <summary>
+/// 2D curl of scalar value noise on XZ. Writes velocity = curl * amplitude (no dt).
+/// Integrate moves the particle. Speed scrolls the noise along its time axis.
+/// </summary>
+[Serializable]
+public sealed class CurlNoise2DPass : ParticleKernelPass
+{
+    private static readonly int Curl2DScaleId = Shader.PropertyToID("Curl2DScale");
+    private static readonly int Curl2DAmplitudeId = Shader.PropertyToID("Curl2DAmplitude");
+    private static readonly int Curl2DSpeedId = Shader.PropertyToID("Curl2DSpeed");
+
+    [SerializeField, Min(0f)] private float scale = 0.15f;
+    [SerializeField] private float amplitude = 6f;
+    [SerializeField, Min(0f)] private float speed = 0.2f;
+
+    public float Scale
+    {
+        get => scale;
+        set => scale = value;
+    }
+
+    public float Amplitude
+    {
+        get => amplitude;
+        set => amplitude = value;
+    }
+
+    public float Speed
+    {
+        get => speed;
+        set => speed = value;
+    }
+
+    public override string DisplayName => "Curl Noise 2D";
+    public override PassCategory Category => PassCategory.Force;
+    protected override string KernelName => "CurlNoise2DForce";
+    public override IReadOnlyList<AttributeId> Reads => AttrSets.Position;
+    public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    protected override void SetParams(SimContext context, float deltaTime)
+    {
+        SetFloat(context, Curl2DScaleId, scale);
+        SetFloat(context, Curl2DAmplitudeId, amplitude);
+        SetFloat(context, Curl2DSpeedId, speed);
+        SetFloat(context, SimShaderIds.SimTime, context.Time);
+    }
+}
+
 /// <summary>Divergence-free swirling noise. The most expensive force (6 noise evals per particle).</summary>
 [Serializable]
 public sealed class CurlNoisePass : ParticleKernelPass

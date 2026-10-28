@@ -34,6 +34,8 @@ public static class M3DDemoTools
     private const string BoidsHashScene = "Assets/Scenes/Boids_Hash.unity";
     private const string BoidsHashTwoTeamsPath = EffectsFolder + "/Boids_hash_2teams.asset";
     private const string BoidsHashTwoTeamsScene = "Assets/Scenes/Boids_Hash_2Teams.unity";
+    private const string CurlNoise2DPath = EffectsFolder + "/CurlNoise2D.asset";
+    private const string CurlNoise2DScene = "Assets/Scenes/CurlNoise2D.unity";
 
     private static readonly string[] PassLibraryPaths =
     {
@@ -2242,6 +2244,121 @@ public static class M3DDemoTools
 
         EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
         GameObject host = new GameObject("M3D Boids Hash 2 Teams");
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    [MenuItem("Tools/M3D/Create Curl Noise 2D Effect")]
+    public static void CreateCurlNoise2DEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Curl Noise 2D scene cancelled; the asset was still written.");
+            CreateCurlNoise2DAsset(CurlNoise2DPath);
+            return;
+        }
+
+        CreateCurlNoise2DAssetAndScene();
+        Debug.Log("M3D: created CurlNoise2D asset and CurlNoise2D scene.");
+    }
+
+    /// <summary>Writes the asset and scene without the save-scene dialog.</summary>
+    public static void CreateCurlNoise2DAssetAndScene()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateCurlNoise2DAsset(CurlNoise2DPath);
+        CreateCurlNoise2DScene(CurlNoise2DScene, CurlNoise2DPath);
+    }
+
+    private static void CreateCurlNoise2DAsset(string path)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            1f,
+            new SimPass[]
+            {
+                new CurlNoise2DPass { Scale = 0.15f, Amplitude = 6f, Speed = 0.2f },
+                new IntegratePass(),
+                new BoxBoundsPass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(32f, 0f, 32f),
+                    Behaviour = BoundsBehaviour.Wrap,
+                },
+            });
+
+        SwarmSource swarm = (SwarmSource)asset.ResolveSource();
+        swarm.Seed = 1;
+        swarm.Spawns = new System.Collections.Generic.List<SwarmSource.Spawn>
+        {
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 0,
+                Count = 50000,
+                Center = Vector2.zero,
+                Radius = 30f,
+                InitialDirection = Vector2.right,
+            },
+        };
+        asset.SetTeams(new[]
+        {
+            new TeamProfile
+            {
+                Name = "Curl",
+                Color = DebugFieldQuadSlot.DefaultFireGradient(),
+            },
+        });
+
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("particleSize").floatValue = 0.2f;
+        so.FindProperty("particleValueScale").floatValue = 1f;
+        so.FindProperty("particleColorSource").enumValueIndex = (int)ParticleColorSource.Direction;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        SetField(asset, "particleGradient", DebugFieldQuadSlot.DefaultFireGradient());
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void CreateCurlNoise2DScene(string scenePath, string assetPath)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera != null)
+        {
+            camera.orthographic = true;
+            camera.orthographicSize = 36f;
+            camera.transform.SetPositionAndRotation(new Vector3(0f, 40f, 0f), Quaternion.Euler(90f, 0f, 0f));
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.05f, 0.05f, 0.06f, 1f);
+        }
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject("M3D Curl Noise 2D");
         SimulationWorld world = host.AddComponent<SimulationWorld>();
         SerializedObject worldSo = new SerializedObject(world);
         worldSo.FindProperty("effect").objectReferenceValue = asset;

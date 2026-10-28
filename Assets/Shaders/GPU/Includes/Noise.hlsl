@@ -57,6 +57,23 @@ float3 SignedNoise3(float3 p)
     return ValueNoise3(p) * 2.0 - 1.0;
 }
 
+// Scalar channel of the value noise, [0, 1].
+float ScalarNoise(float3 p)
+{
+    return ValueNoise3(p).x;
+}
+
+// 2D curl of a scalar potential. p.xy is the plane, p.z is the time axis.
+// v = (dψ/dy, −dψ/dx), finite difference in noise space. 4 evaluations.
+float2 CurlNoise2D(float3 p)
+{
+    const float e = 0.1;
+    const float inv2e = 1.0 / (2.0 * e);
+    float ddy = (ScalarNoise(p + float3(0.0, e, 0.0)) - ScalarNoise(p - float3(0.0, e, 0.0))) * inv2e;
+    float ddx = (ScalarNoise(p + float3(e, 0.0, 0.0)) - ScalarNoise(p - float3(e, 0.0, 0.0))) * inv2e;
+    return float2(ddy, -ddx);
+}
+
 // Divergence-free curl of the ValueNoise3 vector field (central differences).
 // Note: 6 noise evaluations — the most expensive primitive here.
 float3 CurlNoise(float3 p)

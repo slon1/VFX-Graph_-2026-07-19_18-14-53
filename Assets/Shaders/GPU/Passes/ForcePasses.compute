@@ -7,6 +7,7 @@
 #pragma kernel PointForce
 #pragma kernel NoiseForce
 #pragma kernel CurlNoiseForce
+#pragma kernel CurlNoise2DForce
 #pragma kernel TurbulenceForce
 #pragma kernel TouchImpulse
 
@@ -43,6 +44,10 @@ float NoiseSpeed;
 float CurlFrequency;
 float CurlAmplitude;
 float CurlSpeed;
+
+float Curl2DScale;
+float Curl2DAmplitude;
+float Curl2DSpeed;
 
 float TurbFrequency;
 float TurbAmplitude;
@@ -147,6 +152,21 @@ void CurlNoiseForce(uint3 id : SV_DispatchThreadID)
 
     float3 samplePoint = position[id.x] * CurlFrequency + TimeOffset(CurlSpeed);
     velocity[id.x] += CurlNoise(samplePoint) * (CurlAmplitude * DeltaTime);
+}
+
+// Plane XZ. Assigns velocity to the 2D curl; Integrate applies dt.
+[numthreads(THREADS, 1, 1)]
+void CurlNoise2DForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float3 pos = position[id.x];
+    float2 p = pos.xz * Curl2DScale;
+    float2 curl = CurlNoise2D(float3(p, SimTime * Curl2DSpeed));
+    velocity[id.x] = float3(curl.x, 0.0, curl.y) * Curl2DAmplitude;
 }
 
 [numthreads(THREADS, 1, 1)]
