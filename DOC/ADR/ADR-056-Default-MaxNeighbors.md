@@ -58,4 +58,4 @@
 
 Четвёрка P9.2 в [ADR-054](ADR-054-Classic-Boids-Tail.md) §8 и Techdebt 10s — это `Preset_MatchesTwoTeams`, цепочка двух команд и оба `Fluid2DDyeInject*`. Пятый относительно той записи — `Preset_IsSwarmCurlOnXZ`.
 
-Два дополнительных прогона этого теста на чистом worktree `6c2e2ba` (`a296855^`), 2026-10-29: оба упали. `Assert.AreEqual(3, passes.Count)` на закоммиченном `Assets/Effects/CurlNoise2D.asset` дал «Expected: 3, But was: 4». Падение стабильно. Тест и ассет не менялись.
+Два прогона на закоммиченном ассете, чистый worktree `6c2e2ba` (`a296855^`), 2026-10-29: оба упали. `Assert.AreEqual(3, passes.Count)` дал «Expected: 3, But was: 4». Четвёртый пасс в коммите — `SwarmPointForce`. В несохранённом `Assets/Effects/CurlNoise2D.asset` этого пасса нет: остаются `CurlNoise2D`, `Integrate` и `BoxBounds`, а параметры завитка стоят как в тесте (`scale` 0,15, `amplitude` 6, `speed` 0,2). Прогон на этом файле, 2026-10-29, прошёл. Тест не менялся. Несохранённый ассет в коммит не входил.

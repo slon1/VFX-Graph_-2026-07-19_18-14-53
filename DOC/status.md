@@ -16,7 +16,7 @@
 
 ## P9.2 — пресеты классического хвоста (2026-10-29)
 
-`Boids_hash_classic` повторяет рецепт `Boids_hash` с `TeamClassicSteer`. `Boids_hash_classic_points` добавляет нормализованный `SwarmPointForce` и три точки. Сцены `Boids_HashClassic` и `Boids_HashClassicPoints`. EditMode до кода: 459 тестов, прошло 455, упало 4. После: 467, прошло 463, упали те же 4. Подробности: [ADR-054](ADR/ADR-054-Classic-Boids-Tail.md) §8. Повтор `CurlNoise2DPassTests.Preset_IsSwarmCurlOnXZ` на чистом worktree `6c2e2ba` (`a296855^`), два прогона 2026-10-29: оба упали, число пассов ожидалось 3, получилось 4. Это пятое падение относительно той четвёрки. Тест и ассет не менялись.
+`Boids_hash_classic` повторяет рецепт `Boids_hash` с `TeamClassicSteer`. `Boids_hash_classic_points` добавляет нормализованный `SwarmPointForce` и три точки. Сцены `Boids_HashClassic` и `Boids_HashClassicPoints`. EditMode до кода: 459 тестов, прошло 455, упало 4. После: 467, прошло 463, упали те же 4. Подробности: [ADR-054](ADR/ADR-054-Classic-Boids-Tail.md) §8. `CurlNoise2DPassTests.Preset_IsSwarmCurlOnXZ` на закоммиченном ассете падает: пассов 4, тест ждёт 3, лишний пасс — `SwarmPointForce` (два прогона на `6c2e2ba`, 2026-10-29). В несохранённом `CurlNoise2D.asset` три пасса (`CurlNoise2D`, `Integrate`, `BoxBounds`) и параметры завитка как в тесте; прогон на этом файле прошёл. Тест не менялся, несохранённый ассет в коммит не входил.
 
 ## S1 — пружина точек (2026-10-29)
 
