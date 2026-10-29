@@ -155,8 +155,8 @@ inertialVelocity = v;  heading = dir;  velocity = v
 
 **Владельцу.**
 1. Какое избегание нужно первым: **статические круглые препятствия** (§2.4, рекомендую: дёшево, один пасс по образцу точек) или **избегание боидов другой команды** (сейчас только множитель separation; отдельный радиус бегства трогает замороженные обходы и бюджет S200)? Нужна ли для препятствий жёсткая страховка (`SphereCollider` после хвоста) или достаточно мягкой зоны?
-2. Подтвердить стартовые числа §2.5 (коридор скорости 4–8, `maxForce` 12, `forceGain` 5) или задать свои.
-3. Нужен ли замер S200 для P9.2 как условие «принято» (и с каким порогом против 40,59) или он только информационный, как записано.
+2. Подтвердить стартовые числа §2.5 (коридор скорости 4–8, `maxForce` 12, `forceGain` 5) или задать свои. **Закрыто 2026-10-28:** числа 4 / 8 / 12 / 5 подтверждены.
+3. Нужен ли замер S200 для P9.2 как условие «принято» (и с каким порогом против 40,59) или он только информационный, как записано. **Закрыто 2026-10-28:** замер только информационный, не условие «принято».
 
 **Grok (разведка в начале P9.1, ответом в сдаче, до кода).**
 1. Найти все места, где проверяется или перечисляется `TeamHeadingSteerPass` или тип пасса стаи (кроме `SpatialHashValidator` строка ~225 и `SwarmPointValidator` строка ~38; в `M3DDemoTools.cs` строки ~1995, ~2126), и перечислить, что ещё нужно научить `TeamClassicSteerPass` (в том числе `PerfArgs`, `FPSDisplay`, меню, тесты пресетов).
@@ -180,3 +180,38 @@ P9.1 сделан на ветке `feature/classic-boids` от головы `fea
 **EditMode.** До кода: 420 / 410 / 10. После коммита А: 441 / 431 / 10. Двадцать один новый тест прошёл. Десять старых отказов: `BoidsHashTwoTeamsPresetTests.Chain_ThreeHundredFrames_StaysFiniteInsideBox`, `Preset_MatchesTwoTeams`, `Fluid2DDyeInjectPresetTests.Preset_MatchesDyeInjectComposition`, `Fluid2DDyeInjectVcPresetTests.Preset_MatchesDyeInjectVcComposition`, и шесть `SwarmPointForceTests` (`AddsToExistingVelocity`, `Profile_PlateauFalloffAndUnbounded`, `Sum_AddsPoints_AndDropsTheSeventeenth`, `VerticalPosition_DoesNotChangeVelocityY`, `Weight_ScalesSpring_AndFlipsSign`, `Wrap_UsesShortestVector_WrapOffUsesStraightDifference`). Это грязные ассеты и ожидания впереди кода, не хвост. Единственная правка старого теста — `Stride_Is64` (оба ожидания 64).
 
 **Отклонения.** Формулу ядра не меняли. `DOC/architecture.md` размер `TeamParams` не описывает, раздел не добавлялся. Чужие грязные `Assets/Effects/Boids_hash_2teams.asset`, `Fluid2D_DyeInject.asset`, `Fluid2D_DyeInjectVC.asset` и неотслеживаемый `DOC/MEASURE/nabuild-na/` в коммиты не входили.
+
+### P9.2
+
+Пресеты и сцены на ветке `feature/classic-boids`. Голова до работы `69a6ed2fc7e88f076fb89c7c5b01d7f6b325e6b7`. Коммит 0 (ТЗ) — `e2dd1c7f30b47109a75e3c178a8306b2e6a4704e`. Коммит А (фабрика, два ассета, две сцены, тесты) — `cb32f1872904478b07ed0288ed8fb7819de7f7fa`. Документы — этот подраздел. Play не делался. Пункт §7.1 открыт до Play.
+
+**Решения владельца 2026-10-28.** Стартовые числа 4 / 8 / 12 / 5 подходят. Замер S200 только информационный. Для точек берётся нормализованный `Swarm Point Force`, пружина позже. Имя хоста в обеих новых сценах оставлено «M3D Boids Hash»: общий `CreateBoidsHashScene` не менялся.
+
+**Разведка.**
+
+1. EditMode до кода: 459 тестов, прошло 455, упало 4: `BoidsHashTwoTeamsPresetTests.Preset_MatchesTwoTeams`, `Chain_ThreeHundredFrames_StaysFiniteInsideBox`, `Fluid2DDyeInjectPresetTests.Preset_MatchesDyeInjectComposition`, `Fluid2DDyeInjectVcPresetTests.Preset_MatchesDyeInjectVcComposition`.
+2. `CreateBoidsHashScene(scenePath, assetPath)` и `EnsurePassLibrary` принимают новый путь. Правка не нужна. Камера, `SimulationWorld` и библиотека пассов те же, что у `Boids_Hash`.
+3. `EveryNeighborForcePreset_IsWalk1_AndFitsTheCell` сканирует все `EffectAsset` с `BoidNeighborForcePass`, списка имён нет. Новые пресеты проверяются им. `WalkMode` по умолчанию 1, радиусы 3 помещаются в ячейку при `MinCellSize` 3. Тест не менялся и прошёл.
+4. Других тестов, которые считают число ассетов в `Assets/Effects` или сцен в `Assets/Scenes`, нет.
+5. `Boids_hash_points` от рецепта `CreateBoidsHashAsset` отличается пассом `SwarmPointForce` и тремя точками. Спавн 3000, `Seed` 1, радиус 44, `particleSize` 0.5, `simulationSpeed` 1, `MinCellSize` 3, wrap, поле 30×30, `MaxNeighbors` 48, `CountCapHits` выключен, веса соседей 1.2 / 0.8 / 0.6. `particleColorSource` у точек записан как Direction (`1`); у `Boids_hash` поле в файле опущено, значение по умолчанию то же. Коридор 4 / 8 / 12 / 5 в старых ассетах не записан и берётся из значений по умолчанию `TeamProfile`. `classic_points` берёт рецепт `Boids_hash`, не ассет точек. Точки те же: `(−20, 15)` вес `0.6` радиус `10`; `(18, 20)` вес `1.5` радиус `10`; `(0, −22)` вес `−1.5` радиус `12`; край `0.25`.
+6. Точка — `new SwarmPoint` с `PositionXZ`, `Weight`, `Radius`, `Edge`. В эффект она попадает через `EffectAsset.SetSwarmPoints`.
+
+**EditMode.** После коммита А: 467 тестов, прошло 463, упали те же 4. Восемь новых тестов зелёные.
+
+**Метрики** (лог, без assert; доля у нижней границы — `|v| < 4 + 1e-3`, у верхней — `|v| > 8 − 1e-3`; расстояние до `(0, −22)` по тору периода 90).
+
+| Пресет | Кадр | Средняя скорость | Поляризация | Доля у 4 | Доля у 8 | Мин. расстояние | Ближе 6 | Ближе 9 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `Boids_hash` | 100 | 6.0000 | 0.1389 | 0 | 0 | — | — | — |
+| `Boids_hash` | 200 | 6.0000 | 0.2152 | 0 | 0 | — | — | — |
+| `Boids_hash` | 300 | 6.0000 | 0.2446 | 0 | 0 | — | — | — |
+| `classic` | 100 | 6.8266 | 0.0777 | 0.0673 | 0.4027 | — | — | — |
+| `classic` | 200 | 7.4768 | 0.1503 | 0.0277 | 0.6717 | — | — | — |
+| `classic` | 300 | 7.7461 | 0.2108 | 0.0140 | 0.7753 | — | — | — |
+| `classic_points` | 100 | 6.8664 | 0.0832 | 0.0780 | 0.4377 | 4.9823 | 0.0003 | 0.0067 |
+| `classic_points` | 200 | 7.3335 | 0.1529 | 0.0530 | 0.6487 | 6.3867 | 0 | 0.0080 |
+| `classic_points` | 300 | 7.6516 | 0.2208 | 0.0187 | 0.7253 | 3.3403 | 0.0040 | 0.0113 |
+
+К 300-му кадру классический хвост держит скорость у верхней границы коридора. У отталкивающей точки минимум 3.34, частицы заходят внутрь радиуса 6.
+
+**Отклонения P9.2.** `WalkMode` в новой фабрике не задаётся, как в `CreateBoidsHashAsset`; в ассете остаётся значение по умолчанию 1, тест состава это проверяет. `EditorBuildSettings` не менялся. Чужие `.gitignore`, `CurlNoise2D.asset`, `DOC/MEASURE/nabuild-na/` и `DOC/last/todo-F6-default-maxn-128.md` не входили. Нового долга разведка не нашла, `Techdebt.md` не менялся.

@@ -30,7 +30,7 @@ Source → ParticleSet + FieldSet → SimPass pipeline → Binders
 | **Team Heading Steer** | Курс и скорость берутся из команды. Пресет `Boids_hash` |
 | **Swarm Point Force** | Точки редактора. Вес равен длине силы (направление нормализовано). Пресеты `Boids_hash_points`, `Boids_hash200k_points` |
 | **Swarm Spring Force** | Те же точки, вес это жёсткость: длина силы `расстояние · |weight| · профиль`. Вместе со `Swarm Point Force` нельзя: список один |
-| **Team Classic Steer** | Вместо `Team Heading Steer`, после силы соседей и `Swarm Point Force`. До пасса `velocity` — сумма сил, после — реальная скорость в коридоре команды (`minSpeed`, `maxSpeed`, `maxForce`, `forceGain`; старт 4 / 8 / 12 / 5, числа гипотезы до Play). Пресет ещё не создан |
+| **Team Classic Steer** | Вместо `Team Heading Steer`, после силы соседей и `Swarm Point Force`. До пасса `velocity` — сумма сил, после — реальная скорость в коридоре команды (`minSpeed`, `maxSpeed`, `maxForce`, `forceGain`; старт 4 / 8 / 12 / 5). Пресеты `Boids_hash_classic`, `Boids_hash_classic_points` |
 | **Hash Counts To Field** | Гистограмма ячеек хэша в скалярное поле `hashCount`. Пресет `Boids_hash`, меню `Tools/M3D/Create Boids Hash Effect` |
 
 Builtins: `restPosition`, `position`, `velocity`, **`heading`**, `value`, `inertialVelocity` (скорость между кадрами классического хвоста; ноль значит «ещё не было шага»).  

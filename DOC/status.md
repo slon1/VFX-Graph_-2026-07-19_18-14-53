@@ -1,7 +1,7 @@
 # Status — M3D Framework (Milestone 2c.1)
 
 **Дата:** 2026-10-15  
-**Итерация:** S1, пружинный пасс `SwarmSpringForce` рядом с нормализованным `SwarmPointForce`, ADR-055. Пресет и Play не делались.  
+**Итерация:** P9.2, пресеты `Boids_hash_classic` и `Boids_hash_classic_points`, ADR-054. Play не делался.  
 **Тесты:** шесть старых красных EditMode закрыты. `FieldDebugQuadsBinder.Dispose` в Edit Mode зовёт `DestroyImmediate`. Счётчики билборда и квадов после полного прогона не растут.  
 **Проект:** Unity `6000.5.9f1` / URP / VFX Graph 17.x  
 **Сцена:** `Assets/Scenes/Test1.unity`, эффект `Physarum_Fluid`  
@@ -13,6 +13,10 @@
 ## P9.1 — классический хвост (2026-10-28)
 
 `TeamClassicSteer` на `feature/classic-boids`: `inertialVelocity`, `TeamParams` 64 байта, коридор скорости команды. Пресет, сцена и Play не делались. EditMode до кода: 420 тестов, прошло 410, упало 10. После: 441, прошло 431, упало те же 10 (грязные ассеты и ожидания впереди кода). Подробности: [ADR-054](ADR/ADR-054-Classic-Boids-Tail.md) §8.
+
+## P9.2 — пресеты классического хвоста (2026-10-29)
+
+`Boids_hash_classic` повторяет рецепт `Boids_hash` с `TeamClassicSteer`. `Boids_hash_classic_points` добавляет нормализованный `SwarmPointForce` и три точки. Сцены `Boids_HashClassic` и `Boids_HashClassicPoints`. EditMode до кода: 459 тестов, прошло 455, упало 4. После: 467, прошло 463, упали те же 4. Подробности: [ADR-054](ADR/ADR-054-Classic-Boids-Tail.md) §8.
 
 ## S1 — пружина точек (2026-10-29)
 

@@ -217,9 +217,9 @@
 | **Назначение** | Классический хвост (ADR-054). Стоит после силы соседей и `Swarm Point Force`, вместо `Team Heading Steer`. До пасса `velocity` — сумма сил кадра, после — реальная скорость. Скорость между кадрами лежит в `inertialVelocity`; ноль значит «ещё не было шага» |
 | **Библиотека / kernel** | `BoidsPasses` / `TeamClassicSteer` |
 | **Particles** | R: `heading`, `velocity`, `teamId`, `inertialVelocity`. W: `heading`, `velocity`, `inertialVelocity` |
-| **Параметры** | Слот `TeamParams.Classic`: `minSpeed`, `maxSpeed`, `maxForce`, `forceGain`. Стартовые числа 4 / 8 / 12 / 5 — гипотезы до Play (P9.2). `maxForce = 0` не обрезает. Вместе с `Team Heading Steer` валидатор не пускает: оба пишут `velocity` и `heading` |
+| **Параметры** | Слот `TeamParams.Classic`: `minSpeed`, `maxSpeed`, `maxForce`, `forceGain`. Стартовые числа 4 / 8 / 12 / 5 подтверждены, подбор в Play. `maxForce = 0` не обрезает. Вместе с `Team Heading Steer` валидатор не пускает: оба пишут `velocity` и `heading` |
 | **dt** | Да (приращение скорости; коридор скорости от `dt` не зависит) |
-| **Хорошо для** | Пресет ещё не создан. Хэш не нужен |
+| **Хорошо для** | Пресеты `Boids_hash_classic`, `Boids_hash_classic_points`. Хэш не нужен |
 
 ## Dynamics
 
