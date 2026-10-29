@@ -16,7 +16,7 @@
 
 ## P9.2 — пресеты классического хвоста (2026-10-29)
 
-`Boids_hash_classic` повторяет рецепт `Boids_hash` с `TeamClassicSteer`. `Boids_hash_classic_points` добавляет нормализованный `SwarmPointForce` и три точки. Сцены `Boids_HashClassic` и `Boids_HashClassicPoints`. EditMode до кода: 459 тестов, прошло 455, упало 4. После: 467, прошло 463, упали те же 4. Подробности: [ADR-054](ADR/ADR-054-Classic-Boids-Tail.md) §8.
+`Boids_hash_classic` повторяет рецепт `Boids_hash` с `TeamClassicSteer`. `Boids_hash_classic_points` добавляет нормализованный `SwarmPointForce` и три точки. Сцены `Boids_HashClassic` и `Boids_HashClassicPoints`. EditMode до кода: 459 тестов, прошло 455, упало 4. После: 467, прошло 463, упали те же 4. Подробности: [ADR-054](ADR/ADR-054-Classic-Boids-Tail.md) §8. Повтор `CurlNoise2DPassTests.Preset_IsSwarmCurlOnXZ` на чистом worktree `6c2e2ba` (`a296855^`), два прогона 2026-10-29: оба упали, число пассов ожидалось 3, получилось 4. Это пятое падение относительно той четвёрки. Тест и ассет не менялись.
 
 ## S1 — пружина точек (2026-10-29)
 
@@ -75,6 +75,8 @@ EditMode: R16-цепочка 128²/32, `A=h=0.25`, 8 периодов: afterChai
 Сборка `521a98b`, `dirty=0`. S200 и S100×4, сила без рендера, `walk` 1, `forcerep` 4 и 8. Цена одного обхода на S200: кап 48 по шести прогонам — 6,99 мс GPU, кап 128 — 18,92 мс (в 2,71 раза, крайние отношения 2,52–3,28, оценка 2,7 лежит внутри диапазона), кап 192 — 28,96 мс. На плотной стае `capfrac` около 0,998 даже при капе 192. Циклы опорных захватов: обход капа 48 — 23,60 на частицу, капа 192 — 99,90. Кадр без рендера при `forcerep` 1: 41,35 и 126,79. У капа 48 на vsync циклы поделены на `frameAvg` 16,72 мс, не на `gpuAvg` 14,76 мс. Пара `forcerep` 1 и 4 этого капа по `activeMHz` не сравнивается (расхождение 27% при допуске 5%), поэтому его `d` и `zeroCost_cyc` в вывод не входят. На капе 192 `d` 4,57%, `zeroCost_cyc` 13,68, обнуление скрэтча счётчиками учитывается. M2 по циклам режима «сила без рендера» не закрыта: кап 48 ниже полосы 45–58 на 3,7, кап 192 выше на 68,79. `walk` 2 не понадобился. Значение капа не выбрано. Отчёт: [`F5-report.md`](MEASURE/521a98b-a9d40c4d/F5-report.md).
 
 EditMode на чистом worktree головы `d52d092` (от `79cdb9f` этот коммит отличается только логами замеров): 420 тестов, прошло 413, упало 7 — `BoidsHashTwoTeamsPresetTests.Preset_MatchesTwoTeams`, `SwarmPointForceTests.AddsToExistingVelocity`, `Profile_PlateauFalloffAndUnbounded`, `Sum_AddsPoints_AndDropsTheSeventeenth`, `VerticalPosition_DoesNotChangeVelocityY`, `Weight_ScalesSpring_AndFlipsSign`, `Wrap_UsesShortestVector_WrapOffUsesStraightDifference`. Часть ожиданий в `BoidsHashTwoTeamsPresetTests` и `SwarmPointForceTests` идёт впереди кода по решению владельца (коммит `521a98b`). Тесты, шейдер и ассеты не менялись.
+
+Значение по умолчанию 128 для новых пресетов, старые на 48, [ADR-056](ADR/ADR-056-Default-MaxNeighbors.md) предварительный.
 
 ## F5.2 — Play капа (2026-10-23)
 
