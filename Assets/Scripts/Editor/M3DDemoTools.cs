@@ -32,6 +32,10 @@ public static class M3DDemoTools
     private const string HashProbe100kScene = "Assets/Scenes/HashProbe_100k.unity";
     private const string BoidsHashPath = EffectsFolder + "/Boids_hash.asset";
     private const string BoidsHashScene = "Assets/Scenes/Boids_Hash.unity";
+    private const string BoidsHashClassicPath = EffectsFolder + "/Boids_hash_classic.asset";
+    private const string BoidsHashClassicScene = "Assets/Scenes/Boids_HashClassic.unity";
+    private const string BoidsHashClassicPointsPath = EffectsFolder + "/Boids_hash_classic_points.asset";
+    private const string BoidsHashClassicPointsScene = "Assets/Scenes/Boids_HashClassicPoints.unity";
     private const string BoidsHashTwoTeamsPath = EffectsFolder + "/Boids_hash_2teams.asset";
     private const string BoidsHashTwoTeamsScene = "Assets/Scenes/Boids_Hash_2Teams.unity";
     private const string CurlNoise2DPath = EffectsFolder + "/CurlNoise2D.asset";
@@ -2071,6 +2075,171 @@ public static class M3DDemoTools
         worldSo.ApplyModifiedPropertiesWithoutUndo();
 
         EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    [MenuItem("Tools/M3D/Create Boids Hash Classic Effect")]
+    public static void CreateBoidsHashClassicEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashClassicAsset(BoidsHashClassicPath, false);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Boids Hash Classic scene cancelled; the asset was still written.");
+            return;
+        }
+
+        CreateBoidsHashScene(BoidsHashClassicScene, BoidsHashClassicPath);
+        Debug.Log("M3D: created Boids_hash_classic asset and Boids_HashClassic scene.");
+    }
+
+    [MenuItem("Tools/M3D/Create Boids Hash Classic Points Effect")]
+    public static void CreateBoidsHashClassicPointsEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashClassicAsset(BoidsHashClassicPointsPath, true);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Boids Hash Classic Points scene cancelled; the asset was still written.");
+            return;
+        }
+
+        CreateBoidsHashScene(BoidsHashClassicPointsScene, BoidsHashClassicPointsPath);
+        Debug.Log("M3D: created Boids_hash_classic_points asset and Boids_HashClassicPoints scene.");
+    }
+
+    private static void CreateBoidsHashClassicAsset(string path, bool withPoints)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        FieldDescriptor hashCount = FieldDescriptor.CreateDefault("hashCount", FieldSemantic.Scalar);
+        SetField(hashCount, "resolution", new Vector2Int(30, 30));
+        SetField(hashCount, "size", new Vector2(90f, 90f));
+        SetField(hashCount, "origin", new Vector3(0f, -1f, 0f));
+
+        DebugFieldQuadSlot hashQuad = DebugFieldQuadSlot.Density("hashCount");
+        hashQuad.colorScale = 0.05f;
+
+        int passCount = withPoints ? 9 : 8;
+        SimPass[] passes = new SimPass[passCount];
+        int index = 0;
+        passes[index++] = new BuildSpatialHashPass
+        {
+            Center = Vector3.zero,
+            Extents = new Vector3(45f, 0f, 45f),
+            MinCellSize = 3f,
+            Wrap = true,
+        };
+        passes[index++] = new HashCountsToFieldPass { FieldName = "hashCount" };
+        passes[index++] = new ClearVelocityPass();
+        passes[index++] = new BoidNeighborForcePass { MaxNeighbors = 48, CountCapHits = false };
+        if (withPoints)
+        {
+            passes[index++] = new SwarmPointForcePass();
+        }
+
+        passes[index++] = new TeamClassicSteerPass();
+        passes[index++] = new IntegratePass();
+        passes[index++] = new BoxBoundsPass
+        {
+            Center = Vector3.zero,
+            Extents = new Vector3(45f, 0f, 45f),
+            Behaviour = BoundsBehaviour.Wrap,
+        };
+        passes[index++] = new HeadingToValuePass();
+
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            1f,
+            passes,
+            new[] { hashCount },
+            new[] { hashQuad });
+
+        SwarmSource swarm = (SwarmSource)asset.ResolveSource();
+        swarm.Seed = 1;
+        swarm.Spawns = new System.Collections.Generic.List<SwarmSource.Spawn>
+        {
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 0,
+                Count = 3000,
+                Center = Vector2.zero,
+                Radius = 44f,
+                InitialDirection = Vector2.zero,
+            },
+        };
+        asset.SetTeams(new[]
+        {
+            new TeamProfile
+            {
+                Name = "Swarm",
+                SeparationRadius = 3f,
+                AlignmentRadius = 3f,
+                CohesionRadius = 3f,
+                InterGroupSeparationMultiplier = 4f,
+                SeparationWeight = 1.2f,
+                AlignmentWeight = 0.8f,
+                CohesionWeight = 0.6f,
+                Cruise = 6f,
+                Turn = 4f,
+                MinSpeed = 4f,
+                MaxSpeed = 8f,
+                MaxForce = 12f,
+                ForceGain = 5f,
+                Color = DebugFieldQuadSlot.DefaultFireGradient(),
+            },
+        });
+        if (withPoints)
+        {
+            asset.SetSwarmPoints(new[]
+            {
+                new SwarmPoint
+                {
+                    PositionXZ = new Vector2(-20f, 15f),
+                    Weight = 0.6f,
+                    Radius = 10f,
+                    Edge = 0.25f,
+                },
+                new SwarmPoint
+                {
+                    PositionXZ = new Vector2(18f, 20f),
+                    Weight = 1.5f,
+                    Radius = 10f,
+                    Edge = 0.25f,
+                },
+                new SwarmPoint
+                {
+                    PositionXZ = new Vector2(0f, -22f),
+                    Weight = -1.5f,
+                    Radius = 12f,
+                    Edge = 0.25f,
+                },
+            });
+        }
+
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("particleSize").floatValue = 0.5f;
+        so.FindProperty("particleValueScale").floatValue = 1f;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        SetField(asset, "particleGradient", DebugFieldQuadSlot.DefaultFireGradient());
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
     }
 
     [MenuItem("Tools/M3D/Create Boids Hash 2 Teams Effect")]
