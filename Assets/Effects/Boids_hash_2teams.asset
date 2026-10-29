@@ -248,7 +248,7 @@ MonoBehaviour:
       type: {class: BoidNeighborForcePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-        maxNeighbors: 128
+        maxNeighbors: 48
         countCapHits: 0
         sumSeparation: 1
         sameTeamCap: 1

@@ -31,7 +31,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     private static readonly int CapHitsId = Shader.PropertyToID("CapHits");
     private static readonly int VelocityId = Shader.PropertyToID("velocity");
 
-    [SerializeField] private int maxNeighbors = 48;
+    [SerializeField] private int maxNeighbors = 128;
     [SerializeField] private bool countCapHits;
 
     // Default 1. Modes 0 and 2 are frozen (ADR-048).
