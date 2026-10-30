@@ -251,6 +251,66 @@ public class BoidNeighborForceVelocityAlignTests
     }
 
     [Test]
+    public void ZeroParticles_ExecuteDoesNotDispatch()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        ComputeShader hashShader = AssetDatabase.LoadAssetAtPath<ComputeShader>(HashPath);
+        ComputeShader boids = AssetDatabase.LoadAssetAtPath<ComputeShader>(BoidPath);
+        Assert.IsNotNull(hashShader);
+        Assert.IsNotNull(boids);
+        ParticleSet particles = new ParticleSet();
+        FieldSet fields = new FieldSet();
+        GraphicsBuffer teams = null;
+        CommandBuffer cmd = null;
+        BuildSpatialHashPass hash = new BuildSpatialHashPass
+        {
+            Extents = new Vector3(8f, 0f, 8f),
+            MinCellSize = 2f,
+            Wrap = false,
+        };
+        BoidNeighborForcePass force = new BoidNeighborForcePass { AlignFromVelocity = true };
+        try
+        {
+            particles.EnsureCapacity(0);
+            teams = new GraphicsBuffer(GraphicsBuffer.Target.Structured, TeamProfile.MaxTeams, TeamParams.Stride);
+            teams.SetData(OneTeam(1f, 1f, 1f, 0f, 0.5f, 0f, 8f));
+            cmd = new CommandBuffer { name = "VelocityAlignZero" };
+            SimContext context = new SimContext(particles, fields, new[] { hashShader, boids }, null);
+            context.Cmd = cmd;
+            context.Teams = teams;
+            hash.Initialize(context);
+            force.Initialize(context);
+            Assert.DoesNotThrow(() => hash.Execute(context, 0f));
+            Assert.DoesNotThrow(() => force.Execute(context, 0f));
+            Assert.IsFalse(hash.LastExecuteDispatched);
+            Assert.IsFalse(force.LastExecuteDispatched);
+        }
+        finally
+        {
+            force.Dispose();
+            hash.Dispose();
+            cmd?.Release();
+            teams?.Release();
+            particles.Dispose();
+            fields.Dispose();
+        }
+    }
+
+    [Test]
+    public void Execute_MissingVelocitySnapshot_ThrowsWhenParticlesExist()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        using (Gpu gpu = new Gpu(
+            new[] { Vector3.zero }, new[] { Vector3.right }, new[] { Vector3.right }, new[] { 0u },
+            OneTeam(1f, 1f, 1f, 0f, 0.5f, 0f, 8f), false, new Vector3(8f, 0f, 8f), 2f, 0))
+        {
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+                () => gpu.Force.Execute(gpu.Context, 0f));
+            StringAssert.Contains("velocity snapshot", exception.Message);
+        }
+    }
+
+    [Test]
     public void Execute_FlagWithoutKernel_Throws()
     {
         Assume.That(SystemInfo.supportsComputeShaders);

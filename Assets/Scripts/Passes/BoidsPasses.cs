@@ -333,7 +333,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
                 "Boid Neighbor Force: AlignFromVelocity cannot run when the neighbor radius exceeds the hash cell.");
         }
 
-        if (spatialHash == null || !spatialHash.VelocityWritten)
+        if ((spatialHash == null || !spatialHash.VelocityWritten) && context.Particles.Count > 0)
         {
             throw new InvalidOperationException(
                 "Boid Neighbor Force: AlignFromVelocity requires the velocity snapshot written by Build Spatial Hash.");
