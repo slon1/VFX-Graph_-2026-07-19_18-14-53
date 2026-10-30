@@ -176,9 +176,9 @@
 | | |
 |--|--|
 | **Назначение** | Сила соседей по снимку хэша: separation, alignment, cohesion прибавляются к `velocity`. Соседей за пределами 3×3 ячеек не ищет. Курс из команды даёт `Team Heading Steer` |
-| **Библиотека / kernel** | `BoidsPasses` / `BoidNeighborForce` (`walkMode` 0), `BoidNeighborForceSorted` (`walkMode` 1), `BoidNeighborForceSortedPacked` (`walkMode` 2, если в этом кадре записан пакет; иначе откат на 1, при радиусе больше ячейки на 0) |
-| **Particles** | R: `position`, `teamId`. W: `velocity` (`+=`) |
-| **Параметры** | `maxNeighbors` (по умолчанию 128 для нового пасса; 12 существующих ассетов хранят 48; 0 = без капа), `countCapHits` (выкл.), `walkMode` (по умолчанию 1; режимы 0 и 2 заморожены (ADR-048); допустимо 0..2; режим 2 требует пакет этого кадра), `ForceRepeatCount` (1, зажим 1..16). Повтор не переопределяет `RepeatCount`: мир тогда прибавил бы силу к `velocity` столько раз. Повторы 2..R пишут в скрэтч `float3[N]` через командный буфер, `CountCapHits` на них 0. Аргумент `-m3d_forcerep` |
+| **Библиотека / kernel** | `BoidsPasses` / `BoidNeighborForce` (`walkMode` 0), `BoidNeighborForceSorted` (`walkMode` 1), `BoidNeighborForceSortedPacked` (`walkMode` 2, если в этом кадре записан пакет; иначе откат на 1, при радиусе больше ячейки на 0), `BoidNeighborForceSortedVel` (флаг `AlignFromVelocity`) |
+| **Particles** | R: `position`, `teamId`; при `AlignFromVelocity` ещё `inertialVelocity`. W: `velocity` (`+=`) |
+| **Параметры** | `maxNeighbors` (по умолчанию 128 для нового пасса; 12 существующих ассетов хранят 48; 0 = без капа), `countCapHits` (выкл.), `walkMode` (по умолчанию 1; режимы 0 и 2 заморожены (ADR-048); допустимо 0..2; режим 2 требует пакет этого кадра), `AlignFromVelocity` (выкл.). Включённый флаг требует `WalkMode` 1, включённый `Team Classic Steer` и снимок `HashScatterVelocity` в этом кадре. Alignment тогда `((Σ v_j) / alignN − v_i) / maxSpeed · wAlign`, `maxSpeed` это `Classic.y`. Нормировки нет. Нет соседей в радиусе — вклад alignment нулевой. Радиус больше ячейки, нет ядра или нет снимка — `InvalidOperationException`, без отката на курс и на walk 0. `ForceRepeatCount` (1, зажим 1..16). Повтор не переопределяет `RepeatCount`: мир тогда прибавил бы силу к `velocity` столько раз. Повторы 2..R пишут в скрэтч `float3[N]` через командный буфер, `CountCapHits` на них 0. Аргумент `-m3d_forcerep` |
 | **dt** | Нет |
 | **Хорошо для** | После `Build Spatial Hash`. В меню пасса нет. Старые доли пропущенных vsync на S10 (100 000, 1520×720, 0% / 19,9% / 48,3% при nn32 / 48 / 64) сняты в режиме энергосбережения и базой не являются (ADR-040 errata 6). Кап на десктопе срабатывает почти у всех частиц. Линейность и миллисекунды не доказаны (errata 1 и 4) |
 
@@ -638,10 +638,10 @@
 ### Build Spatial Hash
 | | |
 |--|--|
-| **Назначение** | Сетка XZ и снимок `position` / `heading` / `teamId`, отсортированный по ячейке. Снимок читает `Hash Counts To Field` |
+| **Назначение** | Сетка XZ и снимок `position` / `heading` / `teamId`, отсортированный по ячейке. По запросу потребителя (`VelocityRequested`) в `SortedDirections` пишется `inertialVelocity.xz`, а не курс. Снимок читает `Hash Counts To Field` |
 | **Категория** | Emit |
-| **Библиотека** | `SpatialHashPasses.compute`: `HashClear`, `HashCount`, `HashScanBlocks`, `HashScanBlockSums`, `HashAddOffsets`, `HashScatter` |
-| **Particles** | R: `position`, `heading`, `teamId`. Не пишет атрибуты |
+| **Библиотека** | `SpatialHashPasses.compute`: `HashClear`, `HashCount`, `HashScanBlocks`, `HashScanBlockSums`, `HashAddOffsets`, `HashScatter`, `HashScatterPacked`, `HashScatterVelocity` |
+| **Particles** | R: `position`, `heading`, `teamId`; при запросе снимка скорости ещё `inertialVelocity`. Не пишет атрибуты |
 | **dt** | Нет |
 | **Инварианты** | Один включённый билдер на эффект. `wrap` требует `BoxBounds` Wrap с теми же center/extents по XZ (допуск 1e-3) и не меньше 3 ячеек на ось. Без wrap и без `BoxBounds` — предупреждение: частицы могут сгрудиться в крайних ячейках. Порядок внутри ячейки недетерминирован |
 | **Пробник** | `HashProbe_30k` / `HashProbe_100k`: Build Spatial Hash → ClearVelocity → HeadingSteer → Integrate → BoxBounds Wrap `(16,0,16)`. Сетка 16×16 |

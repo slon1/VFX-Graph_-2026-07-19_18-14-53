@@ -1,6 +1,6 @@
 # ADR-057: alignment по скорости соседей (`AlignFromVelocity`) для классического хвоста
 
-**Статус:** предложен 2026-10-30. Решения владельца 2026-10-30: в P9.4 берётся только alignment по скорости; сумма separation и отталкивание чужой команды остаются отложенными; нормировка `(средняя скорость − своя) / maxSpeed · wAlign`; пресет только на 3000 частиц. Раздел «Результат» заполняет Grok по итогам ТЗ.
+**Статус:** код P9.4.1 на ветке 2026-10-30, ждёт ревью. Решения владельца 2026-10-30: в P9.4 берётся только alignment по скорости; сумма separation и отталкивание чужой команды остаются отложенными; нормировка `(средняя скорость − своя) / maxSpeed · wAlign`; пресет только на 3000 частиц. Пресет не делался.
 **Дата:** 2026-10-30.
 **Контекст:** M3D Framework, ветка `experiment/align-from-velocity` (от `feature/classic-boids` после P9). Связано с [ADR-054](ADR-054-Classic-Boids-Tail.md), [ADR-048](ADR-048-Default-Walk-Mode.md), [ADR-053](ADR-053-Sum-Separation.md), [ADR-047](ADR-047-Sorted-Order-Neighbor-Walk.md).
 
@@ -91,4 +91,26 @@ align = ((Σ v_j) / alignN − v_i) / maxSpeed[team_i] · wAlign[team_i]
 
 ## 7. Результат
 
-Заполняется после выполнения ТЗ.
+Голова `feature/classic-boids` перед веткой: `4bd80030e9f1e573d170b9a597d35d90c37972d8`. Коммит 0 `cef61ad5eb18d6c689b6a79acbb77fd298c021df`, А1 `2263ae75c21e5b93f8c1888b02f53f343f829b2c`, А2 `7b1ac8f69602b5337921c3849dda7a215753aa9d`. Хеш коммита документов в этом разделе не записан: он появляется после коммита.
+
+### Разведка
+
+1. EditMode до кода: 469 тестов, прошло 465, упало 4. Красные: `BoidsHashTwoTeamsPresetTests.Preset_MatchesTwoTeams`, `BoidsHashTwoTeamsPresetTests.Chain_ThreeHundredFrames_StaysFiniteInsideBox`, `Fluid2DDyeInjectPresetTests.Preset_MatchesDyeInjectComposition`, `Fluid2DDyeInjectVcPresetTests.Preset_MatchesDyeInjectVcComposition`.
+2. `PackedRequested` выставляет `BoidNeighborForcePass`, когда `WalkMode == 2` (сеттер и `Initialize`). `PackedWritten` сбрасывается в начале каждого `BuildSpatialHashPass.Execute` и становится истиной только после диспатча `HashScatterPacked`. `VelocityRequested` выставляет сеттер `AlignFromVelocity`, если хэш уже есть, и `Initialize` пасса. `VelocityWritten` сбрасывается в том же начале `Execute` и становится истиной только после диспатча `HashScatterVelocity`. Оба запроса сразу и запрос без ядра бросают `InvalidOperationException`. Запасного scatter нет.
+3. `ParticleSet.Get` бросает `KeyNotFoundException`, если атрибута нет. `SimulationWorld` регистрирует `Reads`/`Writes` всех пассов и обнуляет новый буфер. `InertialVelocity` в `Reads` при включённом флаге достаточно, чтобы мир выделил и обнулил скорость даже без `TeamClassicSteerPass`.
+4. Правила «обход силы стоит до хвоста» нет ни для `TeamHeadingSteerPass`, ни для `TeamClassicSteerPass`. Новое правило порядка не вводилось. Валидатор по-прежнему требует, чтобы потребитель хэша стоял после билдера, и запрещает оба хвоста сразу.
+5. Выключенный флаг возвращает прежний массив `ReadPositionTeam`. Диапазон `WalkMode` не менялся. Существующие проверки (`BoidNeighborForceDefaultsTests`, `BoidNeighborForceRepeatTests`, `BoidsHashPresetsWalkDefaultTests`, отражение имён ядер, `SelectKernel`/`SetParams`) остались зелёными без правки ожиданий.
+6. `ParticleKernelPass.Execute` вызывает `SelectKernel`, при невалидном ядре выходит, при нуле частиц выходит до диспатча. `SelectKernel` при нуле частиц выполняется.
+7. `EveryNeighborForcePreset_IsWalk1_AndFitsTheCell` и `WalkMode_RejectsOutOfRange` прошли без правки.
+
+### EditMode
+
+После А1: 472 / 468 / 4. После А2: 486 / 482 / 4. Красные те же четыре. Новые тесты: `BuildSpatialHashVelocityTests` (снимок, сброс `VelocityWritten`, отсутствие ядра, оба флага) и `BoidNeighborForceVelocityAlignTests` (оракул на 30 сидах, шов, плотный кап при `wAlign = 0`, равные скорости, пример §2.1, нет соседей, независимость от курса, чужая команда, контракт, валидатор, двухкадровая цепочка).
+
+### Отклонения
+
+- Ядра в рабочем шейдере не убрать отдельным ассетом: список коммита его не разрешает. Тест отсутствия ядра после `Initialize` обнуляет приватный хэндл отражением. `Execute` бросает «velocity alignment kernel not found». `Initialize` бросает то же, если поиск ядра не удался.
+- `RadiusBlocksSortedWalk` перед исключением всё ещё пишет прежнее предупреждение «executing walk 0». Отката на walk 0 нет: `SelectKernel` бросает `InvalidOperationException`.
+- Геометрический оракул не сходится с обходом, если частица стоит ровно на верхней границе тора: хэш кладёт её в первую ячейку, а в снимке остаётся координата на период дальше, и сдвиг той же ячейки равен нулю. Случайные сиды держат частицы внутри сетки. Шов проверен фикстурой отсортированного обхода, она с оракулом сходится.
+- Плотный кап сравнивается с walk 1 при `wAlign = 0` (допуск 1e-6), а не с геометрическим оракулом: порядок слотов задаёт `InterlockedAdd`. Без капа, включая 30 сидов, сравнение идёт с оракулом.
+- Если после `Initialize` `WalkMode` уходит с 1, `SelectKernel` тоже бросает, а не переходит на alignment по курсу.
