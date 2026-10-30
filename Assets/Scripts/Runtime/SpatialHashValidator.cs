@@ -235,6 +235,27 @@ internal static class SpatialHashValidator
                 "Both write velocity and heading.");
         }
 
+        if (passes != null)
+        {
+            for (int i = 0; i < passes.Count; i++)
+            {
+                if (passes[i] is BoidNeighborForcePass force && force.Enabled && force.AlignFromVelocity)
+                {
+                    if (!classicSteer)
+                    {
+                        throw new InvalidOperationException(
+                            "SimulationWorld: Boid Neighbor Force AlignFromVelocity requires an enabled Team Classic Steer pass.");
+                    }
+
+                    if (force.WalkMode != 1)
+                    {
+                        throw new InvalidOperationException(
+                            "SimulationWorld: Boid Neighbor Force AlignFromVelocity requires WalkMode 1.");
+                    }
+                }
+            }
+        }
+
         if (passes == null || teams.Count > 0)
         {
             return;

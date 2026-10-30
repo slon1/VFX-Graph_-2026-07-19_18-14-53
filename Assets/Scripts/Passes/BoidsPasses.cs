@@ -18,6 +18,13 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     private static readonly AttributeId[] ReadPositionTeam =
         { BuiltinAttributes.Position, BuiltinAttributes.TeamId };
 
+    private static readonly AttributeId[] ReadPositionTeamVelocity =
+    {
+        BuiltinAttributes.Position,
+        BuiltinAttributes.TeamId,
+        BuiltinAttributes.InertialVelocity,
+    };
+
     private static readonly int TeamsId = Shader.PropertyToID("Teams");
     private static readonly int SortedPositionsId = Shader.PropertyToID("SortedPositions");
     private static readonly int SortedDirectionsId = Shader.PropertyToID("SortedDirections");
@@ -36,6 +43,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
 
     // Default 1. Modes 0 and 2 are frozen (ADR-048).
     [SerializeField] private int walkMode = 1;
+    [SerializeField] private bool alignFromVelocity;
 
     // Diagnostic only. Not RepeatCount: the world would add the force to velocity that many times.
     private int forceRepeatCount = 1;
@@ -49,6 +57,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     private GraphicsBuffer capCounter;
     private KernelHandle sortedKernel;
     private KernelHandle packedKernel;
+    private KernelHandle velocityKernel;
     private SpatialHashSet spatialHash;
     private int generation;
     private int inflight;
@@ -57,6 +66,7 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     private bool packedMissingWarned;
     private bool packedKernelMissingWarned;
     private int effectiveWalkMode;
+    private bool effectiveAlignFromVelocity;
     private bool radiusWarned;
     private float warnedRadius;
 
@@ -93,8 +103,31 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         }
     }
 
+    /// <summary>When set, the sorted walk aligns to neighbor speed instead of heading (ADR-057).</summary>
+    public bool AlignFromVelocity
+    {
+        get => alignFromVelocity;
+        set
+        {
+            if (value && walkMode != 1)
+            {
+                throw new InvalidOperationException(
+                    "Boid Neighbor Force: AlignFromVelocity requires WalkMode 1.");
+            }
+
+            alignFromVelocity = value;
+            if (spatialHash != null)
+            {
+                spatialHash.VelocityRequested = value;
+            }
+        }
+    }
+
     /// <summary>Walk that the last <see cref="SelectKernel"/> actually ran: 0, 1, or 2.</summary>
     public int EffectiveWalkMode => effectiveWalkMode;
+
+    /// <summary>True when the last <see cref="SelectKernel"/> selected the velocity-alignment kernel.</summary>
+    internal bool EffectiveAlignFromVelocity => effectiveAlignFromVelocity;
 
     public bool CountCapHits
     {
@@ -141,7 +174,8 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
     public override string DisplayName => "Boid Neighbor Force";
     public override PassCategory Category => PassCategory.Force;
     protected override string KernelName => "BoidNeighborForce";
-    public override IReadOnlyList<AttributeId> Reads => ReadPositionTeam;
+    public override IReadOnlyList<AttributeId> Reads =>
+        alignFromVelocity ? ReadPositionTeamVelocity : ReadPositionTeam;
     public override IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
 
     public override void Initialize(SimContext context)
@@ -161,8 +195,21 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         base.Initialize(context);
         spatialHash = context.SpatialHash;
         spatialHash.PackedRequested = walkMode == 2;
+        spatialHash.VelocityRequested = alignFromVelocity;
         sortedKernel = context.FindKernel("BoidNeighborForceSorted");
         packedKernel = FindPackedKernel(context);
+        velocityKernel = FindVelocityKernel(context);
+        if (alignFromVelocity && walkMode != 1)
+        {
+            throw new InvalidOperationException(
+                "Boid Neighbor Force: AlignFromVelocity requires WalkMode 1.");
+        }
+
+        if (alignFromVelocity && !velocityKernel.IsValid)
+        {
+            throw new InvalidOperationException(
+                "Boid Neighbor Force: velocity alignment kernel not found.");
+        }
         if (capCounter != null)
         {
             capCounter.Release();
@@ -221,7 +268,8 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
             BindBuffer(context, SortedPositionsId, hash.SortedPositions);
             BindBuffer(context, SortedDirectionsId, hash.SortedDirections);
             BindBuffer(context, SortedTeamsId, hash.SortedTeams);
-            if (Kernel.Shader == sortedKernel.Shader && Kernel.Index == sortedKernel.Index)
+            if ((Kernel.Shader == sortedKernel.Shader && Kernel.Index == sortedKernel.Index) ||
+                (velocityKernel.IsValid && Kernel.Shader == velocityKernel.Shader && Kernel.Index == velocityKernel.Index))
             {
                 BindBuffer(context, SortedIndicesId, hash.SortedIndices);
             }
@@ -240,6 +288,12 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
 
     protected override KernelHandle SelectKernel(SimContext context)
     {
+        if (alignFromVelocity)
+        {
+            return SelectVelocityKernel(context);
+        }
+
+        effectiveAlignFromVelocity = false;
         bool radiusBlocks = RadiusBlocksSortedWalk(context);
         bool packedWritten = spatialHash != null && spatialHash.PackedWritten;
         NotePackedFallback(packedKernel.IsValid, radiusBlocks, packedWritten);
@@ -257,6 +311,37 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
 
         effectiveWalkMode = 0;
         return base.SelectKernel(context);
+    }
+
+    private KernelHandle SelectVelocityKernel(SimContext context)
+    {
+        if (!velocityKernel.IsValid)
+        {
+            throw new InvalidOperationException(
+                "Boid Neighbor Force: velocity alignment kernel not found.");
+        }
+
+        if (walkMode != 1)
+        {
+            throw new InvalidOperationException(
+                "Boid Neighbor Force: AlignFromVelocity requires WalkMode 1.");
+        }
+
+        if (RadiusBlocksSortedWalk(context))
+        {
+            throw new InvalidOperationException(
+                "Boid Neighbor Force: AlignFromVelocity cannot run when the neighbor radius exceeds the hash cell.");
+        }
+
+        if (spatialHash == null || !spatialHash.VelocityWritten)
+        {
+            throw new InvalidOperationException(
+                "Boid Neighbor Force: AlignFromVelocity requires the velocity snapshot written by Build Spatial Hash.");
+        }
+
+        effectiveWalkMode = 1;
+        effectiveAlignFromVelocity = true;
+        return velocityKernel;
     }
 
     private void NotePackedFallback(bool packedKernelOk, bool radiusBlocks, bool packedWritten)
@@ -306,6 +391,18 @@ public sealed class BoidNeighborForcePass : ParticleKernelPass, ISpatialHashCons
         try
         {
             return context.FindKernel("BoidNeighborForceSortedPacked");
+        }
+        catch (InvalidOperationException)
+        {
+            return default;
+        }
+    }
+
+    private static KernelHandle FindVelocityKernel(SimContext context)
+    {
+        try
+        {
+            return context.FindKernel("BoidNeighborForceSortedVel");
         }
         catch (InvalidOperationException)
         {
