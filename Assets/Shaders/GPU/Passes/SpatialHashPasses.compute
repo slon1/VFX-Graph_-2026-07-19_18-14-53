@@ -6,6 +6,7 @@
 #pragma kernel HashAddOffsets
 #pragma kernel HashScatter
 #pragma kernel HashScatterPacked
+#pragma kernel HashScatterVelocity
 
 #include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
 
@@ -15,6 +16,7 @@
 StructuredBuffer<float3> position;
 StructuredBuffer<float3> heading;
 StructuredBuffer<uint> teamId;
+StructuredBuffer<float3> inertialVelocity;
 uint ParticleCount;
 uint HashBlockCount;
 
@@ -187,4 +189,18 @@ void HashScatterPacked(uint3 id : SV_DispatchThreadID)
         asuint(position[id.x].z),
         packedZ,
         asuint(heading[id.x].z));
+}
+
+[numthreads(THREADS, 1, 1)]
+void HashScatterVelocity(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount) return;
+
+    uint slot;
+    InterlockedAdd(CellCursors[ParticleCells[id.x]], 1u, slot);
+
+    SortedIndices[slot] = id.x;
+    SortedPositions[slot] = position[id.x].xz;
+    SortedDirections[slot] = inertialVelocity[id.x].xz;   // единственное отличие от HashScatter
+    SortedTeams[slot] = teamId[id.x];
 }

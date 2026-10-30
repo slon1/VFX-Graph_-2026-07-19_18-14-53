@@ -60,6 +60,11 @@ public sealed class SpatialHashSet : IDisposable
     /// <summary>Set by <see cref="BuildSpatialHashPass"/> for the frame it just recorded.</summary>
     internal bool PackedWritten { get; set; }
 
+    internal bool VelocityRequested { get; set; }
+
+    /// <summary>Set by <see cref="BuildSpatialHashPass"/> for the frame it just recorded a velocity snapshot.</summary>
+    internal bool VelocityWritten { get; set; }
+
     public SpatialHashSet(SpatialHashLayout layout, bool wrap, int particleCount)
     {
         if (particleCount < 0)

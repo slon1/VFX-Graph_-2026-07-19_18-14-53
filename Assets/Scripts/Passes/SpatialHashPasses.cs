@@ -29,6 +29,7 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
     [NonSerialized] private KernelHandle addOffsetsKernel;
     [NonSerialized] private KernelHandle scatterKernel;
     [NonSerialized] private KernelHandle packedScatterKernel;
+    [NonSerialized] private KernelHandle velocityScatterKernel;
 
     public Vector3 Center
     {
@@ -79,6 +80,7 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         addOffsetsKernel = context.FindKernel("HashAddOffsets");
         scatterKernel = context.FindKernel("HashScatter");
         packedScatterKernel = FindPackedScatter(context);
+        velocityScatterKernel = FindVelocityScatter(context);
 
         ComputeShader shader = clearKernel.Shader;
         if (countKernel.Shader != shader ||
@@ -86,7 +88,8 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
             scanBlockSumsKernel.Shader != shader ||
             addOffsetsKernel.Shader != shader ||
             scatterKernel.Shader != shader ||
-            (packedScatterKernel.IsValid && packedScatterKernel.Shader != shader))
+            (packedScatterKernel.IsValid && packedScatterKernel.Shader != shader) ||
+            (velocityScatterKernel.IsValid && velocityScatterKernel.Shader != shader))
         {
             throw new InvalidOperationException(
                 "Build Spatial Hash kernels must share one compute shader; uniforms are set once.");
@@ -114,11 +117,22 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         if (hash != null)
         {
             hash.PackedWritten = false;
+            hash.VelocityWritten = false;
+            if (hash.VelocityRequested && hash.PackedRequested)
+            {
+                throw new InvalidOperationException(
+                    "Build Spatial Hash: velocity snapshot and packed scatter cannot be requested together.");
+            }
         }
 
         if (hash == null || hash.ParticleCount == 0 || !KernelsValid())
         {
             return;
+        }
+
+        if (hash.VelocityRequested && !velocityScatterKernel.IsValid)
+        {
+            throw new InvalidOperationException("velocity snapshot kernel not found");
         }
 
         ComputeShader shader = clearKernel.Shader;
@@ -148,7 +162,9 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         Bind(cmd, addOffsetsKernel, "BlockOffsets", hash.BlockOffsets);
 
         bool packed = hash.PackedRequested && packedScatterKernel.IsValid && hash.SortedPacked != null;
-        KernelHandle scatter = packed ? packedScatterKernel : scatterKernel;
+        KernelHandle scatter = hash.VelocityRequested
+            ? velocityScatterKernel
+            : (packed ? packedScatterKernel : scatterKernel);
         Bind(cmd, scatter, "position", positions);
         Bind(cmd, scatter, "heading", headings);
         Bind(cmd, scatter, "teamId", teams);
@@ -161,6 +177,11 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         if (packed)
         {
             Bind(cmd, scatter, "SortedPacked", hash.SortedPacked);
+        }
+
+        if (hash.VelocityRequested)
+        {
+            Bind(cmd, scatter, "inertialVelocity", context.Particles.Get(BuiltinAttributes.InertialVelocity));
         }
 
         int cellGroups = (hash.Layout.CellCount + ThreadGroupSize - 1) / ThreadGroupSize;
@@ -183,6 +204,11 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
             hash.PackedWritten = true;
         }
 
+        if (hash.VelocityRequested)
+        {
+            hash.VelocityWritten = true;
+        }
+
         LastExecuteDispatched = true;
     }
 
@@ -197,6 +223,18 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
         try
         {
             return context.FindKernel("HashScatterPacked");
+        }
+        catch (InvalidOperationException)
+        {
+            return default;
+        }
+    }
+
+    private static KernelHandle FindVelocityScatter(SimContext context)
+    {
+        try
+        {
+            return context.FindKernel("HashScatterVelocity");
         }
         catch (InvalidOperationException)
         {
