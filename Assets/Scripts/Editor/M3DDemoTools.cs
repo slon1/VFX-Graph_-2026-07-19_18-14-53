@@ -36,6 +36,8 @@ public static class M3DDemoTools
     private const string BoidsHashClassicScene = "Assets/Scenes/Boids_HashClassic.unity";
     private const string BoidsHashClassicPointsPath = EffectsFolder + "/Boids_hash_classic_points.asset";
     private const string BoidsHashClassicPointsScene = "Assets/Scenes/Boids_HashClassicPoints.unity";
+    private const string BoidsHashClassicVelPath = EffectsFolder + "/Boids_hash_classic_vel.asset";
+    private const string BoidsHashClassicVelScene = "Assets/Scenes/Boids_HashClassicVel.unity";
     private const string BoidsHashTwoTeamsPath = EffectsFolder + "/Boids_hash_2teams.asset";
     private const string BoidsHashTwoTeamsScene = "Assets/Scenes/Boids_Hash_2Teams.unity";
     private const string CurlNoise2DPath = EffectsFolder + "/CurlNoise2D.asset";
@@ -2115,6 +2117,44 @@ public static class M3DDemoTools
 
         CreateBoidsHashScene(BoidsHashClassicPointsScene, BoidsHashClassicPointsPath);
         Debug.Log("M3D: created Boids_hash_classic_points asset and Boids_HashClassicPoints scene.");
+    }
+
+    [MenuItem("Tools/M3D/Create Boids Hash Classic Vel Effect")]
+    public static void CreateBoidsHashClassicVelEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashClassicVelAsset(BoidsHashClassicVelPath);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Boids Hash Classic Vel scene cancelled; the asset was still written.");
+            return;
+        }
+
+        CreateBoidsHashScene(BoidsHashClassicVelScene, BoidsHashClassicVelPath);
+        Debug.Log("M3D: created Boids_hash_classic_vel asset and Boids_HashClassicVel scene.");
+    }
+
+    private static void CreateBoidsHashClassicVelAsset(string path)
+    {
+        CreateBoidsHashClassicAsset(path, false);
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        System.Collections.Generic.IReadOnlyList<SimPass> passes = asset.Passes;
+        for (int i = 0; i < passes.Count; i++)
+        {
+            if (passes[i] is BoidNeighborForcePass force)
+            {
+                force.AlignFromVelocity = true;
+                break;
+            }
+        }
+
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
     }
 
     private static void CreateBoidsHashClassicAsset(string path, bool withPoints)
