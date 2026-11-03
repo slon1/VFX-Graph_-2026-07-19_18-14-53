@@ -8,8 +8,8 @@
 #include <numeric>
 using namespace std;
 
-static const float S = 90.f, HALF = 45.f, CELL = 3.f;
-static const int RES = 30;
+static float S = 90.f, HALF = 45.f, CELL = 3.f;
+static int RES = 30;
 
 struct P { float x, z, hx, hz; int team; };
 
@@ -44,6 +44,13 @@ static int percentile95Hist(const vector<long long> &hist, long long count) {
 }
 
 int main(int argc, char **argv) {
+    if (const char *w = getenv("M_WORLD")) {
+        S = (float)atof(w);
+        HALF = 0.5f * S;
+        RES = (int)floorf(S / CELL + 1e-4f);
+        if (RES < 1) RES = 1;
+    }
+    const float cxOff = getenv("M_CX") ? (float)atof(getenv("M_CX")) : 22.f;
     float dt = argc > 1 ? atof(argv[1]) : 1.f / 60.f;
     float mult = argc > 2 ? atof(argv[2]) : 4.f;
     int cap = argc > 3 ? atoi(argv[3]) : 48;   // 0 = no cap
@@ -61,7 +68,7 @@ int main(int argc, char **argv) {
     uniform_real_distribution<double> U(0, 1);
     vector<P> p;
     for (int t = 0; t < 2; t++) {
-        float cx = t == 0 ? -22.f : 22.f, hx = t == 0 ? 1.f : -1.f;
+        float cx = t == 0 ? -cxOff : cxOff, hx = t == 0 ? 1.f : -1.f;
         for (int i = 0; i < perTeam; i++) {
             double r = discR * sqrt(U(rng)), a = U(rng) * 6.283185307;
             p.push_back({cx + (float)(r * cos(a)), (float)(r * sin(a)), hx, 0.f, t});

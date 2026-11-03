@@ -1,0 +1,21 @@
+# seed 1
+t=1 contact=0.0000 enemy=0.0000 flocks=1,1 pol=0.9585 turn=0.02659 turnSd=0.02699 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=9.03 rhoOwn90=13.44 rhoAll50=9.03
+t=5 contact=5.0667 enemy=0.0534 flocks=2,1 pol=0.9856 turn=0.02947 turnSd=0.03280 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=27.89 rhoOwn90=46.40 rhoAll50=27.89
+t=15 contact=0.0000 enemy=0.0000 flocks=2,1 pol=0.9990 turn=0.00928 turnSd=0.01945 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=44.09 rhoOwn90=82.90 rhoAll50=44.09
+# seed 2
+t=1 contact=0.0000 enemy=0.0000 flocks=1,1 pol=0.9578 turn=0.02627 turnSd=0.02563 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=8.40 rhoOwn90=14.84 rhoAll50=8.40
+t=5 contact=1.6667 enemy=0.0203 flocks=2,2 pol=0.9928 turn=0.02375 turnSd=0.02501 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=33.36 rhoOwn90=54.27 rhoAll50=33.36
+t=15 contact=0.0667 enemy=0.0002 flocks=2,1 pol=0.9992 turn=0.00743 turnSd=0.01584 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=39.27 rhoOwn90=94.37 rhoAll50=39.27
+# seed 3
+t=1 contact=0.0000 enemy=0.0000 flocks=1,1 pol=0.9534 turn=0.02680 turnSd=0.02596 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=8.58 rhoOwn90=14.99 rhoAll50=8.58
+t=5 contact=0.6333 enemy=0.0065 flocks=2,3 pol=0.9894 turn=0.02608 turnSd=0.03025 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=23.78 rhoOwn90=36.34 rhoAll50=23.78
+t=15 contact=1.5333 enemy=0.0173 flocks=2,2 pol=0.9986 turn=0.01043 turnSd=0.02500 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=34.22 rhoOwn90=64.11 rhoAll50=34.22
+# seed 4
+t=1 contact=0.0000 enemy=0.0000 flocks=1,1 pol=0.9457 turn=0.02884 turnSd=0.02885 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=8.24 rhoOwn90=15.46 rhoAll50=8.24
+t=5 contact=0.0000 enemy=0.0000 flocks=1,2 pol=0.9937 turn=0.02125 turnSd=0.02517 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=28.89 rhoOwn90=55.15 rhoAll50=28.89
+t=15 contact=0.2667 enemy=0.0013 flocks=2,2 pol=0.9997 turn=0.00905 turnSd=0.02143 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=29.28 rhoOwn90=57.41 rhoAll50=29.28
+# seed 5
+t=1 contact=0.0000 enemy=0.0000 flocks=1,1 pol=0.9614 turn=0.03040 turnSd=0.03102 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=9.12 rhoOwn90=14.48 rhoAll50=9.12
+t=5 contact=0.1667 enemy=0.0011 flocks=3,1 pol=0.9776 turn=0.02181 turnSd=0.02393 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=23.02 rhoOwn90=36.21 rhoAll50=23.02
+t=15 contact=0.0000 enemy=0.0000 flocks=3,1 pol=0.9996 turn=0.00758 turnSd=0.02033 vis=0.0 vis3=0.0 visMax=0 rhoOwn50=30.62 rhoOwn90=59.27 rhoAll50=30.62
+

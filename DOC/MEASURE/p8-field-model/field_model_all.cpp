@@ -13,8 +13,8 @@
 #include <string>
 using namespace std;
 
-static const float S = 90.f, HALF = 45.f, CELL = 3.f;
-static const int RES = 30;
+static float S = 90.f, HALF = 45.f, CELL = 3.f;
+static int RES = 30;
 struct P { float x, z, hx, hz; int team; };
 static float minimg(float d) { return d - S * roundf(d / S); }
 static int cellc(float v) { int c = (int)floorf((v + HALF) / CELL); return ((c % RES) + RES) % RES; }
@@ -26,6 +26,13 @@ static float pcq(vector<float> v, float q) { sort(v.begin(), v.end()); return v[
 static int wrapi(int a, int G) { return ((a % G) + G) % G; }
 
 int main(int argc, char **argv) {
+    if (const char *w = getenv("M_WORLD")) {
+        S = (float)atof(w);
+        HALF = 0.5f * S;
+        RES = (int)floorf(S / CELL + 1e-4f);
+        if (RES < 1) RES = 1;
+    }
+    const int M_LERP = getenv("M_LERP") ? atoi(getenv("M_LERP")) : 0;
     int mode = atoi(argv[1]);
     int G = atoi(argv[2]);
     unsigned seed = atoi(argv[3]);
@@ -36,15 +43,17 @@ int main(int argc, char **argv) {
     if (mode == 6 && Prs > 0) r0 = Prs;
     const float Pkap = envf("P_KAPPA", 0.3f); const int Pit = (int)envf("P_ITERS", 16.f), Pwarm = (int)envf("P_WARM", 1.f);
     const float M_FPS = getenv("M_FPS") ? (float)atof(getenv("M_FPS")) : 60.f; const int Pupd = getenv("M_UPD") ? atoi(getenv("M_UPD")) : 1;
-    const float dt = 1.f / M_FPS, mult = 4.f, discR = 12.f;
-    const int perTeam = 1500;
+    const float dt = 1.f / M_FPS, mult = 4.f;
+    const float discR = getenv("M_DISCR") ? (float)atof(getenv("M_DISCR")) : 12.f;
+    const int perTeam = getenv("M_PERTEAM") ? atoi(getenv("M_PERTEAM")) : 1500;
+    const float cxOff = getenv("M_CX") ? (float)atof(getenv("M_CX")) : 22.f;
     const float R = 3.f, wS = 1.2f, wA = 0.8f, wC = 0.6f, cruise = 6.f, turn = 4.f;
     const float tx = S / G; // texel size
     mt19937 rng(seed);
     uniform_real_distribution<double> U(0, 1);
     vector<P> p;
     for (int t = 0; t < 2; t++) {
-        float cx = t == 0 ? -22.f : 22.f, hx = t == 0 ? 1.f : -1.f;
+        float cx = t == 0 ? -cxOff : cxOff, hx = t == 0 ? 1.f : -1.f;
         for (int i = 0; i < perTeam; i++) {
             double r = discR * sqrt(U(rng)), a = U(rng) * 6.283185307;
             p.push_back({cx + (float)(r * cos(a)), (float)(r * sin(a)), hx, 0.f, t});
@@ -105,6 +114,22 @@ int main(int argc, char **argv) {
             psi.push_back({ox, oz, w}); }
     }
     for (int g = 0; g < 2; g++) { rho[g].assign(GG, 0.f); rhoPrev[g].assign(GG, -1.f); PhiP[g].assign(GG, 0.f); PhiQ[g].assign(GG, 0.f); Pf[g].assign(GG, 0.f); gradx[g].assign(GG, 0.f); gradz[g].assign(GG, 0.f); }
+    vector<float> pVx[2], pVz[2], pNtot, pAx[2], pAz[2], pKx[2], pKz[2], pNg[2], pGx[2], pGz[2];
+    bool fieldReady = false, havePrev = false;
+    auto snapPrev = [&]() {
+        if (pNtot.empty()) {
+            pNtot.resize(GG);
+            for (int g = 0; g < 2; g++) {
+                pVx[g].resize(GG); pVz[g].resize(GG); pAx[g].resize(GG); pAz[g].resize(GG);
+                pKx[g].resize(GG); pKz[g].resize(GG); pNg[g].resize(GG); pGx[g].resize(GG); pGz[g].resize(GG);
+            }
+        }
+        pNtot = Ntot;
+        for (int g = 0; g < 2; g++) {
+            pVx[g] = Vx[g]; pVz[g] = Vz[g]; pAx[g] = A_x[g]; pAz[g] = A_z[g];
+            pKx[g] = Kx[g]; pKz[g] = Kz[g]; pNg[g] = Ng[g]; pGx[g] = gradx[g]; pGz[g] = gradz[g];
+        }
+    };
 
     for (int s = 0; s <= steps; s++) {
         for (auto &c : cells) c.clear();
@@ -156,6 +181,7 @@ int main(int argc, char **argv) {
         bool useField = mode != 0;
         bool leaveOneOut = mode != 3;
         if (useField && updF) {
+            if (fieldReady && M_LERP) snapPrev();
             for (int g = 0; g < 2; g++) { fill(n[g].begin(), n[g].end(), 0.f); fill(hx_[g].begin(), hx_[g].end(), 0.f); fill(hz_[g].begin(), hz_[g].end(), 0.f); }
             for (int i = 0; i < N; i++) {
                 float u = (p[i].x + HALF) / tx - 0.5f, v = (p[i].z + HALF) / tx - 0.5f;
@@ -186,6 +212,8 @@ int main(int argc, char **argv) {
                 Vx[0][c] = v0x; Vz[0][c] = v0z; Vx[1][c] = v1x; Vz[1][c] = v1z; Ntot[c] = nt;
                 for (int g = 0; g < 2; g++) { A_x[g][c] = ax[g]; A_z[g][c] = az[g]; Kx[g][c] = kx[g]; Kz[g][c] = kz[g]; Ng[g][c] = ng[g]; }
             }
+            if (fieldReady && M_LERP) havePrev = true;
+            fieldReady = true;
         }
 
         if (mode == 10) {
@@ -223,6 +251,12 @@ int main(int argc, char **argv) {
                 gradz[a_][c] = (Pf[a_][wrapi(cz + 1, G) * G + cx] - Pf[a_][wrapi(cz - 1, G) * G + cx]) / (2.f * tx); }
         }
         long long visSum = 0, vis3Sum = 0; int visMx = 0;
+        float phi = (Pupd > 1) ? (float)(s % Pupd) / (float)Pupd : 0.f;
+        bool doLerp = M_LERP != 0 && havePrev;
+        auto samp = [&](const vector<float> &cur, const vector<float> &prv, int idx) -> float {
+            if (!doLerp) return cur[idx];
+            return (1.f - phi) * prv[idx] + phi * cur[idx];
+        };
         for (int i = 0; i < N; i++) {
             float sx = 0, sz = 0, ax = 0, az = 0, kx = 0, kz = 0; float sN = 0, cN = 0;
             int a = p[i].team;
@@ -248,7 +282,7 @@ int main(int argc, char **argv) {
                 float Vsx = 0, Vsz = 0, Ns = 0, Asx = 0, Asz = 0, Ksx = 0, Ksz = 0, Ngs = 0; float gsx = 0, gsz = 0;
                 for (int kz_ = 0; kz_ < 2; kz_++) for (int kx_ = 0; kx_ < 2; kx_++) {
                     float wk = w4[kz_][kx_]; int c = wrapi(iz + kz_, G) * G + wrapi(ix + kx_, G);
-                    float vx = Vx[a][c], vz = Vz[a][c], nt = Ntot[c], ac_x = A_x[a][c], ac_z = A_z[a][c], kcx = Kx[a][c], kcz = Kz[a][c], ngc = Ng[a][c];
+                    float vx = samp(Vx[a], pVx[a], c), vz = samp(Vz[a], pVz[a], c), nt = samp(Ntot, pNtot, c), ac_x = samp(A_x[a], pAx[a], c), ac_z = samp(A_z[a], pAz[a], c), kcx = samp(Kx[a], pKx[a], c), kcz = samp(Kz[a], pKz[a], c), ngc = samp(Ng[a], pNg[a], c);
                     if (leaveOneOut) {
                         // remove own splat (4 texels j) as seen from corner texel k
                         for (int jz = 0; jz < 2; jz++) for (int jx = 0; jx < 2; jx++) {
@@ -261,7 +295,7 @@ int main(int argc, char **argv) {
                             kcx -= wj * ox * tx; kcz -= wj * oz * tx; ngc -= wj;
                         }
                     }
-                    if (mode >= 6) { gsx += wk * gradx[a][c]; gsz += wk * gradz[a][c]; }
+                    if (mode >= 6) { gsx += wk * samp(gradx[a], pGx[a], c); gsz += wk * samp(gradz[a], pGz[a], c); }
                     Vsx += wk * vx; Vsz += wk * vz; Ns += wk * nt; Asx += wk * ac_x; Asz += wk * ac_z;
                     // cohesion correction: displacement from particle to this corner texel centre
                     float ddx = (kx_ - fxr) * tx, ddz = (kz_ - fzr) * tx;

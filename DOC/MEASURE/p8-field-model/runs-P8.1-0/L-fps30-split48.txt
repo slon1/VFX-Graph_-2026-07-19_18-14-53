@@ -1,0 +1,86 @@
+# seed 1
+# dt=0.0333 mult=4.0 cap=48 seed=1 N=24000
+# t  centroidDist  fireCx iceCx  crossContact%  enemyShare%  cap%  fireFlocks iceFlocks
+ 0.00    89.9    45.1  -44.9     0.0     0.0     0.0   1 1
+#f5 t=1.00 contact=0.000000 enemy=0.000000 flocks=1,1 visMean=48.000000 visP95=48 visMax=48 accMean=19.799792 stopCeil=0.000000 stopAcc=0.000000 stopVis=1.000000
+#f5 wave t=1.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 2.47    60.6    59.8  -59.6     8.6     4.9   100.0   1 1
+ 4.93    32.5    73.9  -73.5    52.5    24.7   100.0   1 1
+#f5 t=5.00 contact=54.016666 enemy=24.969383 flocks=1,1 visMean=48.000000 visP95=48 visMax=48 accMean=19.290167 stopCeil=0.000000 stopAcc=0.000000 stopVis=1.000000
+#f5 wave t=5.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 7.40     9.2    86.2  -84.6    98.4    30.0    99.7   1 1
+ 9.87    10.2   -82.8   87.0    81.0    17.2    98.6   2 2
+12.33    29.6   -71.1   79.3    45.8     2.5    97.1   10 8
+14.80    54.0   -56.9   69.9    15.7     0.6    96.2   19 18
+#f5 t=15.00 contact=15.162500 enemy=0.549746 flocks=20,18 visMean=47.180250 visP95=48 visMax=48 accMean=26.308458 stopCeil=0.000000 stopAcc=0.000000 stopVis=0.962958
+#f5 wave t=15.00 eff8=47.729667 eff16=47.924000 eff32=48.000000
+#f5 run visMean=47.764697 visP95=48 visMax=48
+# seed 2
+# dt=0.0333 mult=4.0 cap=48 seed=2 N=24000
+# t  centroidDist  fireCx iceCx  crossContact%  enemyShare%  cap%  fireFlocks iceFlocks
+ 0.00    89.8    45.0  -44.8     0.0     0.0     0.0   1 1
+#f5 t=1.00 contact=0.000000 enemy=0.000000 flocks=1,1 visMean=48.000000 visP95=48 visMax=48 accMean=19.798292 stopCeil=0.000000 stopAcc=0.000000 stopVis=0.999958
+#f5 wave t=1.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 2.47    60.8    59.7  -59.5     8.3     4.7   100.0   1 1
+ 4.93    32.7    74.0  -73.3    53.8    23.7   100.0   1 1
+#f5 t=5.00 contact=55.150002 enemy=24.011614 flocks=1,1 visMean=48.000000 visP95=48 visMax=48 accMean=19.531458 stopCeil=0.000000 stopAcc=0.000000 stopVis=1.000000
+#f5 wave t=5.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 7.40     9.6    86.7  -83.8    99.2    30.0    99.7   1 1
+ 9.87     9.0   -82.3   89.1    80.9    20.0    98.3   4 2
+12.33    26.6   -71.0   83.3    49.7     6.0    97.2   8 4
+14.80    76.7   -58.0   76.5    22.5     0.8    95.6   16 16
+#f5 t=15.00 contact=21.100000 enemy=0.712707 flocks=17,16 visMean=47.141250 visP95=48 visMax=48 accMean=25.300333 stopCeil=0.000000 stopAcc=0.000000 stopVis=0.956125
+#f5 wave t=15.00 eff8=47.776000 eff16=47.941333 eff32=47.992000
+#f5 run visMean=47.759149 visP95=48 visMax=48
+# seed 3
+# dt=0.0333 mult=4.0 cap=48 seed=3 N=24000
+# t  centroidDist  fireCx iceCx  crossContact%  enemyShare%  cap%  fireFlocks iceFlocks
+ 0.00    89.9    44.8  -45.1     0.0     0.0     0.0   1 1
+#f5 t=1.00 contact=0.000000 enemy=0.000000 flocks=1,1 visMean=48.000000 visP95=48 visMax=48 accMean=19.847208 stopCeil=0.000000 stopAcc=0.000000 stopVis=1.000000
+#f5 wave t=1.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 2.47    60.8    59.5  -59.8     8.7     5.1   100.0   1 1
+ 4.93    32.7    73.8  -73.5    51.9    22.8   100.0   1 1
+#f5 t=5.00 contact=53.437500 enemy=22.998087 flocks=1,1 visMean=47.998083 visP95=48 visMax=48 accMean=19.444708 stopCeil=0.000000 stopAcc=0.000000 stopVis=0.999958
+#f5 wave t=5.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 7.40     9.1    86.6  -84.3    98.1    25.9    99.6   1 1
+ 9.87    11.2   -81.6   87.3    79.1    13.6    97.6   2 1
+12.33    31.3   -69.2   79.9    51.3     3.2    96.8   11 4
+14.80    98.3   -55.8   71.6    22.4     0.6    95.4   17 16
+#f5 t=15.00 contact=21.174999 enemy=0.593328 flocks=18,16 visMean=47.071458 visP95=48 visMax=48 accMean=25.459792 stopCeil=0.000000 stopAcc=0.000000 stopVis=0.955042
+#f5 wave t=15.00 eff8=47.675000 eff16=47.833333 eff32=47.954667
+#f5 run visMean=47.723725 visP95=48 visMax=48
+# seed 4
+# dt=0.0333 mult=4.0 cap=48 seed=4 N=24000
+# t  centroidDist  fireCx iceCx  crossContact%  enemyShare%  cap%  fireFlocks iceFlocks
+ 0.00    89.9    45.4  -44.7     0.0     0.0     0.0   1 1
+#f5 t=1.00 contact=0.000000 enemy=0.000000 flocks=1,1 visMean=48.000000 visP95=48 visMax=48 accMean=19.754125 stopCeil=0.000000 stopAcc=0.000000 stopVis=1.000000
+#f5 wave t=1.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 2.47    60.5    60.1  -59.4     8.8     5.3   100.0   1 1
+ 4.93    32.5    74.3  -73.2    52.7    25.4   100.0   1 1
+#f5 t=5.00 contact=54.066666 enemy=25.674898 flocks=1,1 visMean=48.000000 visP95=48 visMax=48 accMean=19.412542 stopCeil=0.000000 stopAcc=0.000000 stopVis=1.000000
+#f5 wave t=5.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 7.40     9.7    86.7  -83.6    98.4    34.0    99.8   1 1
+ 9.87     7.9   -82.9   89.3    83.0    24.6    98.1   2 1
+12.33    23.7   -72.6   84.0    56.0     8.1    97.5   7 2
+14.80    96.2   -61.1   78.1    24.4     1.3    95.1   22 15
+#f5 t=15.00 contact=22.166666 enemy=1.163079 flocks=22,16 visMean=46.989875 visP95=48 visMax=48 accMean=25.923458 stopCeil=0.000000 stopAcc=0.000000 stopVis=0.949625
+#f5 wave t=15.00 eff8=47.614333 eff16=47.815333 eff32=47.976000
+#f5 run visMean=47.762520 visP95=48 visMax=48
+# seed 5
+# dt=0.0333 mult=4.0 cap=48 seed=5 N=24000
+# t  centroidDist  fireCx iceCx  crossContact%  enemyShare%  cap%  fireFlocks iceFlocks
+ 0.00    89.7    44.7  -45.0     0.0     0.0     0.0   1 1
+#f5 t=1.00 contact=0.000000 enemy=0.000000 flocks=1,1 visMean=48.000000 visP95=48 visMax=48 accMean=19.875000 stopCeil=0.000000 stopAcc=0.000000 stopVis=1.000000
+#f5 wave t=1.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 2.47    60.9    59.4  -59.7     8.4     5.1   100.0   1 1
+ 4.93    32.8    73.7  -73.6    52.6    24.1   100.0   1 1
+#f5 t=5.00 contact=54.299999 enemy=24.457214 flocks=1,1 visMean=47.998875 visP95=48 visMax=48 accMean=19.596083 stopCeil=0.000000 stopAcc=0.000000 stopVis=0.999917
+#f5 wave t=5.00 eff8=48.000000 eff16=48.000000 eff32=48.000000
+ 7.40     9.1    86.2  -84.6    96.2    29.0    99.6   1 1
+ 9.87    10.3   -82.5   87.1    76.7    15.1    98.4   2 1
+12.33    29.4   -71.1   79.5    46.2     3.4    96.3   7 8
+14.80    51.7   -59.0   70.3    15.6     0.3    94.6   20 20
+#f5 t=15.00 contact=14.945833 enemy=0.304650 flocks=24,23 visMean=47.006417 visP95=48 visMax=48 accMean=26.878458 stopCeil=0.000000 stopAcc=0.000000 stopVis=0.949042
+#f5 wave t=15.00 eff8=47.639000 eff16=47.834000 eff32=47.954667
+#f5 run visMean=47.726622 visP95=48 visMax=48
+
