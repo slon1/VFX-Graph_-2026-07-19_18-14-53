@@ -28,18 +28,18 @@ MonoBehaviour:
   swarmSource:
     spawns:
     - teamIndex: 0
-      count: 32000
+      count: 1500
       center: {x: -22, y: 0}
       radius: 12
       initialDirection: {x: 1, y: 0}
     - teamIndex: 1
-      count: 32000
+      count: 1500
       center: {x: 22, y: 0}
       radius: 12
       initialDirection: {x: -1, y: 0}
     seed: 1
     jitterDegrees: 0
-  simulationSpeed: 2
+  simulationSpeed: 1
   fields:
   - id:
       name: hashCount
@@ -52,15 +52,14 @@ MonoBehaviour:
     axisV: {x: 0, y: 0, z: 1}
     size: {x: 90, y: 90}
   passes:
-  - rid: 5854237702274154595
-  - rid: 5854237702274154596
-  - rid: 5854237702274154597
-  - rid: 5854237702274154598
-  - rid: 4319234161878499392
-  - rid: 5854237702274154599
-  - rid: 5854237702274154600
-  - rid: 5854237702274154601
-  - rid: 5854237702274154602
+  - rid: 2034967405448921088
+  - rid: 2034967405448921089
+  - rid: 2034967405448921090
+  - rid: 2034967405448921091
+  - rid: 2034967405448921092
+  - rid: 2034967405448921093
+  - rid: 2034967405448921094
+  - rid: 2034967405448921095
   debugFieldQuads:
   - fieldName: hashCount
     mode: 1
@@ -98,15 +97,19 @@ MonoBehaviour:
     hdrIntensity: 1
   teams:
   - name: RedBlue
-    separationRadius: 9
-    alignmentRadius: 9
-    cohesionRadius: 9
+    separationRadius: 3
+    alignmentRadius: 3
+    cohesionRadius: 3
     interGroupSeparationMultiplier: 4
-    separationWeight: 1
-    alignmentWeight: 3
-    cohesionWeight: 2
+    separationWeight: 1.2
+    alignmentWeight: 0.8
+    cohesionWeight: 0.6
     cruise: 6
     turn: 4
+    minSpeed: 4
+    maxSpeed: 8
+    maxForce: 12
+    forceGain: 5
     color:
       serializedVersion: 2
       key0: {r: 1, g: 0, b: 0, a: 1}
@@ -138,15 +141,19 @@ MonoBehaviour:
       m_NumColorKeys: 2
       m_NumAlphaKeys: 2
   - name: YellowGreen
-    separationRadius: 9
-    alignmentRadius: 9
-    cohesionRadius: 9
+    separationRadius: 3
+    alignmentRadius: 3
+    cohesionRadius: 3
     interGroupSeparationMultiplier: 4
-    separationWeight: 1
-    alignmentWeight: 6
-    cohesionWeight: 1
+    separationWeight: 1.2
+    alignmentWeight: 0.8
+    cohesionWeight: 0.6
     cruise: 6
     turn: 4
+    minSpeed: 4
+    maxSpeed: 8
+    maxForce: 12
+    forceGain: 5
     color:
       serializedVersion: 2
       key0: {r: 0.98, g: 1, b: 0, a: 1}
@@ -177,13 +184,9 @@ MonoBehaviour:
       m_ColorSpace: -1
       m_NumColorKeys: 2
       m_NumAlphaKeys: 2
-  swarmPoints:
-  - positionXZ: {x: 0, y: 0}
-    weight: 10
-    radius: 0
-    edge: 0
-  particleRenderMode: 1
-  particleSize: 5
+  swarmPoints: []
+  particleRenderMode: 0
+  particleSize: 0.5
   particleColor: {r: 1, g: 1, b: 1, a: 1}
   particleGradient:
     serializedVersion: 2
@@ -223,45 +226,40 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 4319234161878499392
-      type: {class: SwarmPointForcePass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1
-    - rid: 5854237702274154595
+    - rid: 2034967405448921088
       type: {class: BuildSpatialHashPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         center: {x: 0, y: 0, z: 0}
         extents: {x: 45, y: 0, z: 45}
-        minCellSize: 9
+        minCellSize: 3
         wrap: 1
-    - rid: 5854237702274154596
+    - rid: 2034967405448921089
       type: {class: HashCountsToFieldPass, ns: , asm: Assembly-CSharp}
       data:
-        enabled: 0
+        enabled: 1
         fieldName: hashCount
-    - rid: 5854237702274154597
+    - rid: 2034967405448921090
       type: {class: ClearVelocityPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-    - rid: 5854237702274154598
+    - rid: 2034967405448921091
       type: {class: BoidNeighborForcePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
         maxNeighbors: 48
         countCapHits: 0
-        sumSeparation: 1
-        sameTeamCap: 1
         walkMode: 1
-    - rid: 5854237702274154599
+        alignFromVelocity: 0
+    - rid: 2034967405448921092
       type: {class: TeamHeadingSteerPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-    - rid: 5854237702274154600
+    - rid: 2034967405448921093
       type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-    - rid: 5854237702274154601
+    - rid: 2034967405448921094
       type: {class: BoxBoundsPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
@@ -269,7 +267,7 @@ MonoBehaviour:
         extents: {x: 45, y: 0, z: 45}
         behaviour: 1
         bounce: 0.6
-    - rid: 5854237702274154602
+    - rid: 2034967405448921095
       type: {class: HeadingToValuePass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
