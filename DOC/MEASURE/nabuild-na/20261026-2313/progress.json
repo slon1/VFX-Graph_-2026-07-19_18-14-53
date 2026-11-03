@@ -1,0 +1,40 @@
+{
+    "series":  "B1 B1 B1",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "46",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "4",
+    "maxn":  "64",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\nabuild-na\\20261026-2313",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn64B1",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn64B2",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn64B3",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   }
+               ]
+}

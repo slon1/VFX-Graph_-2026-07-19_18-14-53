@@ -38,7 +38,6 @@ MonoBehaviour:
   fields: []
   passes:
   - rid: 4319234172529410111
-  - rid: 4319234172529410114
   - rid: 4319234172529410112
   - rid: 4319234172529410113
   debugFieldQuads: []
@@ -137,9 +136,9 @@ MonoBehaviour:
       type: {class: CurlNoise2DPass, ns: , asm: Assembly-CSharp}
       data:
         enabled: 1
-        scale: 0.03
-        amplitude: 3
-        speed: 1
+        scale: 0.15
+        amplitude: 6
+        speed: 0.2
     - rid: 4319234172529410112
       type: {class: IntegratePass, ns: , asm: Assembly-CSharp}
       data:
@@ -152,7 +151,3 @@ MonoBehaviour:
         extents: {x: 32, y: 0, z: 32}
         behaviour: 1
         bounce: 0.6
-    - rid: 4319234172529410114
-      type: {class: SwarmPointForcePass, ns: , asm: Assembly-CSharp}
-      data:
-        enabled: 1

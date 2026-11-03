@@ -201,6 +201,7 @@ MonoBehaviour:
         maxNeighbors: 48
         countCapHits: 0
         walkMode: 1
+        alignFromVelocity: 0
     - rid: 4319234174353408103
       type: {class: TeamClassicSteerPass, ns: , asm: Assembly-CSharp}
       data:

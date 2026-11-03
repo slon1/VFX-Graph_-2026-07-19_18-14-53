@@ -1,0 +1,40 @@
+{
+    "series":  "B1 B1 B1",
+    "stopped":  true,
+    "reason":  "killed before first point; cell 48 forcerep 4 already valid in 20261027-1225",
+    "cam":  "46",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "4",
+    "maxn":  "48",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\nabuild-na\\20261027-1232",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn48B1",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn48B2",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "1",
+                       "tag":  "s200-fr4-mn48B3",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   }
+               ]
+}

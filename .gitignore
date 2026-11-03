@@ -20,6 +20,7 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 /Assets/[Oo]bj/
+/Src/
 *.log
 *.obj
 *.OBJ
