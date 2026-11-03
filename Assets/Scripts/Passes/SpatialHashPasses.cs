@@ -7,6 +7,11 @@ public interface ISpatialHashConsumer
 {
 }
 
+/// <summary>Marks field-neighbor collect or convolve passes (ADR-061 §2.6).</summary>
+public interface IFieldNeighborPass
+{
+}
+
 /// <summary>
 /// Builds the XZ spatial hash and a cell-sorted snapshot of position/heading/teamId (ADR-034).
 /// Owns the SpatialHashSet; six kernels per Execute, repeated <see cref="RepeatCount"/> times.
@@ -20,8 +25,10 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
     [SerializeField] private Vector3 extents = new Vector3(16f, 0f, 16f);
     [SerializeField, Min(1e-3f)] private float minCellSize = 2f;
     [SerializeField] private bool wrap = true;
+    [SerializeField, Min(1)] private int refreshInterval = 1;
 
     [NonSerialized] private SpatialHashSet hash;
+    [NonSerialized] private int executeIndex;
     [NonSerialized] private KernelHandle clearKernel;
     [NonSerialized] private KernelHandle countKernel;
     [NonSerialized] private KernelHandle scanBlocksKernel;
@@ -53,6 +60,13 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
     {
         get => wrap;
         set => wrap = value;
+    }
+
+    /// <summary>Rebuild every Kth Execute. 1 is the historical every-frame build (ADR-061 §2.5).</summary>
+    public int RefreshInterval
+    {
+        get => refreshInterval;
+        set => refreshInterval = value < 1 ? 1 : value;
     }
 
     /// <summary>How many times one Execute rebuilds the hash. 1 leaves the frame unchanged.</summary>
@@ -114,6 +128,19 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
     public override void Execute(SimContext context, float deltaTime)
     {
         LastExecuteDispatched = false;
+        int interval = refreshInterval < 1 ? 1 : refreshInterval;
+        bool due = interval <= 1 || (executeIndex % interval) == 0;
+        executeIndex++;
+        if (hash != null)
+        {
+            hash.BuiltThisFrame = false;
+        }
+
+        if (!due)
+        {
+            return;
+        }
+
         if (hash != null)
         {
             hash.PackedWritten = false;
@@ -209,6 +236,7 @@ public sealed class BuildSpatialHashPass : SimPass, IDisposable
             hash.VelocityWritten = true;
         }
 
+        hash.BuiltThisFrame = true;
         LastExecuteDispatched = true;
     }
 

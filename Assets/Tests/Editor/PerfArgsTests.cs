@@ -381,6 +381,75 @@ public class PerfArgsTests
 	}
 
 	[Test]
+	public void Parse_FieldStage_AcceptsTheFiveTokens()
+	{
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "collect" }).FieldStage, Is.EqualTo(FieldRepeatStage.Collect));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "conv" }).FieldStage, Is.EqualTo(FieldRepeatStage.Conv));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "grad" }).FieldStage, Is.EqualTo(FieldRepeatStage.Grad));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "all" }).FieldStage, Is.EqualTo(FieldRepeatStage.All));
+		PerfArgs off = PerfArgs.Parse(new[] { "-m3d_fieldstage", "off" });
+		Assert.That(off.HasFieldStage, Is.True);
+		Assert.That(off.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
+		Assert.That(off.Warnings, Is.Empty);
+	}
+
+	[Test]
+	public void Parse_FieldStage_RejectsGarbageAndAMissingValue()
+	{
+		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_fieldstage", "build" });
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_fieldstage" });
+		Assert.That(text.HasFieldStage, Is.False);
+		Assert.That(missing.HasFieldStage, Is.False);
+		Assert.That(text.Warnings, Is.EqualTo(new[] { "fieldstage=build" }));
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "fieldstage=" }));
+	}
+
+	[Test]
+	public void Parse_FieldRep_AcceptsOneThroughSixteen()
+	{
+		PerfArgs once = PerfArgs.Parse(new[] { "-m3d_fieldrep", "1" });
+		PerfArgs sixteen = PerfArgs.Parse(new[] { "-m3d_fieldrep", "16" });
+		Assert.That(once.HasFieldRep, Is.True);
+		Assert.That(once.FieldRep, Is.EqualTo(1));
+		Assert.That(sixteen.FieldRep, Is.EqualTo(16));
+		Assert.That(once.Warnings, Is.Empty);
+	}
+
+	[Test]
+	public void Parse_FieldRep_RejectsGarbageAndAMissingValue()
+	{
+		PerfArgs zero = PerfArgs.Parse(new[] { "-m3d_fieldrep", "0" });
+		PerfArgs big = PerfArgs.Parse(new[] { "-m3d_fieldrep", "17" });
+		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_fieldrep", "abc" });
+		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_fieldrep" });
+		Assert.That(zero.HasFieldRep, Is.False);
+		Assert.That(big.HasFieldRep, Is.False);
+		Assert.That(text.HasFieldRep, Is.False);
+		Assert.That(missing.HasFieldRep, Is.False);
+		Assert.That(zero.Warnings, Is.EqualTo(new[] { "fieldrep=0" }));
+		Assert.That(big.Warnings, Is.EqualTo(new[] { "fieldrep=17" }));
+		Assert.That(text.Warnings, Is.EqualTo(new[] { "fieldrep=abc" }));
+		Assert.That(missing.Warnings, Is.EqualTo(new[] { "fieldrep=" }));
+	}
+
+	[Test]
+	public void FieldStageLogField_PrintsThePassValueOrNa()
+	{
+		Assert.That(FPSDisplay.FieldStageLogField(null, null), Is.EqualTo("na"));
+		Assert.That(FPSDisplay.FieldRepLogField(null, null), Is.EqualTo("na"));
+		FieldNeighborCollectPass pass = new FieldNeighborCollectPass();
+		Assert.That(FPSDisplay.FieldStageLogField(pass, null), Is.EqualTo("all"));
+		Assert.That(FPSDisplay.FieldRepLogField(pass, null), Is.EqualTo("1"));
+		pass.FieldStage = FieldRepeatStage.Grad;
+		pass.FieldRepeatCount = 4;
+		Assert.That(FPSDisplay.FieldStageLogField(pass, null), Is.EqualTo("grad"));
+		Assert.That(FPSDisplay.FieldRepLogField(pass, null), Is.EqualTo("4"));
+		Assert.That(pass.RepeatCount, Is.EqualTo(1));
+		pass.FieldRepeatCount = 0;
+		Assert.That(pass.FieldRepeatCount, Is.EqualTo(1));
+	}
+
+	[Test]
 	public void Parse_MaxNeighbors_AcceptsZeroAndTheSweep()
 	{
 		PerfArgs zero = PerfArgs.Parse(new[] { "-m3d_maxn", "0" });

@@ -15,7 +15,7 @@ internal static class SpatialHashValidator
         List<string> warnings = new List<string>();
         if (passes == null)
         {
-            ValidateTeams(effect, null, null);
+            ValidateTeams(effect, null, null, false);
             return warnings;
         }
 
@@ -55,6 +55,17 @@ internal static class SpatialHashValidator
             }
         }
 
+        bool fieldChain = HasEnabledField(passes);
+        if (fieldChain)
+        {
+            ValidateFieldChain(passes, effect, builder);
+        }
+        else if (builder != null && builder.RefreshInterval > 1)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: Build Spatial Hash RefreshInterval above 1 is only valid in a field-neighbor chain.");
+        }
+
         if (builder == null)
         {
             if (consumerIndices.Count > 0)
@@ -63,7 +74,7 @@ internal static class SpatialHashValidator
                     "SimulationWorld: a spatial hash consumer requires an enabled 'Build Spatial Hash' pass before it.");
             }
 
-            ValidateTeams(effect, null, passes);
+            ValidateTeams(effect, null, passes, fieldChain);
             return warnings;
         }
 
@@ -138,11 +149,186 @@ internal static class SpatialHashValidator
             }
         }
 
-        ValidateTeams(effect, builder, passes);
+        ValidateTeams(effect, builder, passes, fieldChain);
         return warnings;
     }
 
-    private static void ValidateTeams(EffectAsset effect, BuildSpatialHashPass builder, IReadOnlyList<SimPass> passes)
+    private static void ValidateFieldChain(
+        IReadOnlyList<SimPass> passes,
+        EffectAsset effect,
+        BuildSpatialHashPass builder)
+    {
+        FieldNeighborCollectPass collect = null;
+        int collectIndex = -1;
+        int convolveIndex = -1;
+        int hashIndex = -1;
+        for (int i = 0; i < passes.Count; i++)
+        {
+            SimPass pass = passes[i];
+            if (pass == null || !pass.Enabled)
+            {
+                continue;
+            }
+
+            if (pass is BuildSpatialHashPass)
+            {
+                hashIndex = i;
+            }
+
+            if (pass is BoidNeighborForcePass)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Boid Neighbor Force cannot sit in a field-neighbor chain.");
+            }
+
+            if (pass is FieldNeighborCollectPass foundCollect)
+            {
+                if (collect != null)
+                {
+                    throw new InvalidOperationException(
+                        "SimulationWorld: only one enabled field-neighbor collect pass per effect.");
+                }
+
+                collect = foundCollect;
+                collectIndex = i;
+            }
+
+            if (pass is FieldNeighborConvolvePass)
+            {
+                if (convolveIndex >= 0)
+                {
+                    throw new InvalidOperationException(
+                        "SimulationWorld: only one enabled field-neighbor convolve pass per effect.");
+                }
+
+                convolveIndex = i;
+            }
+        }
+
+        if (collect == null || convolveIndex < 0)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: a field-neighbor chain requires Field Neighbor Collect before Field Neighbor Convolve.");
+        }
+
+        if (convolveIndex >= 0 && convolveIndex < collectIndex)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: Field Neighbor Convolve stands before Field Neighbor Collect.");
+        }
+
+        if (collect.Mode == FieldCollectMode.Gather)
+        {
+            if (builder == null || hashIndex > collectIndex)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Neighbor Collect Gather requires Build Spatial Hash before it.");
+            }
+
+            if (!builder.Wrap)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: a field-neighbor chain requires wrap.");
+            }
+
+            if (builder.RefreshInterval != collect.RefreshInterval)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: field-neighbor Gather RefreshInterval " + collect.RefreshInterval +
+                    " does not match the spatial hash RefreshInterval " + builder.RefreshInterval + ".");
+            }
+
+            SpatialHashLayout hashLayout = SpatialHashSet.ComputeLayout(
+                builder.Center, builder.Extents, builder.MinCellSize);
+            SpatialHashLayout fieldLayout = SpatialHashSet.ComputeLayout(
+                collect.Center, collect.Extents, collect.TexelSize);
+            if (hashLayout.Resolution != fieldLayout.Resolution ||
+                (hashLayout.Origin - fieldLayout.Origin).sqrMagnitude > 1e-8f ||
+                (hashLayout.CellSize - fieldLayout.CellSize).sqrMagnitude > 1e-8f)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: field-neighbor layout does not match the spatial hash " +
+                    $"(field {fieldLayout.Resolution.x}x{fieldLayout.Resolution.y}, " +
+                    $"hash {hashLayout.Resolution.x}x{hashLayout.Resolution.y}).");
+            }
+        }
+        else if (builder != null)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: Field Neighbor Collect Scatter cannot sit with Build Spatial Hash.");
+        }
+        else if (!HasWrapBounds(passes))
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: a field-neighbor chain requires an enabled BoxBounds Wrap pass.");
+        }
+
+        SpatialHashLayout layout = SpatialHashSet.ComputeLayout(
+            collect.Center, collect.Extents, collect.TexelSize);
+        SpatialHashSet.ValidateLayout(layout, wrap: true);
+        if (effect == null)
+        {
+            return;
+        }
+
+        IReadOnlyList<TeamProfile> teams = effect.Teams;
+        if (teams.Count != 2)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: a field-neighbor chain needs exactly two teams, found " + teams.Count + ".");
+        }
+
+        float radius = teams[0] != null ? teams[0].SeparationRadius : 0f;
+        for (int i = 0; i < teams.Count; i++)
+        {
+            TeamProfile profile = teams[i];
+            if (profile == null)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: team list entry " + i + " is null.");
+            }
+
+            RequireEqualRadius(profile.SeparationRadius, radius, "separationRadius", i);
+            RequireEqualRadius(profile.AlignmentRadius, radius, "alignmentRadius", i);
+            RequireEqualRadius(profile.CohesionRadius, radius, "cohesionRadius", i);
+        }
+
+        float texel = collect.TexelSize;
+        if (!(texel > 0f) || Mathf.Abs(radius / texel - 3f) > 1e-4f)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: field-neighbor R/t must be 3, found " + radius + " / " + texel + ".");
+        }
+    }
+
+    private static bool HasWrapBounds(IReadOnlyList<SimPass> passes)
+    {
+        for (int i = 0; i < passes.Count; i++)
+        {
+            if (passes[i] is BoxBoundsPass box && box.Enabled && box.Behaviour == BoundsBehaviour.Wrap)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void RequireEqualRadius(float value, float radius, string name, int team)
+    {
+        if (Mathf.Abs(value - radius) > 1e-4f)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: team " + team + " " + name + " " + value +
+                " does not equal the field radius " + radius + ".");
+        }
+    }
+
+    private static void ValidateTeams(
+        EffectAsset effect,
+        BuildSpatialHashPass builder,
+        IReadOnlyList<SimPass> passes,
+        bool skipWithinCell)
     {
         if (effect == null)
         {
@@ -214,7 +400,7 @@ internal static class SpatialHashValidator
             }
         }
 
-        if (teams.Count > 0 && builder != null)
+        if (teams.Count > 0 && builder != null && !skipWithinCell)
         {
             SpatialHashLayout layout = SpatialHashSet.ComputeLayout(
                 builder.Center, builder.Extents, builder.MinCellSize);
@@ -281,6 +467,24 @@ internal static class SpatialHashValidator
                     "SimulationWorld: Team Classic Steer requires a non-empty team list.");
             }
         }
+    }
+
+    private static bool HasEnabledField(IReadOnlyList<SimPass> passes)
+    {
+        if (passes == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < passes.Count; i++)
+        {
+            if (passes[i] is IFieldNeighborPass && passes[i].Enabled)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool HasEnabled<T>(IReadOnlyList<SimPass> passes) where T : SimPass

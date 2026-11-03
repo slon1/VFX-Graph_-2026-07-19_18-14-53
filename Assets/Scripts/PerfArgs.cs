@@ -29,6 +29,10 @@ public sealed class PerfArgs
 	public int HashRep { get; private set; } = 1;
 	public bool HasForceRep { get; private set; }
 	public int ForceRep { get; private set; } = 1;
+	public bool HasFieldStage { get; private set; }
+	public FieldRepeatStage FieldStage { get; private set; } = FieldRepeatStage.All;
+	public bool HasFieldRep { get; private set; }
+	public int FieldRep { get; private set; } = 1;
 	public bool HasWarmup { get; private set; }
 	public float WarmupSeconds { get; private set; } = DefaultSeconds;
 	public bool HasMeasure { get; private set; }
@@ -111,6 +115,18 @@ public sealed class PerfArgs
 			if (token == "-m3d_forcerep")
 			{
 				parsed.ReadForceRep(NextValue(args, ref i));
+				continue;
+			}
+
+			if (token == "-m3d_fieldstage")
+			{
+				parsed.ReadFieldStage(NextValue(args, ref i));
+				continue;
+			}
+
+			if (token == "-m3d_fieldrep")
+			{
+				parsed.ReadFieldRep(NextValue(args, ref i));
 				continue;
 			}
 
@@ -321,6 +337,33 @@ public sealed class PerfArgs
 		}
 
 		warnings.Add(value == null ? "forcerep=" : "forcerep=" + value);
+	}
+
+	private void ReadFieldStage(string value)
+	{
+		if (value != null && FieldRepeatStages.TryParse(value, out FieldRepeatStage stage))
+		{
+			HasFieldStage = true;
+			FieldStage = stage;
+			return;
+		}
+
+		warnings.Add(value == null ? "fieldstage=" : "fieldstage=" + value);
+	}
+
+	private void ReadFieldRep(string value)
+	{
+		if (value != null
+			&& int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int repeats)
+			&& repeats >= 1
+			&& repeats <= 16)
+		{
+			HasFieldRep = true;
+			FieldRep = repeats;
+			return;
+		}
+
+		warnings.Add(value == null ? "fieldrep=" : "fieldrep=" + value);
 	}
 
 	private void ReadSeconds(string value, bool warmup)

@@ -87,6 +87,8 @@ public sealed class FPSDisplay : MonoBehaviour
 
 	private SimulationWorld world;
 	private BoidNeighborForcePass forcePass;
+	private FieldNeighborCollectPass fieldCollectPass;
+	private FieldNeighborConvolvePass fieldConvolvePass;
 	private BuildSpatialHashPass hashBuilder;
 	private HashCountsToFieldPass hashCountsPass;
 	private GameObject debugQuads;
@@ -265,6 +267,8 @@ public sealed class FPSDisplay : MonoBehaviour
 		{
 			worldResolved = false;
 			forcePass = null;
+			fieldCollectPass = null;
+			fieldConvolvePass = null;
 			hashCountsPass = null;
 			debugQuads = null;
 			quadsSearchDone = false;
@@ -511,6 +515,8 @@ public sealed class FPSDisplay : MonoBehaviour
 		worldResolved = true;
 		particleCount = -1;
 		forcePass = null;
+		fieldCollectPass = null;
+		fieldConvolvePass = null;
 		hashBuilder = null;
 		hashCountsPass = null;
 
@@ -552,6 +558,14 @@ public sealed class FPSDisplay : MonoBehaviour
 					else if (hashCountsPass == null && passes[i] is HashCountsToFieldPass hashPass)
 					{
 						hashCountsPass = hashPass;
+					}
+					else if (fieldCollectPass == null && passes[i] is FieldNeighborCollectPass collectPass)
+					{
+						fieldCollectPass = collectPass;
+					}
+					else if (fieldConvolvePass == null && passes[i] is FieldNeighborConvolvePass convolvePass)
+					{
+						fieldConvolvePass = convolvePass;
 					}
 				}
 			}
@@ -1134,6 +1148,10 @@ public sealed class FPSDisplay : MonoBehaviour
 		text.Append(HashRepText());
 		text.Append(" forcerep=");
 		text.Append(ForceRepText());
+		text.Append(" fieldstage=");
+		text.Append(FieldStageText());
+		text.Append(" fieldrep=");
+		text.Append(FieldRepText());
 
 		string line = text.ToString();
 		Debug.Log(line);
@@ -1202,6 +1220,7 @@ public sealed class FPSDisplay : MonoBehaviour
 			if (worldResolved)
 			{
 				ApplyCapAndHashRep();
+				ApplyFieldStage();
 				bool applied = !perfArgs.HasOverride || TryApplyOverrides();
 				if (applied && perfArgs.HasOverride)
 				{
@@ -1361,6 +1380,16 @@ public sealed class FPSDisplay : MonoBehaviour
 			args += ",forcerep=" + perfArgs.ForceRep.ToString(CultureInfo.InvariantCulture);
 		}
 
+		if (perfArgs.HasFieldStage)
+		{
+			args += ",fieldstage=" + FieldRepeatStages.Name(perfArgs.FieldStage);
+		}
+
+		if (perfArgs.HasFieldRep)
+		{
+			args += ",fieldrep=" + perfArgs.FieldRep.ToString(CultureInfo.InvariantCulture);
+		}
+
 		Debug.Log(
 			"M3D_PERF_INFO device=" + SystemInfo.deviceModel
 			+ " api=" + SystemInfo.graphicsDeviceType
@@ -1424,6 +1453,85 @@ public sealed class FPSDisplay : MonoBehaviour
 		}
 	}
 
+	private void ApplyFieldStage()
+	{
+		if (!perfArgs.HasFieldStage && !perfArgs.HasFieldRep)
+		{
+			return;
+		}
+
+		if (fieldCollectPass == null && fieldConvolvePass == null)
+		{
+			if (perfArgs.HasFieldStage)
+			{
+				Debug.Log("M3D_PERF_WARN fieldstage=" + FieldRepeatStages.Name(perfArgs.FieldStage));
+			}
+
+			if (perfArgs.HasFieldRep)
+			{
+				Debug.Log("M3D_PERF_WARN fieldrep=" + perfArgs.FieldRep.ToString(CultureInfo.InvariantCulture));
+			}
+
+			return;
+		}
+
+		if (fieldCollectPass != null)
+		{
+			if (perfArgs.HasFieldStage)
+			{
+				fieldCollectPass.FieldStage = perfArgs.FieldStage;
+			}
+
+			if (perfArgs.HasFieldRep)
+			{
+				fieldCollectPass.FieldRepeatCount = perfArgs.FieldRep;
+			}
+		}
+
+		if (fieldConvolvePass != null)
+		{
+			if (perfArgs.HasFieldStage)
+			{
+				fieldConvolvePass.FieldStage = perfArgs.FieldStage;
+			}
+
+			if (perfArgs.HasFieldRep)
+			{
+				fieldConvolvePass.FieldRepeatCount = perfArgs.FieldRep;
+			}
+		}
+	}
+
+	internal static string FieldStageLogField(FieldNeighborCollectPass collect, FieldNeighborConvolvePass convolve)
+	{
+		if (collect != null)
+		{
+			return FieldRepeatStages.Name(collect.FieldStage);
+		}
+
+		if (convolve != null)
+		{
+			return FieldRepeatStages.Name(convolve.FieldStage);
+		}
+
+		return "na";
+	}
+
+	internal static string FieldRepLogField(FieldNeighborCollectPass collect, FieldNeighborConvolvePass convolve)
+	{
+		if (collect != null)
+		{
+			return collect.FieldRepeatCount.ToString(CultureInfo.InvariantCulture);
+		}
+
+		if (convolve != null)
+		{
+			return convolve.FieldRepeatCount.ToString(CultureInfo.InvariantCulture);
+		}
+
+		return "na";
+	}
+
 	private string CapFractionText()
 	{
 		if (forcePass == null || !forcePass.CountCapHits)
@@ -1464,6 +1572,16 @@ public sealed class FPSDisplay : MonoBehaviour
 	private string ForceRepText()
 	{
 		return ForceRepLogField(forcePass);
+	}
+
+	private string FieldStageText()
+	{
+		return FieldStageLogField(fieldCollectPass, fieldConvolvePass);
+	}
+
+	private string FieldRepText()
+	{
+		return FieldRepLogField(fieldCollectPass, fieldConvolvePass);
 	}
 
 	private static string CameraText()

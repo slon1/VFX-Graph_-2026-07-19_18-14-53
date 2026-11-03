@@ -1,0 +1,354 @@
+// Neighbor field collect, potential and gradient (ADR-061 §2.3–2.4).
+#pragma kernel FieldGather
+#pragma kernel FieldAccumClear
+#pragma kernel FieldScatter
+#pragma kernel FieldPotentialRaw
+#pragma kernel FieldPotentialAccum
+#pragma kernel FieldGradient
+
+#include "Assets/Shaders/GPU/Includes/SpatialHash.hlsl"
+
+#define THREADS 64
+#define FIXED_SCALE 16384.0
+
+float FieldRt;
+float FieldR;
+float FieldEps;
+uint ParticleCount;
+
+StructuredBuffer<float3> position;
+StructuredBuffer<float3> heading;
+StructuredBuffer<uint> teamId;
+StructuredBuffer<uint> CellCounts;
+StructuredBuffer<uint> CellStarts;
+StructuredBuffer<float2> SortedPositions;
+StructuredBuffer<float2> SortedDirections;
+StructuredBuffer<uint> SortedTeams;
+struct FieldTeamSlot
+{
+    float4 Radii;
+    float4 Weights;
+    float4 Motion;
+    float4 Classic;
+};
+
+StructuredBuffer<FieldTeamSlot> Teams;
+
+RWStructuredBuffer<float> Raw;
+RWStructuredBuffer<uint> Accum;
+RWStructuredBuffer<float2> Phi;
+RWStructuredBuffer<float4> FieldSlots;
+
+int2 WrapCell(int2 c)
+{
+    float2 r = (float2)HashRes;
+    return (int2)(float2(c) - r * floor(float2(c) / r));
+}
+
+int2 TexelCoord(uint index)
+{
+    uint rx = (uint)HashRes.x;
+    return int2((int)(index % rx), (int)(index / rx));
+}
+
+uint TexelIndex(int2 c)
+{
+    return HashCellIndex(WrapCell(c));
+}
+
+float3 LoadRaw(uint texel, uint team)
+{
+    uint b = texel * 6u + team * 3u;
+    return float3(Raw[b], Raw[b + 1u], Raw[b + 2u]);
+}
+
+float3 LoadAccum(uint texel, uint team)
+{
+    uint b = texel * 6u + team * 3u;
+    return float3((int)Accum[b], (int)Accum[b + 1u], (int)Accum[b + 2u]) / FIXED_SCALE;
+}
+
+void AddCorner(int2 cell, int q, uint channel)
+{
+    if (q == 0)
+    {
+        return;
+    }
+
+    uint index = TexelIndex(cell) * 6u + channel;
+    InterlockedAdd(Accum[index], (uint)q);
+}
+
+void StoreN(int2 i0, int q00, int q10, int q01, int q11, uint channel)
+{
+    AddCorner(i0, q00, channel);
+    AddCorner(i0 + int2(1, 0), q10, channel);
+    AddCorner(i0 + int2(0, 1), q01, channel);
+    AddCorner(i0 + int2(1, 1), q11, channel);
+}
+
+// Half away from zero. floor(x - 0.5) is one ulp low for every negative value.
+int RoundHalfAway(float x)
+{
+    return (int)(x >= 0.0 ? floor(x + 0.5) : ceil(x - 0.5));
+}
+
+// Four rounded weights that sum to FIXED_SCALE, each within one ulp of w * scale.
+void QuantizeWeights(float w00, float w10, float w01, float w11, out int q00, out int q10, out int q01, out int q11)
+{
+    float s = FIXED_SCALE;
+    float t0 = w00 * s;
+    float t1 = w10 * s;
+    float t2 = w01 * s;
+    float t3 = w11 * s;
+    q00 = (int)floor(t0 + 0.5);
+    q10 = (int)floor(t1 + 0.5);
+    q01 = (int)floor(t2 + 0.5);
+    q11 = (int)floor(t3 + 0.5);
+    int diff = (int)s - (q00 + q10 + q01 + q11);
+    [loop]
+    for (int step = 0; step < 4 && diff != 0; step++)
+    {
+        float e0 = (float)q00 - t0;
+        float e1 = (float)q10 - t1;
+        float e2 = (float)q01 - t2;
+        float e3 = (float)q11 - t3;
+        int pick = 0;
+        float best = diff > 0 ? e0 : -e0;
+        float b1 = diff > 0 ? e1 : -e1;
+        float b2 = diff > 0 ? e2 : -e2;
+        float b3 = diff > 0 ? e3 : -e3;
+        if (b1 < best) { best = b1; pick = 1; }
+        if (b2 < best) { best = b2; pick = 2; }
+        if (b3 < best) { pick = 3; }
+        int stepQ = diff > 0 ? 1 : -1;
+        if (pick == 0) q00 += stepQ;
+        else if (pick == 1) q10 += stepQ;
+        else if (pick == 2) q01 += stepQ;
+        else q11 += stepQ;
+        diff -= stepQ;
+    }
+}
+
+[numthreads(THREADS, 1, 1)]
+void FieldGather(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= HashCellCount)
+    {
+        return;
+    }
+
+    int2 texel = TexelCoord(id.x);
+    float2 texelPos = HashOrigin + float2(texel) * HashCellSize;
+    float n0 = 0;
+    float hx0 = 0;
+    float hz0 = 0;
+    float n1 = 0;
+    float hx1 = 0;
+    float hz1 = 0;
+    [loop]
+    for (int dy = -1; dy <= 0; dy++)
+    {
+        [loop]
+        for (int dx = -1; dx <= 0; dx++)
+        {
+            uint cell = TexelIndex(texel + int2(dx, dy));
+            uint count = CellCounts[cell];
+            uint start = CellStarts[cell];
+            [loop]
+            for (uint s = 0; s < count; s++)
+            {
+                uint slot = start + s;
+                float2 d = MinImage(SortedPositions[slot] - texelPos) / HashCellSize;
+                float w = max(0.0, 1.0 - abs(d.x)) * max(0.0, 1.0 - abs(d.y));
+                if (w <= 0.0)
+                {
+                    continue;
+                }
+
+                float2 h = SortedDirections[slot];
+                uint team = SortedTeams[slot];
+                if (team == 0u)
+                {
+                    n0 += w;
+                    hx0 += w * h.x;
+                    hz0 += w * h.y;
+                }
+                else if (team == 1u)
+                {
+                    n1 += w;
+                    hx1 += w * h.x;
+                    hz1 += w * h.y;
+                }
+            }
+        }
+    }
+
+    uint b = id.x * 6u;
+    Raw[b] = n0;
+    Raw[b + 1u] = hx0;
+    Raw[b + 2u] = hz0;
+    Raw[b + 3u] = n1;
+    Raw[b + 4u] = hx1;
+    Raw[b + 5u] = hz1;
+}
+
+[numthreads(THREADS, 1, 1)]
+void FieldAccumClear(uint3 id : SV_DispatchThreadID)
+{
+    uint count = HashCellCount * 6u;
+    if (id.x >= count)
+    {
+        return;
+    }
+
+    Accum[id.x] = 0u;
+}
+
+[numthreads(THREADS, 1, 1)]
+void FieldScatter(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    uint team = teamId[id.x];
+    if (team > 1u)
+    {
+        return;
+    }
+
+    float2 p = position[id.x].xz;
+    float2 u = (p - HashOrigin) / HashCellSize;
+    int2 i0 = (int2)floor(u);
+    float2 f = u - float2(i0);
+    float w00 = (1.0 - f.x) * (1.0 - f.y);
+    float w10 = f.x * (1.0 - f.y);
+    float w01 = (1.0 - f.x) * f.y;
+    float w11 = f.x * f.y;
+    int q00, q10, q01, q11;
+    QuantizeWeights(w00, w10, w01, w11, q00, q10, q01, q11);
+    uint channel = team * 3u;
+    StoreN(i0, q00, q10, q01, q11, channel);
+
+    float2 h = heading[id.x].xz;
+    int hx00 = RoundHalfAway(w00 * h.x * FIXED_SCALE);
+    int hx10 = RoundHalfAway(w10 * h.x * FIXED_SCALE);
+    int hx01 = RoundHalfAway(w01 * h.x * FIXED_SCALE);
+    int hx11 = RoundHalfAway(w11 * h.x * FIXED_SCALE);
+    int hz00 = RoundHalfAway(w00 * h.y * FIXED_SCALE);
+    int hz10 = RoundHalfAway(w10 * h.y * FIXED_SCALE);
+    int hz01 = RoundHalfAway(w01 * h.y * FIXED_SCALE);
+    int hz11 = RoundHalfAway(w11 * h.y * FIXED_SCALE);
+    StoreN(i0, hx00, hx10, hx01, hx11, channel + 1u);
+    StoreN(i0, hz00, hz10, hz01, hz11, channel + 2u);
+}
+
+void PotentialAt(uint texelIndex, int2 texel, bool fromAccum)
+{
+    float ntot = 0;
+    float ng0 = 0;
+    float ng1 = 0;
+    float2 a0 = 0;
+    float2 a1 = 0;
+    float2 k0 = 0;
+    float2 k1 = 0;
+    float w0 = 0;
+    float w1 = 0;
+    float cell = HashCellSize.x;
+    int lim = (int)floor(FieldRt - 1e-4);
+    float rt2 = FieldRt * FieldRt;
+    float r0 = cell;
+    float radius = Teams[0].Radii.x;
+    float den = radius * radius + FieldEps;
+    [loop]
+    for (int oz = -lim; oz <= lim; oz++)
+    {
+        [loop]
+        for (int ox = -lim; ox <= lim; ox++)
+        {
+            if ((float)(ox * ox + oz * oz) >= rt2)
+            {
+                continue;
+            }
+
+            uint src = TexelIndex(texel + int2(ox, oz));
+            float3 c0 = fromAccum ? LoadAccum(src, 0u) : LoadRaw(src, 0u);
+            float3 c1 = fromAccum ? LoadAccum(src, 1u) : LoadRaw(src, 1u);
+            float2 off = float2(ox, oz) * HashCellSize;
+            ntot += c0.x + c1.x;
+            ng0 += c0.x;
+            ng1 += c1.x;
+            a0 += c0.yz;
+            a1 += c1.yz;
+            k0 += c0.x * off;
+            k1 += c1.x * off;
+            float dist = length(off);
+            float num = max(dist, r0);
+            float psi = 0.5 * log((num * num + FieldEps) / den);
+            w0 += c0.x * psi;
+            w1 += c1.x * psi;
+        }
+    }
+
+    float inter0 = Teams[0].Radii.w;
+    float inter1 = Teams[1].Radii.w;
+    float phi0 = w0 + inter0 * w1;
+    float phi1 = inter1 * w0 + w1;
+    Phi[texelIndex] = float2(phi0, phi1);
+    uint slot = texelIndex * 4u;
+    FieldSlots[slot] = float4(0, 0, ntot, ng0);
+    FieldSlots[slot + 1u] = float4(a0.x, a0.y, k0.x, k0.y);
+    FieldSlots[slot + 2u] = float4(0, 0, ntot, ng1);
+    FieldSlots[slot + 3u] = float4(a1.x, a1.y, k1.x, k1.y);
+}
+
+[numthreads(THREADS, 1, 1)]
+void FieldPotentialRaw(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= HashCellCount)
+    {
+        return;
+    }
+
+    int2 texel = TexelCoord(id.x);
+    PotentialAt(id.x, texel, false);
+}
+
+[numthreads(THREADS, 1, 1)]
+void FieldPotentialAccum(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= HashCellCount)
+    {
+        return;
+    }
+
+    int2 texel = TexelCoord(id.x);
+    PotentialAt(id.x, texel, true);
+}
+
+[numthreads(THREADS, 1, 1)]
+void FieldGradient(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= HashCellCount)
+    {
+        return;
+    }
+
+    int2 texel = TexelCoord(id.x);
+    float2 here = Phi[id.x];
+    float2 px1 = Phi[TexelIndex(texel + int2(1, 0))];
+    float2 px0 = Phi[TexelIndex(texel + int2(-1, 0))];
+    float2 pz1 = Phi[TexelIndex(texel + int2(0, 1))];
+    float2 pz0 = Phi[TexelIndex(texel + int2(0, -1))];
+    float2 gx = (px1 - px0) / (2.0 * HashCellSize.x);
+    float2 gz = (pz1 - pz0) / (2.0 * HashCellSize.y);
+    uint slot = id.x * 4u;
+    float4 s0 = FieldSlots[slot];
+    float4 s1 = FieldSlots[slot + 2u];
+    s0.xy = float2(gx.x, gz.x);
+    s1.xy = float2(gx.y, gz.y);
+    FieldSlots[slot] = s0;
+    FieldSlots[slot + 2u] = s1;
+}

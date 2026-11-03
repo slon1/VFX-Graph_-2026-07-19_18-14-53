@@ -16,6 +16,8 @@ param(
     [string]$Cap = "",
     [string]$HashRep = "",
     [string]$ForceRep = "",
+    [string]$FieldStage = "",
+    [string]$FieldRep = "",
     [string]$MaxN = ""
 )
 
@@ -99,6 +101,8 @@ function Get-ExpectedArgs($Point) {
     if (-not [string]::IsNullOrWhiteSpace($script:capText)) { $text = $text + ",cap=$script:capText" }
     if (-not [string]::IsNullOrWhiteSpace($script:hashRepText)) { $text = $text + ",hashrep=$script:hashRepText" }
     if (-not [string]::IsNullOrWhiteSpace($script:forceRepText)) { $text = $text + ",forcerep=$script:forceRepText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:fieldStageText)) { $text = $text + ",fieldstage=$script:fieldStageText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:fieldRepText)) { $text = $text + ",fieldrep=$script:fieldRepText" }
     return $text
 }
 
@@ -112,6 +116,8 @@ function Get-UnityArgs($Point) {
     if (-not [string]::IsNullOrWhiteSpace($script:capText)) { $text = $text + " -m3d_cap $script:capText" }
     if (-not [string]::IsNullOrWhiteSpace($script:hashRepText)) { $text = $text + " -m3d_hashrep $script:hashRepText" }
     if (-not [string]::IsNullOrWhiteSpace($script:forceRepText)) { $text = $text + " -m3d_forcerep $script:forceRepText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:fieldStageText)) { $text = $text + " -m3d_fieldstage $script:fieldStageText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:fieldRepText)) { $text = $text + " -m3d_fieldrep $script:fieldRepText" }
     return $text
 }
 
@@ -143,6 +149,22 @@ if (-not [string]::IsNullOrWhiteSpace($ForceRep)) {
     $forceOk = [int]::TryParse($ForceRep, [ref]$forceRepValue)
     if (-not $forceOk -or $forceRepValue -lt 1 -or $forceRepValue -gt 16) { throw "Повтор силы: '$ForceRep' не разобран. Нужно целое от 1 до 16." }
     $forceRepText = [string]$forceRepValue
+}
+
+$fieldStageText = ""
+if (-not [string]::IsNullOrWhiteSpace($FieldStage)) {
+    $fieldStageText = $FieldStage.Trim().ToLowerInvariant()
+    if ($fieldStageText -notin @("collect", "conv", "grad", "all", "off")) {
+        throw "Стадия поля: '$FieldStage' не разобрана. Нужно collect, conv, grad, all или off."
+    }
+}
+
+$fieldRepText = ""
+if (-not [string]::IsNullOrWhiteSpace($FieldRep)) {
+    $fieldRepValue = 0
+    $fieldRepOk = [int]::TryParse($FieldRep, [ref]$fieldRepValue)
+    if (-not $fieldRepOk -or $fieldRepValue -lt 1 -or $fieldRepValue -gt 16) { throw "Повтор поля: '$FieldRep' не разобран. Нужно целое от 1 до 16." }
+    $fieldRepText = [string]$fieldRepValue
 }
 
 $maxNeighborsText = [string]$maxNeighbors

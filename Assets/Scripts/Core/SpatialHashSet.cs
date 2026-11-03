@@ -65,6 +65,9 @@ public sealed class SpatialHashSet : IDisposable
     /// <summary>Set by <see cref="BuildSpatialHashPass"/> for the frame it just recorded a velocity snapshot.</summary>
     internal bool VelocityWritten { get; set; }
 
+    /// <summary>True only on an Execute that rebuilt the hash (ADR-061 §2.5). Default 1 rebuilds every call.</summary>
+    public bool BuiltThisFrame { get; internal set; }
+
     public SpatialHashSet(SpatialHashLayout layout, bool wrap, int particleCount)
     {
         if (particleCount < 0)

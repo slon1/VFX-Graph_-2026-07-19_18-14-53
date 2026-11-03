@@ -243,7 +243,10 @@ public class BoidsHashP400cPresetTests
         Assert.IsNotNull(debug);
         Assert.IsNotNull(dynamics);
         Assert.IsNotNull(boids);
-        return new[] { hash, debug, dynamics, boids };
+        ComputeShader field = AssetDatabase.LoadAssetAtPath<ComputeShader>(
+            "Assets/Shaders/GPU/Passes/FieldNeighborPasses.compute");
+        Assert.IsNotNull(field);
+        return new[] { hash, debug, dynamics, boids, field };
     }
 
     private static void RegisterLikeWorld(ParticleSet particles, EffectAsset asset)

@@ -71,6 +71,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/SpatialHashPasses.compute",
         "Assets/Shaders/GPU/Passes/HashDebugPasses.compute",
         "Assets/Shaders/GPU/Passes/BoidsPasses.compute",
+        "Assets/Shaders/GPU/Passes/FieldNeighborPasses.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]
@@ -2538,6 +2539,124 @@ public static class M3DDemoTools
 
         EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
         GameObject host = new GameObject("M3D Boids Hash P400c");
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    private const string BoidsHashP400cFieldGatherPath = EffectsFolder + "/Boids_hash_P400c_field_gather.asset";
+    private const string BoidsHashP400cFieldScatterPath = EffectsFolder + "/Boids_hash_P400c_field_scatter.asset";
+    private const string BoidsHashP400cFieldGatherScene = "Assets/Scenes/Boids_Hash_P400c_FieldGather.unity";
+    private const string BoidsHashP400cFieldScatterScene = "Assets/Scenes/Boids_Hash_P400c_FieldScatter.unity";
+
+    [MenuItem("Tools/M3D/Create Boids Hash P400c Field Effects")]
+    public static void CreateBoidsHashP400cFieldEffects()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashP400cFieldAsset(BoidsHashP400cFieldGatherPath, FieldCollectMode.Gather);
+        CreateBoidsHashP400cFieldAsset(BoidsHashP400cFieldScatterPath, FieldCollectMode.Scatter);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Boids Hash P400c field scenes cancelled; the assets were still written.");
+            return;
+        }
+
+        CreateBoidsHashP400cFieldScene(
+            BoidsHashP400cFieldGatherScene, BoidsHashP400cFieldGatherPath, "M3D Boids Hash P400c Field Gather");
+        CreateBoidsHashP400cFieldScene(
+            BoidsHashP400cFieldScatterScene, BoidsHashP400cFieldScatterPath, "M3D Boids Hash P400c Field Scatter");
+        Debug.Log("M3D: created P400c field gather and scatter assets and scenes.");
+    }
+
+    private static void CreateBoidsHashP400cFieldAsset(string path, FieldCollectMode mode)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        bool gather = mode == FieldCollectMode.Gather;
+        BuildSpatialHashPass hash = gather
+            ? new BuildSpatialHashPass { MinCellSize = 1f, RefreshInterval = 1 }
+            : null;
+        FieldNeighborCollectPass collect = new FieldNeighborCollectPass
+        {
+            Mode = mode,
+            Center = Vector3.zero,
+            Extents = P400cExtents,
+            TexelSize = 1f,
+            RefreshInterval = 1,
+        };
+        BoxBoundsPass box = new BoxBoundsPass();
+        SimPass[] passes = gather
+            ? new SimPass[]
+            {
+                hash,
+                collect,
+                new FieldNeighborConvolvePass(),
+                new ClearVelocityPass(),
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                box,
+                new HeadingToValuePass(),
+            }
+            : new SimPass[]
+            {
+                collect,
+                new FieldNeighborConvolvePass(),
+                new ClearVelocityPass(),
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                box,
+                new HeadingToValuePass(),
+            };
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(DataSourceKind.Swarm, P400cSimulationSpeed, passes);
+        ConfigureP400cSource(asset);
+        if (gather)
+        {
+            ApplyP400cWorld(hash, box);
+            hash.MinCellSize = 1f;
+            hash.RefreshInterval = 1;
+        }
+        else
+        {
+            box.Center = Vector3.zero;
+            box.Extents = P400cExtents;
+            box.Behaviour = BoundsBehaviour.Wrap;
+        }
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void CreateBoidsHashP400cFieldScene(string scenePath, string assetPath, string hostName)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera == null)
+        {
+            throw new System.InvalidOperationException("M3D: P400c field scene has no main camera.");
+        }
+
+        ConfigureP400cCamera(camera);
+        camera.gameObject.AddComponent<FPSDisplay>();
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject(hostName);
         SimulationWorld world = host.AddComponent<SimulationWorld>();
         SerializedObject worldSo = new SerializedObject(world);
         worldSo.FindProperty("effect").objectReferenceValue = asset;
