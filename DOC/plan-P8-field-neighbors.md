@@ -124,4 +124,4 @@ P400c это новый пресет и сцена рядом с ними:
 3. Устойчивые 30 FPS нужны только в начале, троттлинг и падение частоты пока игнорируются.
 4. Тест на новой сцене P400c (два диска навстречу, мир 224 м, `simulationSpeed` 1); существующие сцены 400k остаются референсом.
 5. Радиусы 9 в `Boids_hash_2teams` откатываются: ассет пересоздаётся штатной фабрикой `Tools/M3D/Create Boids Hash 2 Teams Effect` (R=3/3/3, веса 1,2 / 0,8 / 0,6, по 1500, `simulationSpeed` 1, ячейка 3, поле 30×30).
-6. База ветки P8: `feature/reynolds-boids` («ньютоновские» боиды); P8 не опирается на классический хвост P9. Работа на новой ветке `feature/p8-field-neighbors`, ветка `experiment/align-from-velocity` не трогается.
+6. Ветка P8: `feature/p8-field-neighbors` от `experiment/align-from-velocity` (`d58fc64`), без worktree, начало отмечено тегом `milestone-p8-start`; P8 не опирается на классический хвост P9 (код остаётся нетронутым). Ветка `experiment/align-from-velocity` не трогается.
