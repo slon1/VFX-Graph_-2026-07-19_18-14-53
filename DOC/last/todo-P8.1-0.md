@@ -64,6 +64,8 @@
 
 ## 4. Этап 4. Сцена P400c
 
+**Этап 4 вынесен в отдельное ТЗ [`todo-P8.1-0-stage4.md`](todo-P8.1-0-stage4.md) и [ADR-060](../ADR/ADR-060-P400c-Scene-Builder.md); при расхождении действует оно. Текст ниже сохранён как исходный.**
+
 1. **Билдер.** В `Assets/Scripts/Editor/M3DDemoTools.cs` добавить `CreateBoidsHashP400cAsset(string path)` и `CreateBoidsHashP400cScene`, меню `Tools/M3D/Create Boids Hash P400c Effect`, по образцу двух команд. Параметры строго по таблице ADR-059 §2.1. Ассет `Assets/Effects/Boids_hash_P400c.asset`, сцена `Assets/Scenes/Boids_Hash_P400c.unity`. Камера сцены ортографическая, размер 112 (виден весь мир); `-m3d_cam` для замеров задаёт ревью отдельно, не менять скрипты.
 2. **Тест** `Assets/Tests/Editor/BoidsHashP400cPresetTests.cs` (с `.meta`): загружает `Boids_hash_P400c.asset` и сверяет **константы ТЗ** (не состояние ассета, ради которого тесты других пресетов краснеют): частицы 200 000 × 2, центры ±55, радиус 45, курсы ±1, seed 1, jitter 0, `extents` 112, wrap, `minCellSize` 3, `walkMode` 1, `maxNeighbors` 48, радиусы 3/3/3, веса 1,2 / 0,8 / 0,6, множитель 4, `cruise` 6, `turn` 4, `simulationSpeed` 1, `particleSize` 0,5, список пассов и порядок. Расхождение — падение. Ассет не загрузился — `Assert.Fail`.
 3. Сцену добавить в Build Settings через Unity MCP. Скрипты серий этого не делают.
