@@ -28,7 +28,7 @@ ADR-058 описывает решение и гейты всей фазы P8.1. 
 | `particleSize` | 0,5 | как у остальных |
 | Цепочка пассов | `BuildSpatialHash`, `ClearVelocity`, `BoidNeighborForce`, `TeamHeadingSteer`, `Integrate`, `BoxBounds`, `HeadingToValue` | без `HashCountsToField` (диагностическое поле 30×30 под мир 90 м к этой сцене не подходит) |
 
-Полевой двойник (`Boids_hash_P400c_field`) создаётся в P8.1-А, не здесь.
+Полевой двойник (`Boids_hash_P400c_field`) создаётся в P8.1-А, не здесь. Сборка сцены, тест и Play-проверка: [ADR-060](ADR-060-P400c-Scene-Builder.md).
 
 ### 2.2. База «сегодня»
 
