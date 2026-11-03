@@ -111,16 +111,11 @@ if (-not $landscape) {
 $rawLog = Join-Path (Get-M3dOutDir) "capture-logcat.txt"
 Invoke-M3d -File $adbPath -ArgumentList @("-s", $Serial, "logcat", "-c") | Out-Null
 if (Test-Path $rawLog) { Remove-Item $rawLog -Force }
-$logProc = Start-Process -FilePath $adbPath -ArgumentList @("-s", $Serial, "logcat", "-s", "Unity") `
-    -RedirectStandardOutput $rawLog -RedirectStandardError (Join-Path (Get-M3dOutDir) "capture-logcat.err") `
-    -PassThru -WindowStyle Hidden
-Start-Sleep -Milliseconds 400
+$script:logWatch = Start-M3dUnityLog $adbPath $Serial $rawLog
 
 function Save-CaptureLog {
-    if ($logProc -and -not $logProc.HasExited) {
-        Stop-Process -Id $logProc.Id -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Milliseconds 300
-    }
+    Stop-M3dUnityLog $script:logWatch
+    $script:logWatch = $null
     $raw = Read-M3dSharedText $rawLog
     $logPath = $LogOut
     if ([string]::IsNullOrWhiteSpace($logPath)) {

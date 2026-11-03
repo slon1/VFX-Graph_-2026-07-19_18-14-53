@@ -2534,6 +2534,7 @@ public static class M3DDemoTools
         }
 
         ConfigureP400cCamera(camera);
+        camera.gameObject.AddComponent<FPSDisplay>();
 
         EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
         GameObject host = new GameObject("M3D Boids Hash P400c");

@@ -1,0 +1,58 @@
+{
+    "series":  "ABABC",
+    "stopped":  true,
+    "reason":  "нет phase=DONE за 115 с",
+    "cam":  "",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "",
+    "maxn":  "48",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\ab6f32c-56aa12b3\\20261103-1717",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "A",
+                       "walk":  "",
+                       "tag":  "A1",
+                       "status":  "invalid",
+                       "file":  "01-A-720.txt",
+                       "reason":  "нет phase=DONE за 115 с"
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "B1",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "A",
+                       "walk":  "",
+                       "tag":  "A2",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  4,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "B2",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  5,
+                       "mode":  "C",
+                       "walk":  "",
+                       "tag":  "C1",
+                       "status":  "pending",
+                       "file":  "",
+                       "reason":  ""
+                   }
+               ]
+}

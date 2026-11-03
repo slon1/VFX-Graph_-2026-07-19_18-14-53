@@ -245,3 +245,62 @@ function Write-M3dCmd([string]$Body) {
     [IO.File]::WriteAllText($path, $Body, [Text.Encoding]::ASCII)
     return $path
 }
+
+# adb block-buffers stdout when it is a pipe. A long-running logcat killed with
+# Stop-Process drops the tail, including phase=DONE. logcat -d exits and flushes.
+function Merge-M3dUnityDump([string]$Previous, [string]$Dump) {
+    if ([string]::IsNullOrEmpty($Dump)) { return $Previous }
+    if ([string]::IsNullOrEmpty($Previous)) { return $Dump }
+    if ($Dump.Contains("M3D_PERF_INFO")) { return $Dump }
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.Append($Previous.TrimEnd())
+    $added = $false
+    foreach ($line in ($Dump -split "`r?`n")) {
+        if ($line -match "M3D_PERF" -and $Previous.IndexOf($line) -lt 0) {
+            [void]$sb.Append("`r`n")
+            [void]$sb.Append($line)
+            $added = $true
+        }
+    }
+    if (-not $added) { return $Previous }
+    return $sb.ToString()
+}
+
+function Update-M3dUnityLogFile([string]$AdbPath, [string]$Serial, [string]$OutFile, [string]$Previous) {
+    $dump = Invoke-M3d -File $AdbPath -ArgumentList @("-s", $Serial, "logcat", "-d", "-s", "Unity")
+    $text = Merge-M3dUnityDump $Previous $dump.Text
+    if (-not [string]::IsNullOrEmpty($text)) {
+        [IO.File]::WriteAllText($OutFile, $text, [Text.UTF8Encoding]::new($false))
+    }
+    return $text
+}
+
+function Start-M3dUnityLog([string]$AdbPath, [string]$Serial, [string]$OutFile) {
+    $sync = [hashtable]::Synchronized(@{ Stop = $false; Adb = $AdbPath; Serial = $Serial; Out = $OutFile })
+    $rs = [runspacefactory]::CreateRunspace()
+    $rs.Open()
+    $ps = [powershell]::Create()
+    $ps.Runspace = $rs
+    $lib = Join-Path $script:M3dToolsRoot "lib.ps1"
+    $script = {
+        param($LibPath, $State)
+        . $LibPath
+        $prev = ""
+        while ($true) {
+            try { $prev = Update-M3dUnityLogFile $State.Adb $State.Serial $State.Out $prev } catch { }
+            if ($State.Stop) { break }
+            Start-Sleep -Seconds 2
+        }
+    }
+    [void]$ps.AddScript($script).AddArgument($lib).AddArgument($sync)
+    return [pscustomobject]@{ Sync = $sync; PowerShell = $ps; Handle = $ps.BeginInvoke(); Runspace = $rs }
+}
+
+function Stop-M3dUnityLog($Watcher) {
+    if (-not $Watcher) { return }
+    $Watcher.Sync.Stop = $true
+    try { $Watcher.PowerShell.EndInvoke($Watcher.Handle) | Out-Null } catch { }
+    $Watcher.PowerShell.Dispose()
+    $Watcher.Runspace.Close()
+    $Watcher.Runspace.Dispose()
+}

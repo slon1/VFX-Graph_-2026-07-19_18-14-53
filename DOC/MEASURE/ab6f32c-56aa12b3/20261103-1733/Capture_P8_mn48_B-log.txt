@@ -1,0 +1,313 @@
+mWakefulness=Awake
+--------- beginning of main
+11-03 17:59:31.187 19336 19336 V Unity   : Context Type: GameActivity
+11-03 17:59:31.187 19336 19336 D Unity   : CommandLine:  -m3d_force 1 -m3d_render 0 -m3d_maxn 48 -m3d_warmup 60 -m3d_measure 25 -m3d_autorun -m3d_quit -m3d_tag B -m3d_scene Boids_Hash_P400c
+11-03 17:59:31.208 19336 19377 I Unity   : UnityApplication::CreateInstance
+11-03 17:59:31.208 19336 19377 I Unity   : GameActivity Package Version '4.4.0'
+11-03 17:59:31.209 19336 19377 I Unity   : Starting Game Loop
+11-03 17:59:31.230 19336 19336 I Unity   : resumeUnity
+11-03 17:59:31.234 19336 19377 I Unity   : Handle cmd APP_CMD_START(11)
+11-03 17:59:31.236 19336 19336 I Unity   : onResume
+11-03 17:59:31.236 19336 19377 I Unity   : Handle cmd APP_CMD_RESUME(12)
+11-03 17:59:31.257 19336 19377 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+11-03 17:59:31.267 19336 19377 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+11-03 17:59:31.268 19336 19377 I Unity   : Handle cmd APP_CMD_CONTENT_RECT_CHANGED(5)
+11-03 17:59:31.271 19336 19377 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+11-03 17:59:31.286 19336 19377 I Unity   : MemoryManager: Using 'Dynamic Heap' Allocator.
+11-03 17:59:31.286 19336 19377 D Unity   : [UnityMemory] Configuration Parameters - Can be set up in boot.config
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-temp-allocator-size-cloud-worker=32768"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-temp-allocator-size-audio-worker=65536"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-allocator-temp-initial-block-size-main=262144"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-allocator-temp-initial-block-size-worker=262144"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-remapper-allocator-initial-capacity=32768"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-temp-allocator-size-preload-manager=262144"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-temp-allocator-size-gfx=262144"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-temp-allocator-size-background-worker=32768"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-temp-allocator-size-job-worker=262144"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-bucket-allocator-granularity=16"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-bucket-allocator-bucket-count=8"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-bucket-allocator-block-size=4194304"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-bucket-allocator-block-count=1"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-main-allocator-block-size=16777216"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-thread-allocator-block-size=16777216"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-main-allocator-mimalloc-enabled=0"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-gfx-main-allocator-block-size=16777216"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-gfx-thread-allocator-block-size=16777216"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-cache-allocator-block-size=4194304"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-typetree-allocator-block-size=2097152"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-profiler-bucket-allocator-granularity=16"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-profiler-bucket-allocator-bucket-count=8"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-profiler-bucket-allocator-block-size=4194304"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-profiler-bucket-allocator-block-count=1"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-profiler-allocator-block-size=16777216"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-profiler-editor-allocator-block-size=1048576"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-temp-allocator-size-main=4194304"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-job-temp-allocator-block-size=2097152"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-job-temp-allocator-block-size-background=1048576"
+11-03 17:59:31.286 19336 19377 D Unity   :     "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+11-03 17:59:31.302 19336 19377 D Unity   : Enabling Unity systrace
+11-03 17:59:31.302 19336 19377 D Unity   : Starting Unity systrace
+11-03 17:59:31.310 19336 19336 I Unity   : windowFocusChanged: true
+11-03 17:59:31.319 19336 19377 D Unity   : [VFS] Mount /data/app/~~d-wmHWbMw8TI6Si83dQlxQ==/com.slonInc.vfx-E8Q8eGAkRFywvPUGpbzebA==/base.apk
+11-03 17:59:31.320 19336 19377 D Unity   : Loading player data from /data/app/~~d-wmHWbMw8TI6Si83dQlxQ==/com.slonInc.vfx-E8Q8eGAkRFywvPUGpbzebA==/base.apk/assets/bin/Data/data.unity3d
+11-03 17:59:31.324 19336 19377 E Unity   : java.lang.ClassNotFoundException: Didn't find class "com.google.android.play.core.assetpacks.AssetPackManager" on path: DexPathList[[zip file "/data/app/~~d-wmHWbMw8TI6Si83dQlxQ==/com.slonInc.vfx-E8Q8eGAkRFywvPUGpbzebA==/base.apk"],nativeLibraryDirectories=[/data/app/~~d-wmHWbMw8TI6Si83dQlxQ==/com.slonInc.vfx-E8Q8eGAkRFywvPUGpbzebA==/lib/arm64, /data/app/~~d-wmHWbMw8TI6Si83dQlxQ==/com.slonInc.vfx-E8Q8eGAkRFywvPUGpbzebA==/base.apk!/lib/arm64-v8a, /system/lib64, /system/system_ext/lib64]]
+11-03 17:59:31.333 19336 19377 I Unity   : SystemInfo CPU = ARM64 FP ASIMD AES, Cores = 8, Memory = 7419mb
+11-03 17:59:31.333 19336 19377 I Unity   : SystemInfo ARM big.LITTLE configuration: 4 big (mask: 0xf0), 4 little (mask: 0xf)
+11-03 17:59:31.333 19336 19377 I Unity   : ApplicationInfo 'com.slonInc.vfx', Version '0.1.0', Min API Level '26', Target API Level '36'
+11-03 17:59:31.333 19336 19377 I Unity   : Built from '6000.5/staging' branch, Version '6000.5.9f1 (b57deb96f08d)', Build type 'Development', Scripting Backend 'il2cpp', CPU 'arm64-v8a', Stripping 'Enabled'
+11-03 17:59:31.333 19336 19377 I Unity   : Device Model 'samsung SM-G973F', OS 'Android OS 12 (API 31)'
+11-03 17:59:31.335 19336 19377 D Unity   : Determine if il2cpp resources need to be extracted:
+11-03 17:59:31.335 19336 19377 D Unity   :     il2cpp resources are up to date, not extracting
+11-03 17:59:31.451 19336 19377 D Unity   : CodeReloadManager initialized
+11-03 17:59:31.452 19336 19377 D Unity   : InitializeScriptEngine OK (0x6df73f6f40)
+11-03 17:59:31.452 19336 19377 D Unity   : [EGL] Attaching window :0x6f9e6b5d00
+11-03 17:59:31.452 19336 19377 D Unity   : Found NO interfaces on host .
+11-03 17:59:31.454 19336 19377 D Unity   : Player connection [472295959728]  Target information:
+11-03 17:59:31.454 19336 19377 D Unity   : 
+11-03 17:59:31.454 19336 19377 D Unity   : Player connection [472295959728] Started UDP target info broadcast (1) on [225.0.0.222:54997].
+11-03 17:59:31.454 19336 19377 D Unity   : 
+11-03 17:59:31.467 19336 19377 D Unity   : Input System module state changed to: Initialized.
+11-03 17:59:31.472 19336 19377 D Unity   : [Physics::Module] Initialized fallback backend.
+11-03 17:59:31.472 19336 19377 D Unity   : [Physics::Module] Id: 0xdecafbad
+11-03 17:59:31.472 19336 19377 D Unity   : Loading player data from assets/bin/Data/data.unity3d
+11-03 17:59:31.473 19336 19377 D Unity   : PlayerInitEngineNoGraphics OK
+11-03 17:59:31.473 19336 19377 I Unity   : Company Name: SlonInc
+11-03 17:59:31.473 19336 19377 I Unity   : Product Name: VFX Graph_
+11-03 17:59:31.473 19336 19377 D Unity   : AndroidGraphics::Startup window =  0x6f9e6b5d00
+11-03 17:59:31.473 19336 19377 D Unity   : [EGL] Attaching window :0x6f9e6b5d00
+11-03 17:59:31.475 19336 19377 D Unity   : [Subsystems] Discovering subsystems at path /data/app/~~d-wmHWbMw8TI6Si83dQlxQ==/com.slonInc.vfx-E8Q8eGAkRFywvPUGpbzebA==/base.apk/assets/bin/Data/UnitySubsystems
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: count=10
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_debug_report [enabled=1, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_swapchain_colorspace [enabled=1, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_android_surface [enabled=1, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_device_group_creation [enabled=0, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_fence_capabilities [enabled=1, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_memory_capabilities [enabled=1, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_semaphore_capabilities [enabled=1, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_get_physical_device_properties2 [enabled=1, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_get_surface_capabilities2 [enabled=0, external=0]
+11-03 17:59:31.477 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_surface [enabled=1, external=0]
+11-03 17:59:31.515 19336 19377 D Unity   : [Vulkan init] SelectPhysicalDevice requestedDeviceIndex=-1 xrDevice=0x0
+11-03 17:59:31.515 19336 19377 D Unity   : [Vulkan init] Physical Device 0x6efe6af088 [0]: "Mali-G76" deviceType=1 vendorID=13b5 deviceID=72110000
+11-03 17:59:31.515 19336 19377 D Unity   : [VULKAN] Android Device Info:
+11-03 17:59:31.515 19336 19377 D Unity   : {"Vendor": "ARM","Device Name": "Mali-G76","Brand": "samsung","Product Name": "beyond1lteeea","Android OS Version": "12","Vulkan API Version": "Variant: 0 major.minor.patch:1.1.177","Driver Version": "134221824"}
+11-03 17:59:31.515 19336 19377 D Unity   : Vulkan detection: 2
+11-03 17:59:31.515 19336 19377 D Unity   : GfxDevice: creating device client; kGfxThreadingModeThreaded
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: count=10
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_debug_report [enabled=1, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_swapchain_colorspace [enabled=1, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_android_surface [enabled=1, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_device_group_creation [enabled=0, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_fence_capabilities [enabled=1, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_memory_capabilities [enabled=1, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_semaphore_capabilities [enabled=1, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_get_physical_device_properties2 [enabled=1, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_get_surface_capabilities2 [enabled=0, external=0]
+11-03 17:59:31.516 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_surface [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] SelectPhysicalDevice requestedDeviceIndex=-1 xrDevice=0x0
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] Physical Device 0x6efe6af088 [0]: "Mali-G76" deviceType=1 vendorID=13b5 deviceID=72110000
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] Selected physical device 0x6efe6af088
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] Graphics queue count=1
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: count=66
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_ANDROID_external_memory_android_hardware_buffer [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_4444_formats [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_astc_decode_mode [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_calibrated_timestamps [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_custom_border_color [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_device_memory_report [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_external_memory_dma_buf [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_global_priority [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_hdr_metadata [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_host_query_reset [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_image_drm_format_modifier [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_image_robustness [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_index_type_uint8 [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_inline_uniform_block [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_line_rasterization [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_provoking_vertex [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_queue_family_foreign [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_scalar_block_layout [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_separate_stencil_usage [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_shader_subgroup_ballot [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_shader_subgroup_vote [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_subgroup_size_control [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_texture_compression_astc_hdr [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_EXT_transform_feedback [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_GOOGLE_display_timing [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_16bit_storage [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_8bit_storage [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_bind_memory2 [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_buffer_device_address [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_create_renderpass2 [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_dedicated_allocation [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_depth_stencil_resolve [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_descriptor_update_template [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_device_group [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_driver_properties [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_fence [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_fence_fd [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_memory [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_memory_fd [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_semaphore [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_external_semaphore_fd [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_get_memory_requirements2 [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_image_format_list [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_imageless_framebuffer [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_incremental_present [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_maintenance1 [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_maintenance2 [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_maintenance3 [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_multiview [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_relaxed_block_layout [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_sampler_mirror_clamp_to_edge [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_sampler_ycbcr_conversion [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_separate_depth_stencil_layouts [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_shader_draw_parameters [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_shader_float16_int8 [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_shader_float_controls [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_shader_non_semantic_info [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_shader_subgroup_extended_types [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_shared_presentable_image [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_spirv_1_4 [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_storage_buffer_storage_class [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_swapchain [enabled=1, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_timeline_semaphore [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_uniform_buffer_standard_layout [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_variable_pointers [enabled=0, external=0]
+11-03 17:59:31.532 19336 19377 D Unity   : [Vulkan init] extensions: name=VK_KHR_vulkan_memory_model [enabled=0, external=0]
+11-03 17:59:31.538 19336 19377 D Unity   : Vulkan API version 1.1.0 (1.1.177 supported by driver, 1.1.0 requested)
+11-03 17:59:31.538 19336 19377 D Unity   : Vulkan vendor=[ARM] id=[13b5]
+11-03 17:59:31.538 19336 19377 D Unity   : Vulkan renderer=[Mali-G76] id=[72110000]
+11-03 17:59:31.538 19336 19377 D Unity   : Vulkan device type 1
+11-03 17:59:31.538 19336 19377 D Unity   : Vulkan driverversion=[32.1.0 (0x08001000)] uint=[134221824]
+11-03 17:59:31.538 19336 19377 D Unity   : Vulkan driverLibraryString=[Mali-G76 (9), v1.r32p1-01bet2-mbs2v39_0.131801e953429f661ecce1d5e1d2b3ef]
+11-03 17:59:31.538 19336 19377 D Unity   : VK use pretransform: 1
+11-03 17:59:31.547 19336 19377 D Unity   : Vulkan PSO: Cache data successfully loaded [size=136138,path=/storage/emulated/0/Android/data/com.slonInc.vfx/cache/vulkan_pso_cache.bin]
+11-03 17:59:31.550 19336 19377 D Unity   : [EGL] Attaching window :0x0
+11-03 17:59:31.551 19336 19377 D Unity   : AndroidDisplayManagerVulkan::AttachWindow(0x6f9e6b5d00, 0)
+11-03 17:59:31.552 19336 19377 D Unity   : InitializeOrResetSwapChain 1520x720 hdr=0 samples=0
+11-03 17:59:31.572 19336 19377 D Unity   : AndroidDisplayManagerVulkan::AttachWindow(0x6f9e6b5d00, 0)
+11-03 17:59:31.572 19336 19377 D Unity   : Initialize engine version: 6000.5.9f1 (b57deb96f08d)
+11-03 17:59:31.750 19336 19377 D Unity   : [Physics::Module] Selected backend.
+11-03 17:59:31.750 19336 19377 D Unity   : [Physics::Module] Name: PhysX
+11-03 17:59:31.750 19336 19377 D Unity   : [Physics::Module] Id: 0xf2b8ea05
+11-03 17:59:31.750 19336 19377 D Unity   : [Physics::Module] SDK Version: 4.1.2
+11-03 17:59:31.750 19336 19377 D Unity   : [Physics::Module] Integration Version: 1.0.0
+11-03 17:59:31.750 19336 19377 D Unity   : [Physics::Module] Threading Mode: Multi-Threaded
+11-03 17:59:31.944 19336 19377 D Unity   : PlayerInitEngineGraphics OK
+11-03 17:59:31.977 19336 19377 I Unity   :     HasWindow = 1, HasFocus = 0
+11-03 17:59:31.977 19336 19377 I Unity   : Handle cmd APP_CMD_WINDOW_RESIZED(3)
+11-03 17:59:31.977 19336 19377 D Unity   : NativeWindow resized 1520x720
+11-03 17:59:31.979 19336 19377 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+11-03 17:59:31.979 19336 19377 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+11-03 17:59:31.979 19336 19377 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+11-03 17:59:31.984 19336 19377 D Unity   : InitializeOrResetSwapChain 1520x720 hdr=0 samples=0
+11-03 17:59:34.109 19336 19377 D Unity   : UnloadTime: 3.204115 ms
+11-03 17:59:34.118 19336 19402 D Unity   : Curl error 6: Could not resolve: engine-data.unity3d.com:443
+11-03 17:59:34.122 19336 19377 D Unity   : UUID: 3144b8c8dd9ea690 => 67c60be0ba82f0c8accba300f5f2a120
+11-03 17:59:34.258 19336 19377 E Unity   : FieldDebugQuadsBinder: shader 'M3D/FieldDebug' not found.
+11-03 17:59:34.258 19336 19377 E Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 17:59:34.258 19336 19377 E Unity   : SimulationWorld:SetupBinders()
+11-03 17:59:34.258 19336 19377 E Unity   : SimulationWorld:Build()
+11-03 17:59:34.258 19336 19377 E Unity   : 
+11-03 17:59:34.258 19336 19377 I Unity   : SimulationWorld: effect 'Boids_hash100k' ready (100000 points, 1 fields, source 'Swarm', 8 passes).
+11-03 17:59:34.258 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 17:59:34.258 19336 19377 I Unity   : SimulationWorld:Build()
+11-03 17:59:34.258 19336 19377 I Unity   : 
+11-03 17:59:34.266 19336 19455 D Unity   : Unloading 5 Unused Serialized files (Serialized files now loaded: 0)
+11-03 17:59:34.272 19336 19377 D Unity   : UnloadTime: 3.140115 ms
+11-03 17:59:34.275 19336 19403 D Unity   : Curl error 6: Could not resolve: config.uca.cloud.unity3d.com:443
+11-03 17:59:34.327 19336 19377 I Unity   : SimulationWorld: effect 'Boids_hash_P400c' ready (400000 points, 0 fields, source 'Swarm', 7 passes).
+11-03 17:59:34.327 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 17:59:34.327 19336 19377 I Unity   : SimulationWorld:Build()
+11-03 17:59:34.327 19336 19377 I Unity   : 
+11-03 17:59:34.337 19336 19377 D Unity   : Unloading 8 unused Assets / (6.1 MB). Loaded Objects now: 1876.
+11-03 17:59:34.337 19336 19377 D Unity   : Memory consumption went from 91.3 MB to 85.2 MB.
+11-03 17:59:34.337 19336 19377 D Unity   : Total: 8.085692 ms (FindLiveObjects: 0.127961 ms CreateObjectMapping: 0.218193 ms MarkObjects: 7.672730 ms  DeleteObjects: 0.065692 ms)
+11-03 17:59:34.337 19336 19377 D Unity   : 
+11-03 17:59:34.339 19336 19377 D Unity   : Using NDK Choreographer.
+11-03 17:59:34.341 19336 19403 D Unity   : Curl error 6: Could not resolve: cdp.cloud.unity3d.com:443
+11-03 17:59:34.367 19336 19377 D Unity   : Stopping Unity systrace
+11-03 17:59:34.374 19336 19377 I Unity   : M3D_PERF_INFO device=samsung SM-G973F api=Vulkan gpu=Mali-G76 screen=1520x720 unity=6000.5.9f1 applied=1 dirtyhash=56aa12b3 scene=Boids_Hash_P400c camera=112 build=ab6f32c dirty=1 powersave=0 battery=82 charging=1 tag=B args=force=1,render=0,maxn=48,warmup=60,measure=25,autorun=1,quit=1,tag=B,scene=Boids_Hash_P400c devbuild=1 walk=1
+11-03 17:59:34.374 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 17:59:34.374 19336 19377 I Unity   : FPSDisplay:LogDeviceInfo(Boolean)
+11-03 17:59:34.374 19336 19377 I Unity   : FPSDisplay:AdvanceArgs(Single)
+11-03 17:59:34.374 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 17:59:34.374 19336 19377 I Unity   : 
+11-03 17:59:35.210 19336 19403 D Unity   : Curl error 6: Could not resolve host: cdp.cloud.unity3d.com
+11-03 17:59:37.195 19336 19403 D Unity   : Curl error 6: Could not resolve host: cdp.cloud.unity3d.com
+11-03 17:59:39.133 19336 19402 D Unity   : Curl error 6: Could not resolve host: engine-data.unity3d.com
+11-03 17:59:44.365 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=WARMUP t=10.0 frameAvg=na frameP95=na frameMax=na long=na cpuFrame=na cpuMainAvg=na cpuMainP95=na cpuRenderAvg=na cpuRenderP95=na cpuWaitAvg=na cpuWaitP95=na gpuAvg=na gpuP95=na thermal=0 thermalStart=0 thermalMax=0 buckets=21.9 res=1520x720 hist=na walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 17:59:44.365 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 17:59:44.365 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 17:59:44.365 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 17:59:44.365 19336 19377 I Unity   : 
+11-03 17:59:48.887 19336 19403 D Unity   : Curl error 6: Could not resolve host: engine-data.unity3d.com
+11-03 17:59:54.351 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=WARMUP t=20.0 frameAvg=na frameP95=na frameMax=na long=na cpuFrame=na cpuMainAvg=na cpuMainP95=na cpuRenderAvg=na cpuRenderP95=na cpuWaitAvg=na cpuWaitP95=na gpuAvg=na gpuP95=na thermal=0 thermalStart=0 thermalMax=0 buckets=21.9/19.1 res=1520x720 hist=na walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 17:59:54.351 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 17:59:54.351 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 17:59:54.351 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 17:59:54.351 19336 19377 I Unity   : 
+11-03 18:00:04.364 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=WARMUP t=30.0 frameAvg=na frameP95=na frameMax=na long=na cpuFrame=na cpuMainAvg=na cpuMainP95=na cpuRenderAvg=na cpuRenderP95=na cpuWaitAvg=na cpuWaitP95=na gpuAvg=na gpuP95=na thermal=0 thermalStart=0 thermalMax=0 buckets=21.9/19.1/18.8 res=1520x720 hist=na walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 18:00:04.364 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 18:00:04.364 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 18:00:04.364 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 18:00:04.364 19336 19377 I Unity   : 
+11-03 18:00:07.198 19336 19402 D Unity   : Curl error 6: Could not resolve: cdp.cloud.unity3d.com:443
+11-03 18:00:09.361 19336 19404 D Unity   : Curl error 6: Could not resolve: engine-data.unity3d.com:443
+11-03 18:00:14.363 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=WARMUP t=40.0 frameAvg=na frameP95=na frameMax=na long=na cpuFrame=na cpuMainAvg=na cpuMainP95=na cpuRenderAvg=na cpuRenderP95=na cpuWaitAvg=na cpuWaitP95=na gpuAvg=na gpuP95=na thermal=0 thermalStart=0 thermalMax=0 buckets=21.9/19.1/18.8/18.8 res=1520x720 hist=na walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 18:00:14.363 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 18:00:14.363 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 18:00:14.363 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 18:00:14.363 19336 19377 I Unity   : 
+11-03 18:00:24.354 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=WARMUP t=50.0 frameAvg=na frameP95=na frameMax=na long=na cpuFrame=na cpuMainAvg=na cpuMainP95=na cpuRenderAvg=na cpuRenderP95=na cpuWaitAvg=na cpuWaitP95=na gpuAvg=na gpuP95=na thermal=0 thermalStart=0 thermalMax=0 buckets=21.9/19.1/18.8/18.8/18.9 res=1520x720 hist=na walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 18:00:24.354 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 18:00:24.354 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 18:00:24.354 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 18:00:24.354 19336 19377 I Unity   : 
+11-03 18:00:34.363 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=MEASURE t=60.0 frameAvg=na frameP95=na frameMax=na long=na cpuFrame=na cpuMainAvg=na cpuMainP95=na cpuRenderAvg=na cpuRenderP95=na cpuWaitAvg=na cpuWaitP95=na gpuAvg=na gpuP95=na thermal=0 thermalStart=0 thermalMax=0 buckets=21.9/19.1/18.8/18.8/18.9/19.0 res=1520x720 hist=na walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 18:00:34.363 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 18:00:34.363 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 18:00:34.363 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 18:00:34.363 19336 19377 I Unity   : 
+11-03 18:00:44.352 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=MEASURE t=70.0 frameAvg=19.01 frameP95=33.43 frameMax=50.13 long=0.135 cpuFrame=18.99 cpuMainAvg=5.05 cpuMainP95=6.24 cpuRenderAvg=1.07 cpuRenderP95=1.39 cpuWaitAvg=13.91 cpuWaitP95=15.67 gpuAvg=18.98 gpuP95=20.12 thermal=0 thermalStart=0 thermalMax=0 buckets=21.9/19.1/18.8/18.8/18.9/19.0/19.0 res=1520x720 hist=0/455/0/70/1/0 walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 18:00:44.352 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 18:00:44.352 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 18:00:44.352 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 18:00:44.352 19336 19377 I Unity   : 
+11-03 18:00:49.407 19336 19402 D Unity   : Curl error 6: Could not resolve: engine-data.unity3d.com:443
+11-03 18:00:54.354 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=MEASURE t=80.0 frameAvg=18.92 frameP95=33.43 frameMax=50.13 long=0.131 cpuFrame=18.91 cpuMainAvg=5.06 cpuMainP95=6.32 cpuRenderAvg=1.07 cpuRenderP95=1.40 cpuWaitAvg=13.83 cpuWaitP95=15.61 gpuAvg=18.90 gpuP95=20.05 thermal=0 thermalStart=0 thermalMax=0 buckets=21.9/19.1/18.8/18.8/18.9/19.0/19.0/18.8 res=1520x720 hist=0/919/0/137/1/0 walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 18:00:54.354 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 18:00:54.354 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 18:00:54.354 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 18:00:54.354 19336 19377 I Unity   : 
+11-03 18:00:59.368 19336 19377 I Unity   : M3D_PERF count=400000 maxNeighbors=48 force=1 render=0 debug=na phase=DONE t=85.0 frameAvg=18.93 frameP95=33.43 frameMax=50.13 long=0.132 cpuFrame=18.93 cpuMainAvg=5.07 cpuMainP95=6.32 cpuRenderAvg=1.07 cpuRenderP95=1.39 cpuWaitAvg=13.83 cpuWaitP95=15.67 gpuAvg=18.92 gpuP95=20.11 thermal=0 thermalStart=0 thermalMax=0 buckets=21.9/19.1/18.8/18.8/18.9/19.0/19.0/18.8/19.0 res=1520x720 hist=0/1147/0/173/1/0 walk=1 walkeff=1 cam=112 capfrac=na hashrep=1 forcerep=1
+11-03 18:00:59.368 19336 19377 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+11-03 18:00:59.368 19336 19377 I Unity   : FPSDisplay:WriteLog()
+11-03 18:00:59.368 19336 19377 I Unity   : FPSDisplay:Update()
+11-03 18:00:59.368 19336 19377 I Unity   : 
+11-03 18:01:02.371 19336 19377 I Unity   : Quit requested
+11-03 18:01:02.371 19336 19377 I Unity   : UnityApplication::DestroyInstance
+11-03 18:01:03.443 19336 19377 D Unity   : [Physics::Module] Cleanup current backend.
+11-03 18:01:03.443 19336 19377 D Unity   : [Physics::Module] Id: 0xf2b8ea05
+11-03 18:01:03.444 19336 19377 D Unity   : Input System module state changed to: ShutdownInProgress.
+11-03 18:01:03.444 19336 19377 D Unity   : Input Polling Thread exited.
+11-03 18:01:03.444 19336 19377 D Unity   : Input System module state changed to: Shutdown.
+11-03 18:01:03.467 19336 19377 D Unity   : CodeReloadManager destroyed
+11-03 18:01:03.469 19336 19377 D Unity   : PlayerConnection::Cleanup
+11-03 18:01:03.470 19336 19377 D Unity   : Vulkan PSO: Pipeline cache has not changed skipping save handle[3e69ef00]
+11-03 18:01:03.481 19336 19377 I Unity   : Starting Idle Loop
+11-03 18:01:03.514 19336 19336 I Unity   : onPause
+11-03 18:01:03.542 19336 19336 I Unity   : windowFocusChanged: false
+11-03 18:01:03.903 19336 19336 D Unity   : PersistentUnitySurface.preserveContent: com.unity3d.player.UnityPlayerGameActivity$GameActivitySurfaceView{c36046a VFE...... .F....I. 0,0-1520,720 #7f080125 app:id/unitySurfaceView aid=1073741824}
+11-03 18:01:03.905 19336 19336 D Unity   : PersistentUnitySurface.PlaceholderView.Copy: com.unity3d.player.UnityPlayerGameActivity$GameActivitySurfaceView{c36046a VFE...... .F....I. 0,0-1520,720 #7f080125 app:id/unitySurfaceView aid=1073741824} Width 1520  Height 720
+11-03 18:01:03.924 19336 19609 D Unity   : PixelCopy finished: 3
+11-03 18:01:03.925 19336 19336 I Unity   : Surface destroyed while running without focus - pausing Unity
+11-03 18:01:03.930 19336 19336 I Unity   : pauseUnity
+11-03 18:01:03.954 19336 19336 I Unity   : onDestroy
+11-03 18:01:03.957 19336 19377 I Unity   : UnityApplication::FinalDestroyInstance
+11-03 18:01:03.976 19336 19475 D Unity   : ChoreographerNDK: Ignoring event, since Choreographer is disabled
+11-03 18:01:03.999 19336 19377 I Unity   : ##utp:{"type":"MemoryLeaks","version":2,"phase":"Immediate","time":1793725263999,"processId":19336,"allocatedMemory":1160028,"memoryLabels":[{"Default":12844},{"Permanent":8},{"Thread":2240},{"Manager":8515},{"Shader":8},{"GfxDevice":5504},{"Animation":832},{"Audio":752},{"Serialization":920},{"ScriptingNativeRuntime":1081560},{"Renderer":9868},{"File":312},{"String":698},{"Utility":4192},{"PoolAlloc":96},{"CodeReload":440},{"CloudService":144},{"WebRequest":1737},{"VR":1904},{"NativeArray":15190},{"Subsystems":96},{"CoreStats":320},{"Gui":12264},{"CoreBusinessMetrics":128}]}
+11-03 18:01:04.022 19336 19377 I Unity   : No leftover JNI Proxy objects detected
+11-03 18:01:04.022 19336 19377 I Unity   : Quitting process

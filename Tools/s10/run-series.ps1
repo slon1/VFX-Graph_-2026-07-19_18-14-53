@@ -269,10 +269,6 @@ foreach ($point in @($state.points)) {
     Invoke-M3d -File $adbPath -ArgumentList @("-s", $Serial, "shell", "am", "force-stop", $package) | Out-Null
     Invoke-M3d -File $adbPath -ArgumentList @("-s", $Serial, "logcat", "-c") | Out-Null
     if (Test-Path $rawLog) { Remove-Item $rawLog -Force }
-    $logProc = Start-Process -FilePath $adbPath -ArgumentList @("-s", $Serial, "logcat", "-s", "Unity") `
-        -RedirectStandardOutput $rawLog -RedirectStandardError (Join-Path (Get-M3dOutDir) "series-logcat.err") `
-        -PassThru -WindowStyle Hidden
-    Start-Sleep -Milliseconds 400
 
     $unityArgs = Get-UnityArgs $point
     $startLine = "adb -s $Serial shell `"am start -n $package/$activity -e unity '$unityArgs'`""
@@ -288,17 +284,18 @@ foreach ($point in @($state.points)) {
 
     $startFailed = ($start.Text -match "Error:|Exception") -or ($start.Text -notmatch "has extras")
     $done = $false
+    $savedLog = ""
     if (-not $startFailed) {
         $deadline = (Get-Date).AddSeconds($timeoutSec)
         while ((Get-Date) -lt $deadline) {
-            $chunk = Read-M3dSharedText $rawLog
-            if ($chunk -match "phase=DONE") { $done = $true; break }
+            $savedLog = Update-M3dUnityLogFile $adbPath $Serial $rawLog $savedLog
+            if ($savedLog -match "phase=DONE") { $done = $true; break }
             Start-Sleep -Seconds 2
         }
     }
-    if ($logProc -and -not $logProc.HasExited) { Stop-Process -Id $logProc.Id -Force -ErrorAction SilentlyContinue }
 
-    $rawText = Read-M3dSharedText $rawLog
+    $rawText = $savedLog
+    if ([string]::IsNullOrEmpty($rawText)) { $rawText = Read-M3dSharedText $rawLog }
     $perfLines = @($rawText -split "`r?`n" | Where-Object { $_ -match "M3D_PERF" })
     $runs = @(Read-M3dPerfText ($perfLines -join "`n"))
     $run = $runs | Select-Object -Last 1
