@@ -17,7 +17,7 @@
 В `Assets/Scripts/Editor/M3DDemoTools.cs` добавить рядом с `CreateBoidsHashTwoTeamsAsset`:
 
 1. Константы путей: ассет `Assets/Effects/Boids_hash_P400c.asset`, сцена `Assets/Scenes/Boids_Hash_P400c.unity`.
-2. **Общий приватный помощник параметров** (ADR-060 §2.1): настраивает спавн, профили команд и общие поля `particleSize`, `particleValueScale`, `particleGradient`. Подписи и градиенты команд (`RedBlue`, `YellowGreen`) и `RedBlueGradient()` / `YellowGreenGradient()` брать существующие. Существующие билдеры не рефакторить и не подключать к помощнику.
+2. **Общий приватный помощник параметров** (ADR-060 §2.1). Состав: (а) константы `P400cSimulationSpeed` = 1, `P400cExtents` = (112, 0, 112), `P400cCameraSize` = 112, `P400cCameraPosition` = (0, 40, 0); (б) метод, который настраивает на ассете спавн, профили команд и общие поля `particleSize`, `particleValueScale`, `particleGradient`; (в) метод, который настраивает камеру сцены (ортографическая, размер, позиция, поворот (90, 0, 0)). Цепочка пассов остаётся в `CreateBoidsHashP400cAsset`, но `Extents` хэша и ящика, `simulationSpeed` в `EditorConfigure` и камера берут значения **только** из этих констант и методов, без своих литералов. Подписи и градиенты команд (`RedBlue`, `YellowGreen`) и `RedBlueGradient()` / `YellowGreenGradient()` брать существующие. Существующие билдеры не рефакторить и не подключать к помощнику.
 3. `CreateBoidsHashP400cAsset(string path)` по образцу двух команд (удалить существующий ассет по пути, создать, сохранить), параметры **строго** по ADR-059 §2.1:
    - `EditorConfigure(DataSourceKind.Swarm, 1f, ...)`, `simulationSpeed` 1;
    - пассы в порядке: `BuildSpatialHashPass { Center = zero, Extents = (112, 0, 112), MinCellSize = 3, Wrap = true }`, `ClearVelocityPass`, `BoidNeighborForcePass { MaxNeighbors = 48, CountCapHits = false }`, `TeamHeadingSteerPass`, `IntegratePass`, `BoxBoundsPass { Center = zero, Extents = (112, 0, 112), Behaviour = Wrap }`, `HeadingToValuePass`. **Без** `HashCountsToFieldPass` и без полей (`Fields` пусто);
@@ -25,7 +25,7 @@
    - `SwarmSource`: seed 1, jitter 0, два спавна: команда 0, 200 000, центр (−55, 0), радиус 45, курс (1, 0); команда 1, 200 000, центр (+55, 0), радиус 45, курс (−1, 0);
    - команды: радиусы разделения / выравнивания / сплочения 3 / 3 / 3, множитель чужих 4, веса 1,2 / 0,8 / 0,6, `cruise` 6, `turn` 4;
    - `particleSize` 0,5, `particleValueScale` 1.
-4. `CreateBoidsHashP400cScene(string scenePath, string assetPath)`: как у двух команд, но камера ортографическая размера **112**, позиция (0, 40, 0), поворот (90, 0, 0); объект `M3D Boids Hash P400c`, `visualEffect` и `inputRouter` пустые, `EnsurePassLibrary`.
+4. `CreateBoidsHashP400cScene(string scenePath, string assetPath)`: как у двух команд, но камеру настраивает метод помощника (размер 112); объект `M3D Boids Hash P400c`, `visualEffect` и `inputRouter` пустые, `EnsurePassLibrary`.
 5. Меню `Tools/M3D/Create Boids Hash P400c Effect` с тем же порядком действий, что у `Create Boids Hash 2 Teams Effect` (папка, ассет, сохранение сцены, сцена, лог).
 6. Запустить меню через Unity MCP, убедиться, что ассет и сцена созданы, в консоли нет ошибок. В отчёт: вывод `git status --short`.
 
