@@ -10,6 +10,10 @@
 
 ---
 
+## P8 начат (2026-11-03)
+
+P8 начат на `feature/p8-field-neighbors`. План [`plan-P8-field-neighbors.md`](plan-P8-field-neighbors.md), [ADR-058](ADR/ADR-058-Field-Neighbor-Force.md) и [ADR-059](ADR/ADR-059-P8-1-0-Scene-Baseline-Model-Checks.md) предложены.
+
 ## P9.4.2 — пресет alignment по скорости (2026-10-31)
 
 `Boids_hash_classic_vel`: рецепт classic без точек и флаг `AlignFromVelocity`. Сцена `Boids_HashClassicVel`. EditMode после А0: 488/484/4, после пресета: 493/489/4, красные те же четыре. Метрики и пустые наблюдения: [play-p9-classic.md](last/play-p9-classic.md), раздел P9.4.2. Подробности: [ADR-057](ADR/ADR-057-Align-From-Velocity.md) §7.
