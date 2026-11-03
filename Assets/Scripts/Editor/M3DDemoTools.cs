@@ -40,6 +40,14 @@ public static class M3DDemoTools
     private const string BoidsHashClassicVelScene = "Assets/Scenes/Boids_HashClassicVel.unity";
     private const string BoidsHashTwoTeamsPath = EffectsFolder + "/Boids_hash_2teams.asset";
     private const string BoidsHashTwoTeamsScene = "Assets/Scenes/Boids_Hash_2Teams.unity";
+    private const string BoidsHashP400cPath = EffectsFolder + "/Boids_hash_P400c.asset";
+    private const string BoidsHashP400cScene = "Assets/Scenes/Boids_Hash_P400c.unity";
+    private const float P400cSimulationSpeed = 1f;
+    private const float P400cParticleSize = 0.5f;
+    private const float P400cParticleValueScale = 1f;
+    private const float P400cCameraSize = 112f;
+    private static readonly Vector3 P400cExtents = new Vector3(112f, 0f, 112f);
+    private static readonly Vector3 P400cCameraPosition = new Vector3(0f, 40f, 0f);
     private const string CurlNoise2DPath = EffectsFolder + "/CurlNoise2D.asset";
     private const string CurlNoise2DScene = "Assets/Scenes/CurlNoise2D.unity";
 
@@ -2462,6 +2470,168 @@ public static class M3DDemoTools
         worldSo.ApplyModifiedPropertiesWithoutUndo();
 
         EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    [MenuItem("Tools/M3D/Create Boids Hash P400c Effect")]
+    public static void CreateBoidsHashP400cEffect()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashP400cAsset(BoidsHashP400cPath);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Boids Hash P400c scene cancelled; the asset was still written.");
+            return;
+        }
+
+        CreateBoidsHashP400cScene(BoidsHashP400cScene, BoidsHashP400cPath);
+        Debug.Log("M3D: created Boids_hash_P400c asset and Boids_Hash_P400c scene.");
+    }
+
+    private static void CreateBoidsHashP400cAsset(string path)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        BuildSpatialHashPass hash = new BuildSpatialHashPass { MinCellSize = 3f };
+        BoxBoundsPass box = new BoxBoundsPass();
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            P400cSimulationSpeed,
+            new SimPass[]
+            {
+                hash,
+                new ClearVelocityPass(),
+                new BoidNeighborForcePass { MaxNeighbors = 48, CountCapHits = false },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                box,
+                new HeadingToValuePass(),
+            });
+        ConfigureP400cSource(asset);
+        ApplyP400cWorld(hash, box);
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void CreateBoidsHashP400cScene(string scenePath, string assetPath)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera == null)
+        {
+            throw new System.InvalidOperationException("M3D: P400c scene has no main camera.");
+        }
+
+        ConfigureP400cCamera(camera);
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject("M3D Boids Hash P400c");
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    /// <summary>
+    /// Shared P400c spawn, team recipe and particle look.
+    /// A later field builder calls this, then replaces the pass chain and MinCellSize.
+    /// Speed, extents and the camera come from <see cref="P400cSimulationSpeed"/>,
+    /// <see cref="P400cExtents"/> and <see cref="ConfigureP400cCamera"/>.
+    /// </summary>
+    private static void ConfigureP400cSource(EffectAsset asset)
+    {
+        SwarmSource swarm = (SwarmSource)asset.ResolveSource();
+        swarm.Seed = 1;
+        swarm.JitterDegrees = 0f;
+        swarm.Spawns = new System.Collections.Generic.List<SwarmSource.Spawn>
+        {
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 0,
+                Count = 200000,
+                Center = new Vector2(-55f, 0f),
+                Radius = 45f,
+                InitialDirection = new Vector2(1f, 0f),
+            },
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 1,
+                Count = 200000,
+                Center = new Vector2(55f, 0f),
+                Radius = 45f,
+                InitialDirection = new Vector2(-1f, 0f),
+            },
+        };
+        asset.SetTeams(new[]
+        {
+            new TeamProfile
+            {
+                Name = "RedBlue",
+                SeparationRadius = 3f,
+                AlignmentRadius = 3f,
+                CohesionRadius = 3f,
+                InterGroupSeparationMultiplier = 4f,
+                SeparationWeight = 1.2f,
+                AlignmentWeight = 0.8f,
+                CohesionWeight = 0.6f,
+                Cruise = 6f,
+                Turn = 4f,
+                Color = RedBlueGradient(),
+            },
+            new TeamProfile
+            {
+                Name = "YellowGreen",
+                SeparationRadius = 3f,
+                AlignmentRadius = 3f,
+                CohesionRadius = 3f,
+                InterGroupSeparationMultiplier = 4f,
+                SeparationWeight = 1.2f,
+                AlignmentWeight = 0.8f,
+                CohesionWeight = 0.6f,
+                Cruise = 6f,
+                Turn = 4f,
+                Color = YellowGreenGradient(),
+            },
+        });
+
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("particleSize").floatValue = P400cParticleSize;
+        so.FindProperty("particleValueScale").floatValue = P400cParticleValueScale;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        SetField(asset, "particleGradient", DebugFieldQuadSlot.DefaultFireGradient());
+    }
+
+    private static void ApplyP400cWorld(BuildSpatialHashPass hash, BoxBoundsPass box)
+    {
+        hash.Center = Vector3.zero;
+        hash.Extents = P400cExtents;
+        hash.Wrap = true;
+        box.Center = Vector3.zero;
+        box.Extents = P400cExtents;
+        box.Behaviour = BoundsBehaviour.Wrap;
+    }
+
+    private static void ConfigureP400cCamera(Camera camera)
+    {
+        camera.orthographic = true;
+        camera.orthographicSize = P400cCameraSize;
+        camera.transform.SetPositionAndRotation(P400cCameraPosition, Quaternion.Euler(90f, 0f, 0f));
     }
 
     [MenuItem("Tools/M3D/Create Curl Noise 2D Effect")]

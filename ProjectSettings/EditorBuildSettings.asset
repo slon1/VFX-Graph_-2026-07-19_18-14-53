@@ -47,5 +47,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Boids_Hash_2Teams.unity
     guid: cd14dc44198bbe94b964f550f36bd3db
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c.unity
+    guid: f53113476d69f9f47a37f33019594724
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
