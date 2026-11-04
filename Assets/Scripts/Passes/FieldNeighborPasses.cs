@@ -515,3 +515,154 @@ public sealed class FieldNeighborConvolvePass : SimPass, IFieldNeighborPass, IDi
         cmd.SetComputeBufferParam(kernel.Shader, kernel.Index, name, buffer);
     }
 }
+
+/// <summary>
+/// Reads the neighbor field and adds separation, alignment and cohesion (ADR-062 §2.2).
+/// Diagnostic repeats 2..N write a scratch velocity. <see cref="SimPass.RepeatCount"/> stays 1.
+/// </summary>
+[Serializable]
+public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDisposable
+{
+    private const int ThreadGroupSize = 64;
+
+    [NonSerialized] private KernelHandle kernel;
+    [NonSerialized] private int fieldRepeatCount = 1;
+    [NonSerialized] private GraphicsBuffer scratchVelocity;
+    [NonSerialized] private Vector3[] scratchZeros;
+    [NonSerialized] private GraphicsBuffer liveVelocity;
+
+    public override string DisplayName => "Field Neighbor Force";
+    public override PassCategory Category => PassCategory.Force;
+    public override System.Collections.Generic.IReadOnlyList<AttributeId> Reads => AttrSets.PositionHeadingTeam;
+    public override System.Collections.Generic.IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    /// <summary>Diagnostic stage. Does not change <see cref="SimPass.RepeatCount"/>.</summary>
+    public FieldRepeatStage FieldStage { get; set; } = FieldRepeatStage.All;
+
+    /// <summary>Extra dispatches of the force. 1 writes velocity and allocates no scratch.</summary>
+    public int FieldRepeatCount
+    {
+        get => fieldRepeatCount;
+        set
+        {
+            fieldRepeatCount = Mathf.Clamp(value, 1, 64);
+            if (fieldRepeatCount <= 1)
+            {
+                ReleaseScratch();
+            }
+        }
+    }
+
+    /// <summary>Scratch velocity written by repeats 2..R. Null while <see cref="FieldRepeatCount"/> is 1.</summary>
+    internal GraphicsBuffer ForceScratch => scratchVelocity;
+
+    public override void Initialize(SimContext context)
+    {
+        if (context.FieldNeighbor == null)
+        {
+            throw new InvalidOperationException(
+                "Field Neighbor Force requires Field Neighbor Collect earlier in the chain.");
+        }
+
+        if (context.Teams == null)
+        {
+            throw new InvalidOperationException("Field Neighbor Force requires a team buffer.");
+        }
+
+        kernel = context.FindKernel("FieldNeighborForce");
+    }
+
+    public override void Execute(SimContext context, float deltaTime)
+    {
+        LastExecuteDispatched = false;
+        if (FieldStage == FieldRepeatStage.Off || !kernel.IsValid)
+        {
+            return;
+        }
+
+        FieldNeighborSet field = context.FieldNeighbor;
+        if (field == null || field.ParticleCount == 0 || context.Teams == null || context.Particles == null)
+        {
+            return;
+        }
+
+        int count = context.Particles.Count;
+        if (count == 0)
+        {
+            return;
+        }
+
+        liveVelocity = context.Particles.Get(BuiltinAttributes.Velocity);
+        CommandBuffer cmd = context.Cmd;
+        ComputeShader shader = kernel.Shader;
+        field.PushParams(cmd, shader, radiusTexels: 3f, radius: 3f);
+        cmd.SetComputeIntParam(shader, SimShaderIds.ParticleCount, count);
+        Bind(cmd, "position", context.Particles.Get(BuiltinAttributes.Position));
+        Bind(cmd, "heading", context.Particles.Get(BuiltinAttributes.Heading));
+        Bind(cmd, "teamId", context.Particles.Get(BuiltinAttributes.TeamId));
+        Bind(cmd, "velocity", liveVelocity);
+        Bind(cmd, "Teams", context.Teams);
+        Bind(cmd, "FieldSlots", field.Field);
+        int groups = (count + ThreadGroupSize - 1) / ThreadGroupSize;
+        cmd.DispatchCompute(shader, kernel.Index, groups, 1, 1);
+        RepeatForce(cmd, count, groups);
+        LastExecuteDispatched = true;
+    }
+
+    public void Dispose()
+    {
+        ReleaseScratch();
+        liveVelocity = null;
+    }
+
+    private bool RepeatsForce =>
+        fieldRepeatCount > 1 &&
+        FieldStage != FieldRepeatStage.Off &&
+        FieldStage != FieldRepeatStage.Collect &&
+        FieldStage != FieldRepeatStage.Conv &&
+        FieldStage != FieldRepeatStage.Grad;
+
+    private void RepeatForce(CommandBuffer cmd, int count, int groups)
+    {
+        if (!RepeatsForce)
+        {
+            return;
+        }
+
+        if (scratchVelocity == null || scratchVelocity.count != count)
+        {
+            scratchVelocity?.Release();
+            scratchVelocity = new GraphicsBuffer(GraphicsBuffer.Target.Structured, count, sizeof(float) * 3);
+        }
+
+        if (scratchZeros == null || scratchZeros.Length != count)
+        {
+            scratchZeros = new Vector3[count];
+        }
+        else
+        {
+            Array.Clear(scratchZeros, 0, scratchZeros.Length);
+        }
+
+        cmd.SetBufferData(scratchVelocity, scratchZeros);
+        Bind(cmd, "velocity", scratchVelocity);
+        for (int repeat = 2; repeat <= fieldRepeatCount; repeat++)
+        {
+            cmd.DispatchCompute(kernel.Shader, kernel.Index, groups, 1, 1);
+        }
+
+        Bind(cmd, "velocity", liveVelocity);
+    }
+
+    private void Bind(CommandBuffer cmd, string name, GraphicsBuffer buffer)
+    {
+        cmd.SetComputeBufferParam(kernel.Shader, kernel.Index, name, buffer);
+    }
+
+    private void ReleaseScratch()
+    {
+        scratchVelocity?.Release();
+        scratchVelocity = null;
+        scratchZeros = null;
+    }
+}
