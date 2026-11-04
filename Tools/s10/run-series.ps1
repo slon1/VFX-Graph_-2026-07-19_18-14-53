@@ -163,7 +163,7 @@ $fieldRepText = ""
 if (-not [string]::IsNullOrWhiteSpace($FieldRep)) {
     $fieldRepValue = 0
     $fieldRepOk = [int]::TryParse($FieldRep, [ref]$fieldRepValue)
-    if (-not $fieldRepOk -or $fieldRepValue -lt 1 -or $fieldRepValue -gt 16) { throw "Повтор поля: '$FieldRep' не разобран. Нужно целое от 1 до 16." }
+    if (-not $fieldRepOk -or $fieldRepValue -lt 1 -or $fieldRepValue -gt 64) { throw "Повтор поля: '$FieldRep' не разобран. Нужно целое от 1 до 64." }
     $fieldRepText = [string]$fieldRepValue
 }
 

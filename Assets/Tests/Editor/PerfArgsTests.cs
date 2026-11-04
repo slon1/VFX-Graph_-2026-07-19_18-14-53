@@ -405,21 +405,24 @@ public class PerfArgsTests
 	}
 
 	[Test]
-	public void Parse_FieldRep_AcceptsOneThroughSixteen()
+	public void Parse_FieldRep_AcceptsOneThroughSixtyFour()
 	{
 		PerfArgs once = PerfArgs.Parse(new[] { "-m3d_fieldrep", "1" });
 		PerfArgs sixteen = PerfArgs.Parse(new[] { "-m3d_fieldrep", "16" });
+		PerfArgs sixtyFour = PerfArgs.Parse(new[] { "-m3d_fieldrep", "64" });
 		Assert.That(once.HasFieldRep, Is.True);
 		Assert.That(once.FieldRep, Is.EqualTo(1));
 		Assert.That(sixteen.FieldRep, Is.EqualTo(16));
-		Assert.That(once.Warnings, Is.Empty);
+		Assert.That(sixtyFour.HasFieldRep, Is.True);
+		Assert.That(sixtyFour.FieldRep, Is.EqualTo(64));
+		Assert.That(sixtyFour.Warnings, Is.Empty);
 	}
 
 	[Test]
 	public void Parse_FieldRep_RejectsGarbageAndAMissingValue()
 	{
 		PerfArgs zero = PerfArgs.Parse(new[] { "-m3d_fieldrep", "0" });
-		PerfArgs big = PerfArgs.Parse(new[] { "-m3d_fieldrep", "17" });
+		PerfArgs big = PerfArgs.Parse(new[] { "-m3d_fieldrep", "65" });
 		PerfArgs text = PerfArgs.Parse(new[] { "-m3d_fieldrep", "abc" });
 		PerfArgs missing = PerfArgs.Parse(new[] { "-m3d_fieldrep" });
 		Assert.That(zero.HasFieldRep, Is.False);
@@ -427,7 +430,7 @@ public class PerfArgsTests
 		Assert.That(text.HasFieldRep, Is.False);
 		Assert.That(missing.HasFieldRep, Is.False);
 		Assert.That(zero.Warnings, Is.EqualTo(new[] { "fieldrep=0" }));
-		Assert.That(big.Warnings, Is.EqualTo(new[] { "fieldrep=17" }));
+		Assert.That(big.Warnings, Is.EqualTo(new[] { "fieldrep=65" }));
 		Assert.That(text.Warnings, Is.EqualTo(new[] { "fieldrep=abc" }));
 		Assert.That(missing.Warnings, Is.EqualTo(new[] { "fieldrep=" }));
 	}
@@ -447,6 +450,15 @@ public class PerfArgsTests
 		Assert.That(pass.RepeatCount, Is.EqualTo(1));
 		pass.FieldRepeatCount = 0;
 		Assert.That(pass.FieldRepeatCount, Is.EqualTo(1));
+		pass.FieldRepeatCount = 64;
+		Assert.That(pass.FieldRepeatCount, Is.EqualTo(64));
+		pass.FieldRepeatCount = 65;
+		Assert.That(pass.FieldRepeatCount, Is.EqualTo(64));
+		FieldNeighborConvolvePass convolve = new FieldNeighborConvolvePass();
+		convolve.FieldRepeatCount = 64;
+		Assert.That(convolve.FieldRepeatCount, Is.EqualTo(64));
+		convolve.FieldRepeatCount = 65;
+		Assert.That(convolve.FieldRepeatCount, Is.EqualTo(64));
 	}
 
 	[Test]

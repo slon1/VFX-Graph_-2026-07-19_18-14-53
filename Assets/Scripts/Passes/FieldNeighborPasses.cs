@@ -126,7 +126,7 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
         get => fieldRepeatCount;
         set
         {
-            fieldRepeatCount = Mathf.Clamp(value, 1, 16);
+            fieldRepeatCount = Mathf.Clamp(value, 1, 64);
             if (fieldRepeatCount <= 1)
             {
                 ReleaseScratch();
@@ -369,7 +369,7 @@ public sealed class FieldNeighborConvolvePass : SimPass, IFieldNeighborPass, IDi
         get => fieldRepeatCount;
         set
         {
-            fieldRepeatCount = Mathf.Clamp(value, 1, 16);
+            fieldRepeatCount = Mathf.Clamp(value, 1, 64);
             if (fieldRepeatCount <= 1)
             {
                 ReleaseScratch();

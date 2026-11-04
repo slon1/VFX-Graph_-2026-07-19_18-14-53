@@ -356,7 +356,7 @@ public sealed class PerfArgs
 		if (value != null
 			&& int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int repeats)
 			&& repeats >= 1
-			&& repeats <= 16)
+			&& repeats <= 64)
 		{
 			HasFieldRep = true;
 			FieldRep = repeats;
