@@ -1055,13 +1055,28 @@ public sealed class FPSDisplay : MonoBehaviour
 		}
 
 		text.Append(" force=");
-		if (forcePass == null)
+		bool? loggedForce;
+		int? loggedCap;
+		LoggedForceCap(
+			forcePass != null,
+			fieldCollectPass != null,
+			fieldConvolvePass != null,
+			forcePass != null && forcePass.Enabled,
+			forcePass != null ? forcePass.MaxNeighbors : 0,
+			perfArgs.HasForce,
+			perfArgs.HasForce && perfArgs.Force,
+			perfArgs.HasMaxNeighbors,
+			perfArgs.HasMaxNeighbors ? perfArgs.MaxNeighbors : 0,
+			out loggedForce,
+			out loggedCap);
+		_ = loggedCap;
+		if (!loggedForce.HasValue)
 		{
 			text.Append("na");
 		}
 		else
 		{
-			text.Append(forcePass.Enabled ? '1' : '0');
+			text.Append(loggedForce.Value ? '1' : '0');
 		}
 
 		text.Append(" render=");
@@ -1258,11 +1273,25 @@ public sealed class FPSDisplay : MonoBehaviour
 	}
 
 	/// <summary>
+	/// A field chain has no neighbor-force pass. Mode B still sends force and the neighbor cap;
+	/// those requests must not block the render switch. ADR-061 forbids the force pass here.
+	/// </summary>
+	internal static bool IgnoresMissingForcePass(bool hasForcePass, bool hasFieldCollect, bool hasFieldConvolve)
+	{
+		return !hasForcePass && (hasFieldCollect || hasFieldConvolve);
+	}
+
+	/// <summary>
 	/// Applies force, render, and neighbor cap. False when a requested pass is missing.
+	/// On a field chain the missing force pass does not fail the apply.
 	/// </summary>
 	private bool TryApplyOverrides()
 	{
-		if ((perfArgs.HasForce || perfArgs.HasMaxNeighbors || perfArgs.HasWalk) && forcePass == null)
+		bool ignoreMissingForce = IgnoresMissingForcePass(
+			forcePass != null, fieldCollectPass != null, fieldConvolvePass != null);
+		if (!ignoreMissingForce &&
+			(perfArgs.HasForce || perfArgs.HasMaxNeighbors || perfArgs.HasWalk) &&
+			forcePass == null)
 		{
 			return false;
 		}
@@ -1277,17 +1306,17 @@ public sealed class FPSDisplay : MonoBehaviour
 			world.RenderParticles = perfArgs.Render;
 		}
 
-		if (perfArgs.HasForce)
+		if (!ignoreMissingForce && perfArgs.HasForce)
 		{
 			forcePass.Enabled = perfArgs.Force;
 		}
 
-		if (perfArgs.HasMaxNeighbors)
+		if (!ignoreMissingForce && perfArgs.HasMaxNeighbors)
 		{
 			forcePass.MaxNeighbors = perfArgs.MaxNeighbors;
 		}
 
-		if (perfArgs.HasWalk)
+		if (!ignoreMissingForce && perfArgs.HasWalk)
 		{
 			forcePass.WalkMode = perfArgs.Walk;
 		}
@@ -1340,9 +1369,21 @@ public sealed class FPSDisplay : MonoBehaviour
 		}
 
 		infoLogged = true;
-		bool? force = forcePass != null ? forcePass.Enabled : (bool?)null;
+		bool? force;
+		int? maxNeighbors;
+		LoggedForceCap(
+			forcePass != null,
+			fieldCollectPass != null,
+			fieldConvolvePass != null,
+			forcePass != null && forcePass.Enabled,
+			forcePass != null ? forcePass.MaxNeighbors : 0,
+			perfArgs.HasForce,
+			perfArgs.HasForce && perfArgs.Force,
+			perfArgs.HasMaxNeighbors,
+			perfArgs.HasMaxNeighbors ? perfArgs.MaxNeighbors : 0,
+			out force,
+			out maxNeighbors);
 		bool? render = world != null ? world.RenderParticles : (bool?)null;
-		int? maxNeighbors = forcePass != null ? forcePass.MaxNeighbors : (int?)null;
 		string scene = SceneManager.GetActiveScene().name;
 		if (string.IsNullOrEmpty(scene))
 		{
@@ -1500,6 +1541,37 @@ public sealed class FPSDisplay : MonoBehaviour
 				fieldConvolvePass.FieldRepeatCount = perfArgs.FieldRep;
 			}
 		}
+	}
+
+	internal static void LoggedForceCap(
+		bool hasForcePass,
+		bool hasFieldCollect,
+		bool hasFieldConvolve,
+		bool passEnabled,
+		int passMaxNeighbors,
+		bool hasForceArg,
+		bool forceArg,
+		bool hasMaxNeighborsArg,
+		int maxNeighborsArg,
+		out bool? force,
+		out int? maxNeighbors)
+	{
+		if (IgnoresMissingForcePass(hasForcePass, hasFieldCollect, hasFieldConvolve))
+		{
+			force = hasForceArg ? forceArg : (bool?)null;
+			maxNeighbors = hasMaxNeighborsArg ? maxNeighborsArg : (int?)null;
+			return;
+		}
+
+		if (hasForcePass)
+		{
+			force = passEnabled;
+			maxNeighbors = passMaxNeighbors;
+			return;
+		}
+
+		force = null;
+		maxNeighbors = null;
 	}
 
 	internal static string FieldStageLogField(FieldNeighborCollectPass collect, FieldNeighborConvolvePass convolve)

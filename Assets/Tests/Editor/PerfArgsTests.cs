@@ -494,4 +494,74 @@ public class PerfArgsTests
 		pass.ForceRepeatCount = 99;
 		Assert.That(pass.ForceRepeatCount, Is.EqualTo(16));
 	}
+
+	[Test]
+	public void MissingForcePass_OnFieldCollect_DoesNotBlockApply()
+	{
+		Assert.That(FPSDisplay.IgnoresMissingForcePass(false, true, false), Is.True);
+		Assert.That(FPSDisplay.IgnoresMissingForcePass(false, false, true), Is.True);
+	}
+
+	[Test]
+	public void MissingForcePass_WithoutFieldPass_StillBlocksApply()
+	{
+		Assert.That(FPSDisplay.IgnoresMissingForcePass(false, false, false), Is.False);
+	}
+
+	[Test]
+	public void ForcePassPresent_IsNotIgnored()
+	{
+		Assert.That(FPSDisplay.IgnoresMissingForcePass(true, true, true), Is.False);
+		Assert.That(FPSDisplay.IgnoresMissingForcePass(true, false, false), Is.False);
+	}
+
+	[Test]
+	public void LoggedForceCap_FieldChainWithoutForce_UsesTheRequest()
+	{
+		string text = FormatLoggedForce(false, true, false, false, 0, true, true, true, 48, false);
+		Assert.That(text, Does.StartWith("force=1,render=0,maxn=48,"));
+	}
+
+	[Test]
+	public void LoggedForceCap_WithoutForceOrField_StaysNa()
+	{
+		string text = FormatLoggedForce(false, false, false, false, 0, true, true, true, 48, false);
+		Assert.That(text, Does.StartWith("force=na,render=0,maxn=na,"));
+	}
+
+	[Test]
+	public void LoggedForceCap_WithForcePass_UsesThePass()
+	{
+		string text = FormatLoggedForce(true, true, false, false, 32, true, true, true, 48, true);
+		Assert.That(text, Does.StartWith("force=0,render=1,maxn=32,"));
+	}
+
+	private static string FormatLoggedForce(
+		bool hasForcePass,
+		bool hasFieldCollect,
+		bool hasFieldConvolve,
+		bool passEnabled,
+		int passMaxNeighbors,
+		bool hasForceArg,
+		bool forceArg,
+		bool hasMaxArg,
+		int maxArg,
+		bool render)
+	{
+		bool? force;
+		int? maxNeighbors;
+		FPSDisplay.LoggedForceCap(
+			hasForcePass,
+			hasFieldCollect,
+			hasFieldConvolve,
+			passEnabled,
+			passMaxNeighbors,
+			hasForceArg,
+			forceArg,
+			hasMaxArg,
+			maxArg,
+			out force,
+			out maxNeighbors);
+		return PerfArgs.FormatRun(force, render, maxNeighbors, 60f, 25f, true, true, "B1");
+	}
 }
