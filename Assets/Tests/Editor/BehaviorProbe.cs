@@ -138,9 +138,9 @@ public class BehaviorProbe
 
         string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "DOC", "MEASURE", "p8-field-force"));
         Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "probe.csv"), ToCsv(samples), new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(dir, "probe-60984cc.csv"), ToCsv(samples), new UTF8Encoding(false));
         File.WriteAllText(
-            Path.Combine(dir, "probe.md"),
+            Path.Combine(dir, "probe-60984cc.md"),
             ToMarkdown(samples, watch.Elapsed.TotalSeconds),
             new UTF8Encoding(false));
         for (int i = 0; i < samples.Count; i++)
