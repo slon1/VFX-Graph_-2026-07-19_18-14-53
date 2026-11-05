@@ -13,6 +13,7 @@ using UnityEngine.Rendering;
 /// ADR-062 §2.7. Metrics match DOC/MEASURE/p8-field-model README §6 and the model loop:
 /// periodic distance on a 90 m world, R = 3, r² &lt; R². K = 1 sets RefreshInterval on the
 /// in-memory copy. K = 3 leaves the asset value. The assets themselves are not saved.
+/// Shape metrics (rho, thin, cells, axis) are a separate pass and do not enter the §2.7 numbers.
 /// </summary>
 [TestFixture]
 public class BehaviorProbe
@@ -22,6 +23,7 @@ public class BehaviorProbe
     private const float World = 90f;
     private const float Radius = 3f;
     private const int FlockSize = 30;
+    private const string ShapeStem = "shape-METRICS";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()
@@ -96,6 +98,178 @@ public class BehaviorProbe
     }
 
     [Test]
+    public void Shape_VogelDisk_ThinMedianStaysRound()
+    {
+        const int count = 200;
+        var position = new Vector2[count];
+        var heading = new Vector2[count];
+        var team = new int[count];
+        double golden = Math.PI * (3.0 - Math.Sqrt(5.0));
+        for (int k = 0; k < count; k++)
+        {
+            double radius = 2.0 * Math.Sqrt((k + 0.5) / count);
+            double angle = k * golden;
+            position[k] = new Vector2((float)(radius * Math.Cos(angle)), (float)(radius * Math.Sin(angle)));
+            heading[k] = new Vector2(1f, 0f);
+        }
+
+        ShapeMetrics shape = MeasureShape(position, heading, team);
+        Assert.AreEqual(count, shape.NThin);
+        Assert.IsTrue(shape.ThinMed.HasValue);
+        Assert.GreaterOrEqual(shape.ThinMed.Value, 0.8);
+        AssertDefined(shape);
+    }
+
+    [Test]
+    public void Shape_StraightChain_IsThinAlongX_AndNotAt45Degrees()
+    {
+        Vector2[] heading = LineHeading(60);
+        int[] team = LineTeam(60);
+        ShapeMetrics alongX = MeasureShape(Line(60, 0.0), heading, team);
+        Assert.AreEqual(60, alongX.NThin);
+        Assert.AreEqual(0.0, alongX.ThinMed.Value, 1e-6);
+        Assert.AreEqual(1.0, alongX.FracThin.Value, 0.0);
+        Assert.AreEqual(1.0, alongX.AxisLine.Value, 0.0);
+
+        ShapeMetrics diagonal = MeasureShape(Line(60, Math.PI / 4.0), heading, team);
+        Assert.AreEqual(60, diagonal.NThin);
+        Assert.AreEqual(1.0, diagonal.FracThin.Value, 0.0);
+        Assert.AreEqual(0.0, diagonal.AxisLine.Value, 0.0);
+        AssertDefined(alongX);
+        AssertDefined(diagonal);
+    }
+
+    [Test]
+    public void Shape_LatticeCenter_MatchesHandDensity()
+    {
+        const int width = 15;
+        var position = new Vector2[width * width];
+        var heading = new Vector2[width * width];
+        var team = new int[width * width];
+        int center = 0;
+        int cursor = 0;
+        for (int ix = -7; ix <= 7; ix++)
+        {
+            for (int iz = -7; iz <= 7; iz++)
+            {
+                if (ix == 0 && iz == 0)
+                {
+                    center = cursor;
+                }
+
+                position[cursor] = new Vector2(ix * 0.5f, iz * 0.5f);
+                heading[cursor] = new Vector2(1f, 0f);
+                cursor++;
+            }
+        }
+
+        var rho = new double[width * width];
+        MeasureShape(position, heading, team, rho);
+        Assert.AreEqual(108.0 / (9.0 * Math.PI), rho[center], 1e-9);
+    }
+
+    [Test]
+    public void Shape_Cells_CountDistinctMeters()
+    {
+        var piled = new Vector2[100];
+        var heading = new Vector2[100];
+        var team = new int[100];
+        for (int i = 0; i < piled.Length; i++)
+        {
+            piled[i] = new Vector2(0.2f * (i % 3), 0.2f * (i % 2));
+            heading[i] = new Vector2(1f, 0f);
+        }
+
+        Assert.AreEqual(1, MeasureShape(piled, heading, team).Cells);
+
+        var grid = new Vector2[100];
+        var gridHeading = new Vector2[100];
+        var gridTeam = new int[100];
+        for (int i = 0; i < 10; i++)
+        {
+            for (int j = 0; j < 10; j++)
+            {
+                grid[i * 10 + j] = new Vector2(i, j);
+                gridHeading[i * 10 + j] = new Vector2(1f, 0f);
+            }
+        }
+
+        Assert.AreEqual(100, MeasureShape(grid, gridHeading, gridTeam).Cells);
+    }
+
+    [Test]
+    public void Shape_TorusSeam_KeepsTheChain()
+    {
+        Vector2[] plain = Line(60, 0.0);
+        var wrapped = new Vector2[plain.Length];
+        for (int i = 0; i < plain.Length; i++)
+        {
+            wrapped[i] = new Vector2((float)WrapAxis(plain[i].x + 44.0), plain[i].y);
+        }
+
+        Vector2[] heading = LineHeading(plain.Length);
+        int[] team = LineTeam(plain.Length);
+        ShapeMetrics open = MeasureShape(plain, heading, team);
+        ShapeMetrics seam = MeasureShape(wrapped, heading, team);
+        Assert.AreEqual(open.ThinMed.Value, seam.ThinMed.Value, 1e-9);
+        Assert.AreEqual(open.NThin, seam.NThin);
+    }
+
+    [Test]
+    public void Shape_AxisHead_CountsCoursesNearTheWorldAxes()
+    {
+        Assert.AreEqual(1.0, HeadingsAt(0.0).AxisHead, 0.0);
+        Assert.AreEqual(1.0, HeadingsAt(3.0).AxisHead, 0.0);
+        Assert.AreEqual(1.0, HeadingsAt(85.0).AxisHead, 0.0);
+        Assert.AreEqual(1.0, HeadingsAt(90.0).AxisHead, 0.0);
+        Assert.AreEqual(0.0, HeadingsAt(20.0).AxisHead, 0.0);
+        Assert.AreEqual(0.0, HeadingsAt(45.0).AxisHead, 0.0);
+    }
+
+    [Test]
+    public void Shape_TooFewPoints_LeaveThinBlank()
+    {
+        var onePosition = new[] { Vector2.zero };
+        var oneHeading = new[] { new Vector2(1f, 0f) };
+        var oneTeam = new[] { 0 };
+        ShapeMetrics one = MeasureShape(onePosition, oneHeading, oneTeam);
+        Assert.AreEqual(0, one.NThin);
+        Assert.IsFalse(one.ThinMed.HasValue);
+        Assert.IsFalse(one.FracThin.HasValue);
+        Assert.IsFalse(one.AxisLine.HasValue);
+        Assert.AreEqual(0.0, one.RhoMed, 0.0);
+        Assert.AreEqual(1, one.Cells);
+        AssertDefined(one);
+
+        var fewPosition = new Vector2[5];
+        var fewHeading = new Vector2[5];
+        var fewTeam = new int[5];
+        for (int i = 0; i < fewPosition.Length; i++)
+        {
+            fewPosition[i] = new Vector2(0.2f * i, 0f);
+            fewHeading[i] = new Vector2(1f, 0f);
+        }
+
+        ShapeMetrics few = MeasureShape(fewPosition, fewHeading, fewTeam);
+        Assert.AreEqual(0, few.NThin);
+        Assert.IsFalse(few.ThinMed.HasValue);
+        Assert.IsFalse(few.FracThin.HasValue);
+        Assert.IsFalse(few.AxisLine.HasValue);
+        AssertDefined(few);
+
+        var otherTeam = new[] { 1, 1, 1, 1, 1 };
+        ShapeMetrics emptyTeam = MeasureShape(fewPosition, fewHeading, otherTeam);
+        Assert.AreEqual(0, emptyTeam.NThin);
+        Assert.IsFalse(emptyTeam.ThinMed.HasValue);
+        AssertDefined(emptyTeam);
+
+        ShapeMetrics six = MeasureShape(Line(6, 0.0), LineHeading(6), LineTeam(6));
+        Assert.AreEqual(6, six.NThin);
+        Assert.AreEqual(0.0, six.ThinMed.Value, 1e-6);
+        AssertDefined(six);
+    }
+
+    [Test]
     [Timeout(180000)]
     public void Smoke_FieldK1_60Fps_Seed1_ToFiveSeconds()
     {
@@ -146,6 +320,44 @@ public class BehaviorProbe
         for (int i = 0; i < samples.Count; i++)
         {
             AssertFinite(samples[i].Metrics);
+        }
+    }
+
+    [Test]
+    [Explicit]
+    [Timeout(1800000)]
+    public void ShapeMatrix_FiveSeeds_TwoRates_FourVariants()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        var watch = Stopwatch.StartNew();
+        int[] rates = { 30, 60 };
+        var variants = new[] { Variant.Uncapped, Variant.Cap48, Variant.FieldK1, Variant.FieldK3 };
+        double[] times = { 2.0, 5.0, 10.0, 15.0 };
+        var samples = new List<ShapeSample>();
+        for (int r = 0; r < rates.Length; r++)
+        {
+            for (int v = 0; v < variants.Length; v++)
+            {
+                for (int seed = 1; seed <= 5; seed++)
+                {
+                    samples.AddRange(RunShape(variants[v], rates[r], seed, 15.1, times));
+                }
+            }
+        }
+
+        watch.Stop();
+        Assert.AreEqual(3, AssetCollect().RefreshInterval);
+        Assert.AreEqual(48, AssetWalk().MaxNeighbors);
+        string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "DOC", "MEASURE", "p8-field-force"));
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, ShapeStem + ".csv"), ShapeToCsv(samples), new UTF8Encoding(false));
+        File.WriteAllText(
+            Path.Combine(dir, ShapeStem + ".md"),
+            ShapeToMarkdown(samples, watch.Elapsed.TotalSeconds),
+            new UTF8Encoding(false));
+        for (int i = 0; i < samples.Count; i++)
+        {
+            AssertDefined(samples[i].Shape);
         }
     }
 
@@ -786,6 +998,520 @@ public class BehaviorProbe
         }
     }
 
+    private static List<ShapeSample> RunShape(Variant variant, int fps, int seed, double seconds, double[] times)
+    {
+        bool field = variant == Variant.FieldK1 || variant == Variant.FieldK3;
+        string path = field ? FieldPath : WalkPath;
+        EffectAsset copy = UnityEngine.Object.Instantiate(AssetDatabase.LoadAssetAtPath<EffectAsset>(path));
+        copy.name = "BehaviorProbeShape_" + variant + "_" + fps + "_" + seed;
+        if (variant == Variant.FieldK1)
+        {
+            FindCollect(copy.Passes).RefreshInterval = 1;
+        }
+        else if (variant == Variant.FieldK3)
+        {
+            Assert.AreEqual(3, FindCollect(copy.Passes).RefreshInterval);
+        }
+        else if (variant == Variant.Uncapped)
+        {
+            FindWalk(copy.Passes).MaxNeighbors = 0;
+        }
+
+        ParticleSet particles = new ParticleSet();
+        FieldSet fields = new FieldSet();
+        CommandBuffer cmd = new CommandBuffer { name = "BehaviorProbeShape" };
+        GraphicsBuffer teams = null;
+        try
+        {
+            SwarmSource swarm = (SwarmSource)copy.ResolveSource();
+            swarm.Seed = seed;
+            swarm.Setup(particles);
+            RegisterLikeWorld(particles, copy);
+            Graphics.CopyBuffer(
+                particles.Get(BuiltinAttributes.RestPosition),
+                particles.Get(BuiltinAttributes.Position));
+            fields.Allocate(copy.Fields, cmd);
+            Graphics.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+            teams = new GraphicsBuffer(
+                GraphicsBuffer.Target.Structured, TeamProfile.MaxTeams, TeamParams.Stride);
+            TeamParams.Upload(teams, copy.Teams);
+            SimContext context = new SimContext(particles, fields, LoadLibrary(), null);
+            context.Cmd = cmd;
+            context.Teams = teams;
+            IReadOnlyList<SimPass> passes = copy.Passes;
+            for (int i = 0; i < passes.Count; i++)
+            {
+                passes[i].Initialize(context);
+            }
+
+            int last = (int)Math.Round(seconds * fps, MidpointRounding.AwayFromZero);
+            var wanted = new HashSet<int>();
+            for (int i = 0; i < times.Length; i++)
+            {
+                wanted.Add((int)Math.Round(times[i] * fps, MidpointRounding.AwayFromZero));
+            }
+
+            var captured = new Dictionary<int, Shot>();
+            float dt = copy.SimulationSpeed / fps;
+            for (int frame = 1; frame <= last; frame++)
+            {
+                cmd.Clear();
+                for (int i = 0; i < passes.Count; i++)
+                {
+                    passes[i].Execute(context, dt);
+                }
+
+                Graphics.ExecuteCommandBuffer(cmd);
+                if (wanted.Contains(frame))
+                {
+                    captured[frame] = Capture(particles);
+                }
+            }
+
+            var samples = new List<ShapeSample>();
+            for (int i = 0; i < times.Length; i++)
+            {
+                int frame = (int)Math.Round(times[i] * fps, MidpointRounding.AwayFromZero);
+                Shot now = captured[frame];
+                samples.Add(new ShapeSample
+                {
+                    Fps = fps,
+                    Seed = seed,
+                    Variant = variant,
+                    Time = times[i],
+                    Shape = MeasureShape(now.Position, now.Heading, now.Team),
+                });
+            }
+
+            return samples;
+        }
+        finally
+        {
+            teams?.Dispose();
+            cmd.Release();
+            fields.Dispose();
+            particles.Dispose();
+            IReadOnlyList<SimPass> passes = copy.Passes;
+            for (int i = 0; i < passes.Count; i++)
+            {
+                if (passes[i] is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+
+            UnityEngine.Object.DestroyImmediate(copy);
+        }
+    }
+
+    internal static ShapeMetrics MeasureShape(
+        Vector2[] position, Vector2[] heading, int[] team, double[] rhoOut = null)
+    {
+        int count = position.Length;
+        double radius2 = Radius * Radius;
+        double area = Math.PI * radius2;
+        var rho = new List<double>(count);
+        var thin = new List<double>();
+        int lineCount = 0;
+        int lineHits = 0;
+        int headHits = 0;
+        var cells = new HashSet<long>();
+        var dxs = new List<double>(64);
+        var dys = new List<double>(64);
+        for (int i = 0; i < count; i++)
+        {
+            dxs.Clear();
+            dys.Clear();
+            for (int j = 0; j < count; j++)
+            {
+                if (j == i || team[j] != team[i])
+                {
+                    continue;
+                }
+
+                double dx = MinImage(position[j].x - position[i].x);
+                double dy = MinImage(position[j].y - position[i].y);
+                if (dx * dx + dy * dy >= radius2)
+                {
+                    continue;
+                }
+
+                dxs.Add(dx);
+                dys.Add(dy);
+            }
+
+            double density = dxs.Count / area;
+            rho.Add(density);
+            if (rhoOut != null)
+            {
+                rhoOut[i] = density;
+            }
+
+            int sample = dxs.Count + 1;
+            if (sample >= 6)
+            {
+                double sumX = 0.0;
+                double sumY = 0.0;
+                for (int k = 0; k < dxs.Count; k++)
+                {
+                    sumX += dxs[k];
+                    sumY += dys[k];
+                }
+
+                double meanX = sumX / sample;
+                double meanY = sumY / sample;
+                double cxx = meanX * meanX;
+                double cyy = meanY * meanY;
+                double cxy = meanX * meanY;
+                for (int k = 0; k < dxs.Count; k++)
+                {
+                    double ex = dxs[k] - meanX;
+                    double ey = dys[k] - meanY;
+                    cxx += ex * ex;
+                    cyy += ey * ey;
+                    cxy += ex * ey;
+                }
+
+                double inv = 1.0 / (sample - 1);
+                cxx *= inv;
+                cyy *= inv;
+                cxy *= inv;
+                double diff = cxx - cyy;
+                double disc = Math.Sqrt(Math.Max(0.0, diff * diff + 4.0 * cxy * cxy));
+                double lMax = (cxx + cyy + disc) * 0.5;
+                double lMin = (cxx + cyy - disc) * 0.5;
+                if (lMin < 0.0)
+                {
+                    lMin = 0.0;
+                }
+
+                double value = lMax <= 1e-12 ? 1.0 : Math.Sqrt(lMin / lMax);
+                thin.Add(value);
+                if (value < 0.25)
+                {
+                    PrincipalAxis(cxx, cyy, cxy, lMax, out double axisX, out double axisY);
+                    lineCount++;
+                    if (NearWorldAxis(axisX, axisY, 10.0))
+                    {
+                        lineHits++;
+                    }
+                }
+            }
+
+            if (NearWorldAxis(heading[i].x, heading[i].y, 5.0))
+            {
+                headHits++;
+            }
+
+            int cellX = (int)Math.Floor(position[i].x + 45.0);
+            int cellZ = (int)Math.Floor(position[i].y + 45.0);
+            cells.Add(((long)cellX << 32) | (uint)cellZ);
+        }
+
+        return new ShapeMetrics
+        {
+            RhoMed = ShapePercentile(rho, 50.0),
+            RhoP90 = ShapePercentile(rho, 90.0),
+            ThinMed = thin.Count == 0 ? (double?)null : ShapePercentile(thin, 50.0),
+            FracThin = thin.Count == 0 ? (double?)null : (double)lineCount / thin.Count,
+            NThin = thin.Count,
+            Cells = cells.Count,
+            AxisHead = count == 0 ? 0.0 : (double)headHits / count,
+            AxisLine = lineCount == 0 ? (double?)null : (double)lineHits / lineCount,
+        };
+    }
+
+    private static void PrincipalAxis(
+        double cxx, double cyy, double cxy, double lMax, out double axisX, out double axisY)
+    {
+        if (Math.Abs(cxy) <= 1e-15)
+        {
+            if (cxx >= cyy)
+            {
+                axisX = 1.0;
+                axisY = 0.0;
+            }
+            else
+            {
+                axisX = 0.0;
+                axisY = 1.0;
+            }
+
+            return;
+        }
+
+        axisX = cxy;
+        axisY = lMax - cxx;
+    }
+
+    private static bool NearWorldAxis(double axisX, double axisY, double limitDegrees)
+    {
+        double degrees = Math.Atan2(axisY, axisX) * (180.0 / Math.PI);
+        double folded = Math.Abs(degrees) % 90.0;
+        double distance = Math.Min(folded, 90.0 - folded);
+        return distance <= limitDegrees;
+    }
+
+    private static double ShapePercentile(List<double> values, double percentile)
+    {
+        var sorted = new List<double>(values);
+        sorted.Sort();
+        if (sorted.Count == 1)
+        {
+            return sorted[0];
+        }
+
+        double rank = percentile / 100.0 * (sorted.Count - 1);
+        int low = (int)Math.Floor(rank);
+        int high = (int)Math.Ceiling(rank);
+        double t = rank - low;
+        return sorted[low] * (1.0 - t) + sorted[high] * t;
+    }
+
+    private static double WrapAxis(double value)
+    {
+        double local = value + 45.0;
+        double wrapped = local - World * Math.Floor(local / World);
+        return wrapped - 45.0;
+    }
+
+    private static Vector2[] Line(int count, double angle)
+    {
+        var position = new Vector2[count];
+        float along = (float)Math.Cos(angle);
+        float across = (float)Math.Sin(angle);
+        if (Math.Abs(angle - Math.PI / 4.0) < 1e-12)
+        {
+            float step = 0.1f * (float)Math.Sqrt(0.5);
+            along = step;
+            across = step;
+            for (int i = 0; i < count; i++)
+            {
+                position[i] = new Vector2(along * i, across * i);
+            }
+
+            return position;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            float distance = 0.1f * i;
+            position[i] = new Vector2(distance * along, distance * across);
+        }
+
+        return position;
+    }
+
+    private static Vector2[] LineHeading(int count)
+    {
+        var heading = new Vector2[count];
+        for (int i = 0; i < count; i++)
+        {
+            heading[i] = new Vector2(1f, 0f);
+        }
+
+        return heading;
+    }
+
+    private static int[] LineTeam(int count)
+    {
+        return new int[count];
+    }
+
+    private static ShapeMetrics HeadingsAt(params double[] degrees)
+    {
+        var position = new Vector2[degrees.Length];
+        var heading = new Vector2[degrees.Length];
+        var team = new int[degrees.Length];
+        for (int i = 0; i < degrees.Length; i++)
+        {
+            position[i] = new Vector2(i * 10f, 0f);
+            double radians = degrees[i] * Math.PI / 180.0;
+            heading[i] = new Vector2((float)Math.Cos(radians), (float)Math.Sin(radians));
+        }
+
+        return MeasureShape(position, heading, team);
+    }
+
+    private static string ShapeToCsv(List<ShapeSample> samples)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("fps,seed,variant,t,rhoMed,rhoP90,thinMed,fracThin,nThin,cells,axisHead,axisLine");
+        for (int i = 0; i < samples.Count; i++)
+        {
+            ShapeSample sample = samples[i];
+            ShapeMetrics shape = sample.Shape;
+            text.Append(sample.Fps.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(sample.Seed.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(Name(sample.Variant));
+            text.Append(',').Append(sample.Time.ToString("0.#", CultureInfo.InvariantCulture));
+            text.Append(',').Append(Num(shape.RhoMed));
+            text.Append(',').Append(Num(shape.RhoP90));
+            text.Append(',').Append(NumOpt(shape.ThinMed));
+            text.Append(',').Append(NumOpt(shape.FracThin));
+            text.Append(',').Append(shape.NThin.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(shape.Cells.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(Num(shape.AxisHead));
+            text.Append(',').Append(NumOpt(shape.AxisLine));
+            text.AppendLine();
+        }
+
+        return text.ToString();
+    }
+
+    private static string ShapeToMarkdown(List<ShapeSample> samples, double seconds)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("# Метрики формы");
+        text.AppendLine();
+        text.AppendLine(
+            "Длительность прогона 15,1 с. K = 1 выставляет `RefreshInterval = 1` на экземпляре. " +
+            "K = 3 оставляет значение ассета. Полная матрица заняла " +
+            seconds.ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',') + " с.");
+        text.AppendLine();
+        text.AppendLine(
+            "Сводка по seed, у которых метрика определена. `seedsWithData` — их число. " +
+            "Пустая сводка — прочерк. `nThin` и `cells` определены всегда.");
+        text.AppendLine();
+        text.AppendLine("| вариант | FPS | t, с | метрика | среднее | минимум | максимум | seedsWithData |");
+        text.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
+        var variants = new[] { Variant.Uncapped, Variant.Cap48, Variant.FieldK1, Variant.FieldK3 };
+        int[] rates = { 30, 60 };
+        double[] stamps = { 2.0, 5.0, 10.0, 15.0 };
+        string[] metrics = { "rhoMed", "rhoP90", "thinMed", "fracThin", "nThin", "cells", "axisHead", "axisLine" };
+        for (int v = 0; v < variants.Length; v++)
+        {
+            for (int r = 0; r < rates.Length; r++)
+            {
+                for (int s = 0; s < stamps.Length; s++)
+                {
+                    for (int m = 0; m < metrics.Length; m++)
+                    {
+                        AppendShapeSummary(text, samples, variants[v], rates[r], stamps[s], metrics[m]);
+                    }
+                }
+            }
+        }
+
+        text.AppendLine();
+        text.AppendLine("Строки по seed лежат в CSV. Вердикта нет.");
+        return text.ToString();
+    }
+
+    private static void AppendShapeSummary(
+        StringBuilder text, List<ShapeSample> samples, Variant variant, int fps, double time, string metric)
+    {
+        double min = double.PositiveInfinity;
+        double max = double.NegativeInfinity;
+        double sum = 0.0;
+        int count = 0;
+        for (int i = 0; i < samples.Count; i++)
+        {
+            ShapeSample sample = samples[i];
+            if (sample.Variant != variant || sample.Fps != fps || Math.Abs(sample.Time - time) > 1e-6)
+            {
+                continue;
+            }
+
+            if (!TryShape(sample.Shape, metric, out double value))
+            {
+                continue;
+            }
+
+            sum += value;
+            if (value < min)
+            {
+                min = value;
+            }
+
+            if (value > max)
+            {
+                max = value;
+            }
+
+            count++;
+        }
+
+        text.Append("| ").Append(Name(variant));
+        text.Append(" | ").Append(fps.ToString(CultureInfo.InvariantCulture));
+        text.Append(" | ").Append(time.ToString("0.#", CultureInfo.InvariantCulture));
+        text.Append(" | ").Append(metric);
+        if (count == 0)
+        {
+            text.Append(" | — | — | — | 0 |");
+        }
+        else
+        {
+            text.Append(" | ").Append(Comma(sum / count));
+            text.Append(" | ").Append(Comma(min));
+            text.Append(" | ").Append(Comma(max));
+            text.Append(" | ").Append(count.ToString(CultureInfo.InvariantCulture));
+            text.Append(" |");
+        }
+
+        text.AppendLine();
+    }
+
+    private static bool TryShape(ShapeMetrics shape, string metric, out double value)
+    {
+        switch (metric)
+        {
+            case "rhoMed":
+                value = shape.RhoMed;
+                return true;
+            case "rhoP90":
+                value = shape.RhoP90;
+                return true;
+            case "thinMed":
+                value = shape.ThinMed ?? 0.0;
+                return shape.ThinMed.HasValue;
+            case "fracThin":
+                value = shape.FracThin ?? 0.0;
+                return shape.FracThin.HasValue;
+            case "nThin":
+                value = shape.NThin;
+                return true;
+            case "cells":
+                value = shape.Cells;
+                return true;
+            case "axisHead":
+                value = shape.AxisHead;
+                return true;
+            default:
+                value = shape.AxisLine ?? 0.0;
+                return shape.AxisLine.HasValue;
+        }
+    }
+
+    private static string NumOpt(double? value)
+    {
+        return value.HasValue ? Num(value.Value) : "";
+    }
+
+    private static void AssertDefined(ShapeMetrics shape)
+    {
+        AssertFinite(shape.RhoMed, "rhoMed");
+        AssertFinite(shape.RhoP90, "rhoP90");
+        AssertFinite(shape.AxisHead, "axisHead");
+        Assert.GreaterOrEqual(shape.NThin, 0);
+        Assert.GreaterOrEqual(shape.Cells, 0);
+        if (shape.ThinMed.HasValue)
+        {
+            AssertFinite(shape.ThinMed.Value, "thinMed");
+        }
+
+        if (shape.FracThin.HasValue)
+        {
+            AssertFinite(shape.FracThin.Value, "fracThin");
+        }
+
+        if (shape.AxisLine.HasValue)
+        {
+            AssertFinite(shape.AxisLine.Value, "axisLine");
+        }
+    }
+
     private enum Variant
     {
         Uncapped,
@@ -820,5 +1546,26 @@ public class BehaviorProbe
         public Variant Variant;
         public double Time;
         public Metrics Metrics;
+    }
+
+    internal struct ShapeMetrics
+    {
+        public double RhoMed;
+        public double RhoP90;
+        public double? ThinMed;
+        public double? FracThin;
+        public int NThin;
+        public int Cells;
+        public double AxisHead;
+        public double? AxisLine;
+    }
+
+    private struct ShapeSample
+    {
+        public int Fps;
+        public int Seed;
+        public Variant Variant;
+        public double Time;
+        public ShapeMetrics Shape;
     }
 }
