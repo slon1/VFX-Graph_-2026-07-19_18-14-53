@@ -89,6 +89,7 @@ public sealed class FPSDisplay : MonoBehaviour
 	private BoidNeighborForcePass forcePass;
 	private FieldNeighborCollectPass fieldCollectPass;
 	private FieldNeighborConvolvePass fieldConvolvePass;
+	private FieldNeighborForcePass fieldForcePass;
 	private BuildSpatialHashPass hashBuilder;
 	private HashCountsToFieldPass hashCountsPass;
 	private GameObject debugQuads;
@@ -269,6 +270,7 @@ public sealed class FPSDisplay : MonoBehaviour
 			forcePass = null;
 			fieldCollectPass = null;
 			fieldConvolvePass = null;
+			fieldForcePass = null;
 			hashCountsPass = null;
 			debugQuads = null;
 			quadsSearchDone = false;
@@ -517,6 +519,7 @@ public sealed class FPSDisplay : MonoBehaviour
 		forcePass = null;
 		fieldCollectPass = null;
 		fieldConvolvePass = null;
+		fieldForcePass = null;
 		hashBuilder = null;
 		hashCountsPass = null;
 
@@ -566,6 +569,10 @@ public sealed class FPSDisplay : MonoBehaviour
 					else if (fieldConvolvePass == null && passes[i] is FieldNeighborConvolvePass convolvePass)
 					{
 						fieldConvolvePass = convolvePass;
+					}
+					else if (fieldForcePass == null && passes[i] is FieldNeighborForcePass neighborForce)
+					{
+						fieldForcePass = neighborForce;
 					}
 				}
 			}
@@ -1496,12 +1503,21 @@ public sealed class FPSDisplay : MonoBehaviour
 
 	private void ApplyFieldStage()
 	{
-		if (!perfArgs.HasFieldStage && !perfArgs.HasFieldRep)
+		ApplyFieldStage(fieldCollectPass, fieldConvolvePass, fieldForcePass, perfArgs);
+	}
+
+	internal static void ApplyFieldStage(
+		FieldNeighborCollectPass collect,
+		FieldNeighborConvolvePass convolve,
+		FieldNeighborForcePass force,
+		PerfArgs perfArgs)
+	{
+		if (perfArgs == null || (!perfArgs.HasFieldStage && !perfArgs.HasFieldRep))
 		{
 			return;
 		}
 
-		if (fieldCollectPass == null && fieldConvolvePass == null)
+		if (collect == null && convolve == null && force == null)
 		{
 			if (perfArgs.HasFieldStage)
 			{
@@ -1516,29 +1532,42 @@ public sealed class FPSDisplay : MonoBehaviour
 			return;
 		}
 
-		if (fieldCollectPass != null)
+		if (collect != null)
 		{
 			if (perfArgs.HasFieldStage)
 			{
-				fieldCollectPass.FieldStage = perfArgs.FieldStage;
+				collect.FieldStage = perfArgs.FieldStage;
 			}
 
 			if (perfArgs.HasFieldRep)
 			{
-				fieldCollectPass.FieldRepeatCount = perfArgs.FieldRep;
+				collect.FieldRepeatCount = perfArgs.FieldRep;
 			}
 		}
 
-		if (fieldConvolvePass != null)
+		if (convolve != null)
 		{
 			if (perfArgs.HasFieldStage)
 			{
-				fieldConvolvePass.FieldStage = perfArgs.FieldStage;
+				convolve.FieldStage = perfArgs.FieldStage;
 			}
 
 			if (perfArgs.HasFieldRep)
 			{
-				fieldConvolvePass.FieldRepeatCount = perfArgs.FieldRep;
+				convolve.FieldRepeatCount = perfArgs.FieldRep;
+			}
+		}
+
+		if (force != null)
+		{
+			if (perfArgs.HasFieldStage)
+			{
+				force.FieldStage = perfArgs.FieldStage;
+			}
+
+			if (perfArgs.HasFieldRep)
+			{
+				force.FieldRepeatCount = perfArgs.FieldRep;
 			}
 		}
 	}

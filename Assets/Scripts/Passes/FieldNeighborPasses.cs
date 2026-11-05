@@ -16,6 +16,7 @@ public enum FieldRepeatStage
     Conv = 2,
     Grad = 3,
     Off = 4,
+    Force = 5,
 }
 
 public static class FieldRepeatStages
@@ -36,6 +37,9 @@ public static class FieldRepeatStages
             case "grad":
                 stage = FieldRepeatStage.Grad;
                 return true;
+            case "force":
+                stage = FieldRepeatStage.Force;
+                return true;
             case "off":
                 stage = FieldRepeatStage.Off;
                 return true;
@@ -55,6 +59,8 @@ public static class FieldRepeatStages
                 return "conv";
             case FieldRepeatStage.Grad:
                 return "grad";
+            case FieldRepeatStage.Force:
+                return "force";
             case FieldRepeatStage.Off:
                 return "off";
             default:
@@ -525,6 +531,10 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
 {
     private const int ThreadGroupSize = 64;
 
+    [SerializeField] private Vector3 center = Vector3.zero;
+    [SerializeField] private Vector3 extents = new Vector3(16f, 0f, 16f);
+    [SerializeField, Min(1e-4f)] private float texelSize = 1f;
+
     [NonSerialized] private KernelHandle kernel;
     [NonSerialized] private int fieldRepeatCount = 1;
     [NonSerialized] private GraphicsBuffer scratchVelocity;
@@ -535,6 +545,24 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
     public override PassCategory Category => PassCategory.Force;
     public override System.Collections.Generic.IReadOnlyList<AttributeId> Reads => AttrSets.PositionHeadingTeam;
     public override System.Collections.Generic.IReadOnlyList<AttributeId> Writes => AttrSets.Velocity;
+
+    public Vector3 Center
+    {
+        get => center;
+        set => center = value;
+    }
+
+    public Vector3 Extents
+    {
+        get => extents;
+        set => extents = value;
+    }
+
+    public float TexelSize
+    {
+        get => texelSize;
+        set => texelSize = value;
+    }
 
     /// <summary>Diagnostic stage. Does not change <see cref="SimPass.RepeatCount"/>.</summary>
     public FieldRepeatStage FieldStage { get; set; } = FieldRepeatStage.All;
@@ -617,10 +645,7 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
 
     private bool RepeatsForce =>
         fieldRepeatCount > 1 &&
-        FieldStage != FieldRepeatStage.Off &&
-        FieldStage != FieldRepeatStage.Collect &&
-        FieldStage != FieldRepeatStage.Conv &&
-        FieldStage != FieldRepeatStage.Grad;
+        (FieldStage == FieldRepeatStage.All || FieldStage == FieldRepeatStage.Force);
 
     private void RepeatForce(CommandBuffer cmd, int count, int groups)
     {

@@ -168,6 +168,105 @@ public class FieldNeighborValidatorTests
     }
 
     [Test]
+    public void ForceWithoutCollect_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(new SimPass[] { Force() }, null));
+        StringAssert.Contains("Field Neighbor Force requires Field Neighbor Collect", exception.Message);
+    }
+
+    [Test]
+    public void ForceWithoutConvolve_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(new SimPass[]
+            {
+                Bounds(),
+                Collect(FieldCollectMode.Scatter),
+                Force(),
+            }, null));
+        StringAssert.Contains("Field Neighbor Force requires Field Neighbor Convolve", exception.Message);
+    }
+
+    [Test]
+    public void CollectAfterForce_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(new SimPass[]
+            {
+                Bounds(),
+                Force(),
+                Collect(FieldCollectMode.Scatter),
+                new FieldNeighborConvolvePass(),
+            }, null));
+        StringAssert.Contains("Field Neighbor Collect stands after", exception.Message);
+    }
+
+    [Test]
+    public void ConvolveAfterForce_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(new SimPass[]
+            {
+                Bounds(),
+                Collect(FieldCollectMode.Scatter),
+                Force(),
+                new FieldNeighborConvolvePass(),
+            }, null));
+        StringAssert.Contains("Field Neighbor Convolve stands after", exception.Message);
+    }
+
+    [Test]
+    public void ForceLayoutDiffersFromCollect_Throws()
+    {
+        FieldNeighborForcePass force = Force();
+        force.TexelSize = 2f;
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(new SimPass[]
+            {
+                Bounds(),
+                Collect(FieldCollectMode.Scatter),
+                new FieldNeighborConvolvePass(),
+                force,
+            }, null));
+        StringAssert.Contains("layout does not match", exception.Message);
+    }
+
+    [Test]
+    public void BoidForceWithFieldForce_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(new SimPass[]
+            {
+                Bounds(),
+                Collect(FieldCollectMode.Scatter),
+                new FieldNeighborConvolvePass(),
+                Force(),
+                new BoidNeighborForcePass(),
+            }, null));
+        StringAssert.Contains("Boid Neighbor Force", exception.Message);
+    }
+
+    [Test]
+    public void FieldForceChain_DoesNotWarn()
+    {
+        EffectAsset effect = Effect(2, 3f);
+        IReadOnlyList<string> warnings = SpatialHashValidator.Validate(new SimPass[]
+        {
+            Collect(FieldCollectMode.Scatter),
+            new FieldNeighborConvolvePass(),
+            new ClearVelocityPass(),
+            Force(),
+            new TeamHeadingSteerPass(),
+            new IntegratePass(),
+            Bounds(),
+            new HeadingToValuePass(),
+        }, effect);
+        Assert.IsEmpty(warnings);
+        UnityEngine.Object.DestroyImmediate(effect);
+    }
+
+    [Test]
     public void HashRefreshAboveOneWithoutField_Throws()
     {
         BuildSpatialHashPass hash = Hash();
@@ -223,6 +322,16 @@ public class FieldNeighborValidatorTests
             Extents = new Vector3(extent, 0f, extent),
             MinCellSize = 1f,
             Wrap = true,
+        };
+    }
+
+    private static FieldNeighborForcePass Force(float extent = 8f)
+    {
+        return new FieldNeighborForcePass
+        {
+            Center = Vector3.zero,
+            Extents = new Vector3(extent, 0f, extent),
+            TexelSize = 1f,
         };
     }
 

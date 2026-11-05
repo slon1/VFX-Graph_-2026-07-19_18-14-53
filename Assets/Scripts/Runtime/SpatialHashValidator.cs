@@ -162,6 +162,8 @@ internal static class SpatialHashValidator
         int collectIndex = -1;
         int convolveIndex = -1;
         int hashIndex = -1;
+        var fieldForces = new List<SimPass>();
+        var fieldForceIndices = new List<int>();
         for (int i = 0; i < passes.Count; i++)
         {
             SimPass pass = passes[i];
@@ -202,6 +204,53 @@ internal static class SpatialHashValidator
                 }
 
                 convolveIndex = i;
+            }
+
+            if (pass is FieldNeighborForcePass)
+            {
+                fieldForces.Add(pass);
+                fieldForceIndices.Add(i);
+            }
+        }
+
+        for (int f = 0; f < fieldForces.Count; f++)
+        {
+            FieldNeighborForcePass fieldForce = (FieldNeighborForcePass)fieldForces[f];
+            int forceIndex = fieldForceIndices[f];
+            if (collect == null)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Neighbor Force requires Field Neighbor Collect before it.");
+            }
+
+            if (convolveIndex < 0)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Neighbor Force requires Field Neighbor Convolve before it.");
+            }
+
+            if (collectIndex > forceIndex)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Neighbor Collect stands after Field Neighbor Force.");
+            }
+
+            if (convolveIndex > forceIndex)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Neighbor Convolve stands after Field Neighbor Force.");
+            }
+
+            if (Mathf.Abs(fieldForce.Center.x - collect.Center.x) > BoundsTolerance ||
+                Mathf.Abs(fieldForce.Center.z - collect.Center.z) > BoundsTolerance ||
+                Mathf.Abs(fieldForce.Extents.x - collect.Extents.x) > BoundsTolerance ||
+                Mathf.Abs(fieldForce.Extents.z - collect.Extents.z) > BoundsTolerance ||
+                Mathf.Abs(fieldForce.TexelSize - collect.TexelSize) > BoundsTolerance)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Neighbor Force layout does not match Field Neighbor Collect " +
+                    $"(force center {fieldForce.Center}, extents {fieldForce.Extents}, texel {fieldForce.TexelSize}; " +
+                    $"collect center {collect.Center}, extents {collect.Extents}, texel {collect.TexelSize}).");
             }
         }
 

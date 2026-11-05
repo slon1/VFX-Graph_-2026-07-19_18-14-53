@@ -386,6 +386,7 @@ public class PerfArgsTests
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "collect" }).FieldStage, Is.EqualTo(FieldRepeatStage.Collect));
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "conv" }).FieldStage, Is.EqualTo(FieldRepeatStage.Conv));
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "grad" }).FieldStage, Is.EqualTo(FieldRepeatStage.Grad));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "force" }).FieldStage, Is.EqualTo(FieldRepeatStage.Force));
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "all" }).FieldStage, Is.EqualTo(FieldRepeatStage.All));
 		PerfArgs off = PerfArgs.Parse(new[] { "-m3d_fieldstage", "off" });
 		Assert.That(off.HasFieldStage, Is.True);
@@ -446,7 +447,27 @@ public class PerfArgsTests
 		pass.FieldStage = FieldRepeatStage.Grad;
 		pass.FieldRepeatCount = 4;
 		Assert.That(FPSDisplay.FieldStageLogField(pass, null), Is.EqualTo("grad"));
+		pass.FieldStage = FieldRepeatStage.Force;
+		Assert.That(FPSDisplay.FieldStageLogField(pass, null), Is.EqualTo("force"));
 		Assert.That(FPSDisplay.FieldRepLogField(pass, null), Is.EqualTo("4"));
+		FieldNeighborConvolvePass convolve = new FieldNeighborConvolvePass();
+		FieldNeighborForcePass force = new FieldNeighborForcePass();
+		PerfArgs forceStage = PerfArgs.Parse(new[] { "-m3d_fieldstage", "force", "-m3d_fieldrep", "4" });
+		FPSDisplay.ApplyFieldStage(pass, convolve, force, forceStage);
+		Assert.That(pass.FieldStage, Is.EqualTo(FieldRepeatStage.Force));
+		Assert.That(convolve.FieldStage, Is.EqualTo(FieldRepeatStage.Force));
+		Assert.That(force.FieldStage, Is.EqualTo(FieldRepeatStage.Force));
+		Assert.That(force.FieldRepeatCount, Is.EqualTo(4));
+		Assert.That(force.RepeatCount, Is.EqualTo(1));
+		Assert.That(force.ForceScratch, Is.Null);
+		PerfArgs off = PerfArgs.Parse(new[] { "-m3d_fieldstage", "off" });
+		FPSDisplay.ApplyFieldStage(pass, convolve, force, off);
+		Assert.That(pass.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
+		Assert.That(convolve.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
+		Assert.That(force.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
+		Assert.That(force.FieldRepeatCount, Is.EqualTo(4));
+		force.FieldRepeatCount = 1;
+		Assert.That(force.ForceScratch, Is.Null);
 		Assert.That(pass.RepeatCount, Is.EqualTo(1));
 		pass.FieldRepeatCount = 0;
 		Assert.That(pass.FieldRepeatCount, Is.EqualTo(1));
@@ -454,11 +475,11 @@ public class PerfArgsTests
 		Assert.That(pass.FieldRepeatCount, Is.EqualTo(64));
 		pass.FieldRepeatCount = 65;
 		Assert.That(pass.FieldRepeatCount, Is.EqualTo(64));
-		FieldNeighborConvolvePass convolve = new FieldNeighborConvolvePass();
-		convolve.FieldRepeatCount = 64;
-		Assert.That(convolve.FieldRepeatCount, Is.EqualTo(64));
-		convolve.FieldRepeatCount = 65;
-		Assert.That(convolve.FieldRepeatCount, Is.EqualTo(64));
+		FieldNeighborConvolvePass convolveClamp = new FieldNeighborConvolvePass();
+		convolveClamp.FieldRepeatCount = 64;
+		Assert.That(convolveClamp.FieldRepeatCount, Is.EqualTo(64));
+		convolveClamp.FieldRepeatCount = 65;
+		Assert.That(convolveClamp.FieldRepeatCount, Is.EqualTo(64));
 	}
 
 	[Test]

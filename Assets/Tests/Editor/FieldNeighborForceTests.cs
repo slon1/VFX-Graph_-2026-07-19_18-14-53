@@ -389,6 +389,57 @@ public class FieldNeighborForceTests
         return new[] { q0, q1, q2, q3 };
     }
 
+    [Test]
+    public void ForceStage_RepeatsIntoScratch_AndOffSkipsTheDispatch()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        SpatialHashLayout layout = Layout(16f);
+        Vector2[] positions = { layout.Origin + new Vector2(3.3f, 4.7f) };
+        Vector2[] headings = { new Vector2(0.6f, 0.8f) };
+        int[] teams = { 0 };
+        using (Rig rig = new Rig(positions, headings, teams, layout, 1))
+        {
+            rig.SetForceDiagnostics(FieldRepeatStage.Force, 4);
+            rig.Step();
+            Assert.IsNotNull(rig.ForceScratch);
+            Assert.AreEqual(1, rig.ForceScratch.count);
+            Assert.AreEqual(1, rig.ForcePassRepeatCount);
+            Vector3 velocity = rig.ReadVelocity()[0];
+            Assert.AreEqual(0f, velocity.x, 1e-3f);
+            Assert.AreEqual(0f, velocity.z, 1e-3f);
+            rig.SetForceDiagnostics(FieldRepeatStage.Force, 1);
+            Assert.IsNull(rig.ForceScratch);
+        }
+
+        using (Rig rig = new Rig(positions, headings, teams, layout, 1))
+        {
+            rig.SetForceDiagnostics(FieldRepeatStage.Off, 4);
+            rig.Step();
+            Vector3 velocity = rig.ReadVelocity()[0];
+            Assert.AreEqual(0f, velocity.x, 0f);
+            Assert.AreEqual(0f, velocity.y, 0f);
+            Assert.AreEqual(0f, velocity.z, 0f);
+            Assert.IsNull(rig.ForceScratch);
+        }
+
+        using (Rig rig = new Rig(positions, headings, teams, layout, 1))
+        {
+            rig.SetForceDiagnostics(FieldRepeatStage.All, 2);
+            rig.Step();
+            Assert.IsNotNull(rig.ForceScratch);
+            rig.DisposeForce();
+            Assert.IsNull(rig.ForceScratch);
+        }
+
+        using (Rig rig = new Rig(positions, headings, teams, layout, 1))
+        {
+            rig.SetForceDiagnostics(FieldRepeatStage.Collect, 4);
+            rig.Step();
+            Assert.IsNull(rig.ForceScratch);
+            Assert.AreEqual(1, rig.ForcePassRepeatCount);
+        }
+    }
+
     private struct ErrorStats
     {
         public double MaxAbs;
@@ -570,6 +621,21 @@ public class FieldNeighborForceTests
             }
 
             particles.Get(BuiltinAttributes.Position).SetData(positions);
+        }
+
+        public void SetForceDiagnostics(FieldRepeatStage stage, int repeats)
+        {
+            force.FieldStage = stage;
+            force.FieldRepeatCount = repeats;
+        }
+
+        public GraphicsBuffer ForceScratch => force.ForceScratch;
+
+        public int ForcePassRepeatCount => force.RepeatCount;
+
+        public void DisposeForce()
+        {
+            force.Dispose();
         }
 
         public void Step()
