@@ -125,8 +125,8 @@ public class FieldForceVsTraversalTests
 
         string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "DOC", "MEASURE", "p8-field-force"));
         Directory.CreateDirectory(dir);
-        string csvPath = Path.Combine(dir, "error.csv");
-        string mdPath = Path.Combine(dir, "error.md");
+        string csvPath = Path.Combine(dir, "error-91e5602.csv");
+        string mdPath = Path.Combine(dir, "error-91e5602.md");
         File.WriteAllText(csvPath, ToCsv(rows), new UTF8Encoding(false));
         File.WriteAllText(mdPath, ToMarkdown(rows, notes), new UTF8Encoding(false));
 
