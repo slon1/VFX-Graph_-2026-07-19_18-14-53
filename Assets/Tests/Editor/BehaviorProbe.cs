@@ -23,7 +23,7 @@ public class BehaviorProbe
     private const float World = 90f;
     private const float Radius = 3f;
     private const int FlockSize = 30;
-    private const string ShapeStem = "shape-METRICS";
+    private const string ShapeStem = "shape-9696694";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()
