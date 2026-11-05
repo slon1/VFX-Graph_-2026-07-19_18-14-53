@@ -2754,6 +2754,238 @@ public static class M3DDemoTools
         camera.transform.SetPositionAndRotation(P400cCameraPosition, Quaternion.Euler(90f, 0f, 0f));
     }
 
+    private const string BoidsHashTwoTeamsFieldPath = EffectsFolder + "/Boids_hash_2teams_field.asset";
+    private const string BoidsHashP400cFieldForcePath = EffectsFolder + "/Boids_hash_P400c_field.asset";
+    private const string BoidsHashTwoTeamsFieldScene = "Assets/Scenes/Boids_Hash_2Teams_Field.unity";
+    private const string BoidsHashP400cFieldForceScene = "Assets/Scenes/Boids_Hash_P400c_Field.unity";
+
+    [MenuItem("Tools/M3D/Create Boids Hash Field Force Effects")]
+    public static void CreateBoidsHashFieldForceEffects()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashTwoTeamsFieldAsset(BoidsHashTwoTeamsFieldPath);
+        CreateBoidsHashP400cFieldAsset(BoidsHashP400cFieldForcePath);
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: Boids Hash field force scenes cancelled; the assets were still written.");
+            return;
+        }
+
+        CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldScene, BoidsHashTwoTeamsFieldPath);
+        CreateBoidsHashP400cFieldForceScene(BoidsHashP400cFieldForceScene, BoidsHashP400cFieldForcePath);
+        Debug.Log("M3D: created Boids hash field force assets and scenes.");
+    }
+
+    private static void CreateBoidsHashTwoTeamsFieldAsset(string path)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            1f,
+            new SimPass[]
+            {
+                new FieldNeighborCollectPass
+                {
+                    Mode = FieldCollectMode.Scatter,
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    TexelSize = 1f,
+                    RefreshInterval = 3,
+                },
+                new FieldNeighborConvolvePass(),
+                new ClearVelocityPass(),
+                new FieldNeighborForcePass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    TexelSize = 1f,
+                },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                new BoxBoundsPass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    Behaviour = BoundsBehaviour.Wrap,
+                },
+                new HeadingToValuePass(),
+            });
+
+        SwarmSource swarm = (SwarmSource)asset.ResolveSource();
+        swarm.Seed = 1;
+        swarm.JitterDegrees = 0f;
+        swarm.Spawns = new System.Collections.Generic.List<SwarmSource.Spawn>
+        {
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 0,
+                Count = 1500,
+                Center = new Vector2(-22f, 0f),
+                Radius = 12f,
+                InitialDirection = new Vector2(1f, 0f),
+            },
+            new SwarmSource.Spawn
+            {
+                TeamIndex = 1,
+                Count = 1500,
+                Center = new Vector2(22f, 0f),
+                Radius = 12f,
+                InitialDirection = new Vector2(-1f, 0f),
+            },
+        };
+        asset.SetTeams(new[]
+        {
+            new TeamProfile
+            {
+                Name = "RedBlue",
+                SeparationRadius = 3f,
+                AlignmentRadius = 3f,
+                CohesionRadius = 3f,
+                InterGroupSeparationMultiplier = 4f,
+                SeparationWeight = 1.2f,
+                AlignmentWeight = 0.8f,
+                CohesionWeight = 0.6f,
+                Cruise = 6f,
+                Turn = 4f,
+                Color = RedBlueGradient(),
+            },
+            new TeamProfile
+            {
+                Name = "YellowGreen",
+                SeparationRadius = 3f,
+                AlignmentRadius = 3f,
+                CohesionRadius = 3f,
+                InterGroupSeparationMultiplier = 4f,
+                SeparationWeight = 1.2f,
+                AlignmentWeight = 0.8f,
+                CohesionWeight = 0.6f,
+                Cruise = 6f,
+                Turn = 4f,
+                Color = YellowGreenGradient(),
+            },
+        });
+
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("particleSize").floatValue = 0.5f;
+        so.FindProperty("particleValueScale").floatValue = 1f;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        SetField(asset, "particleGradient", DebugFieldQuadSlot.DefaultFireGradient());
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    /// <summary>
+    /// P8.1-B force preset. The gather/scatter overload stays the A microbench and is not modified.
+    /// </summary>
+    private static void CreateBoidsHashP400cFieldAsset(string path)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        FieldNeighborCollectPass collect = new FieldNeighborCollectPass
+        {
+            Mode = FieldCollectMode.Scatter,
+            Center = Vector3.zero,
+            Extents = P400cExtents,
+            TexelSize = 1f,
+            RefreshInterval = 3,
+        };
+        BoxBoundsPass box = new BoxBoundsPass();
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            P400cSimulationSpeed,
+            new SimPass[]
+            {
+                collect,
+                new FieldNeighborConvolvePass(),
+                new ClearVelocityPass(),
+                new FieldNeighborForcePass
+                {
+                    Center = Vector3.zero,
+                    Extents = P400cExtents,
+                    TexelSize = 1f,
+                },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                box,
+                new HeadingToValuePass(),
+            });
+        ConfigureP400cSource(asset);
+        box.Center = Vector3.zero;
+        box.Extents = P400cExtents;
+        box.Behaviour = BoundsBehaviour.Wrap;
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void CreateBoidsHashTwoTeamsFieldScene(string scenePath, string assetPath)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera != null)
+        {
+            camera.orthographic = true;
+            camera.orthographicSize = 46f;
+            camera.transform.SetPositionAndRotation(new Vector3(0f, 40f, 0f), Quaternion.Euler(90f, 0f, 0f));
+        }
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject("M3D Boids Hash 2 Teams Field");
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
+    private static void CreateBoidsHashP400cFieldForceScene(string scenePath, string assetPath)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera == null)
+        {
+            throw new System.InvalidOperationException("M3D: P400c field force scene has no main camera.");
+        }
+
+        ConfigureP400cCamera(camera);
+        camera.gameObject.AddComponent<FPSDisplay>();
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject("M3D Boids Hash P400c Field");
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
     [MenuItem("Tools/M3D/Create Curl Noise 2D Effect")]
     public static void CreateCurlNoise2DEffect()
     {
