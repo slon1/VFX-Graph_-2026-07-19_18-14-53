@@ -24,6 +24,9 @@ public class BehaviorProbe
     private const float Radius = 3f;
     private const int FlockSize = 30;
     private const string ShapeStem = "shape-9696694";
+    private const string TexelSixPath = "Assets/Effects/Boids_hash_2teams_field_t06.asset";
+    private const string TexelFivePath = "Assets/Effects/Boids_hash_2teams_field_t05.asset";
+    private const string MeasureCode = "PENDINGHASH";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()
@@ -358,6 +361,53 @@ public class BehaviorProbe
         for (int i = 0; i < samples.Count; i++)
         {
             AssertDefined(samples[i].Shape);
+        }
+    }
+
+    [Test]
+    [Explicit]
+    [Timeout(1800000)]
+    public void TexelMatrix_PointSixAndPointFive()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        var watch = Stopwatch.StartNew();
+        string[] paths = { TexelSixPath, TexelFivePath };
+        string[] labels = { "t06", "t05" };
+        var variants = new[] { Variant.FieldK1, Variant.FieldK3 };
+        int[] rates = { 30, 60 };
+        double[] times = { 1.0, 2.0, 5.0, 10.0, 15.0 };
+        var rows = new List<TexelRow>();
+        for (int a = 0; a < paths.Length; a++)
+        {
+            for (int v = 0; v < variants.Length; v++)
+            {
+                for (int r = 0; r < rates.Length; r++)
+                {
+                    for (int seed = 1; seed <= 5; seed++)
+                    {
+                        rows.AddRange(RunTexel(paths[a], labels[a], variants[v], rates[r], seed, 15.1, times));
+                    }
+                }
+            }
+        }
+
+        watch.Stop();
+        Assert.AreEqual(3, FindCollect(AssetDatabase.LoadAssetAtPath<EffectAsset>(TexelSixPath).Passes).RefreshInterval);
+        Assert.AreEqual(3, FindCollect(AssetDatabase.LoadAssetAtPath<EffectAsset>(TexelFivePath).Passes).RefreshInterval);
+        string dir = MeasureOutput.DirectoryPath();
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(
+            Path.Combine(dir, "texel-" + MeasureCode + ".csv"),
+            TexelToCsv(rows),
+            new UTF8Encoding(false));
+        File.WriteAllText(
+            Path.Combine(dir, "texel-" + MeasureCode + ".md"),
+            TexelToMarkdown(rows, watch.Elapsed.TotalSeconds),
+            new UTF8Encoding(false));
+        for (int i = 0; i < rows.Count; i++)
+        {
+            AssertFinite(rows[i].Metrics);
+            AssertDefined(rows[i].Shape);
         }
     }
 
@@ -1512,6 +1562,309 @@ public class BehaviorProbe
         }
     }
 
+    private static List<TexelRow> RunTexel(
+        string path, string label, Variant variant, int fps, int seed, double seconds, double[] times)
+    {
+        EffectAsset copy = UnityEngine.Object.Instantiate(AssetDatabase.LoadAssetAtPath<EffectAsset>(path));
+        copy.name = "BehaviorProbeTexel_" + label + "_" + variant + "_" + fps + "_" + seed;
+        if (variant == Variant.FieldK1)
+        {
+            FindCollect(copy.Passes).RefreshInterval = 1;
+        }
+        else
+        {
+            Assert.AreEqual(3, FindCollect(copy.Passes).RefreshInterval);
+        }
+
+        ParticleSet particles = new ParticleSet();
+        FieldSet fields = new FieldSet();
+        CommandBuffer cmd = new CommandBuffer { name = "BehaviorProbeTexel" };
+        GraphicsBuffer teams = null;
+        try
+        {
+            SwarmSource swarm = (SwarmSource)copy.ResolveSource();
+            swarm.Seed = seed;
+            swarm.Setup(particles);
+            RegisterLikeWorld(particles, copy);
+            Graphics.CopyBuffer(
+                particles.Get(BuiltinAttributes.RestPosition),
+                particles.Get(BuiltinAttributes.Position));
+            fields.Allocate(copy.Fields, cmd);
+            Graphics.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+            teams = new GraphicsBuffer(
+                GraphicsBuffer.Target.Structured, TeamProfile.MaxTeams, TeamParams.Stride);
+            TeamParams.Upload(teams, copy.Teams);
+            SimContext context = new SimContext(particles, fields, LoadLibrary(), null);
+            context.Cmd = cmd;
+            context.Teams = teams;
+            IReadOnlyList<SimPass> passes = copy.Passes;
+            for (int i = 0; i < passes.Count; i++)
+            {
+                passes[i].Initialize(context);
+            }
+
+            int last = (int)Math.Round(seconds * fps, MidpointRounding.AwayFromZero);
+            var wanted = new HashSet<int>();
+            for (int i = 0; i < times.Length; i++)
+            {
+                int frame = (int)Math.Round(times[i] * fps, MidpointRounding.AwayFromZero);
+                wanted.Add(frame);
+                if (frame > 0)
+                {
+                    wanted.Add(frame - 1);
+                }
+            }
+
+            var captured = new Dictionary<int, Shot>();
+            float dt = copy.SimulationSpeed / fps;
+            for (int frame = 1; frame <= last; frame++)
+            {
+                cmd.Clear();
+                for (int i = 0; i < passes.Count; i++)
+                {
+                    passes[i].Execute(context, dt);
+                }
+
+                Graphics.ExecuteCommandBuffer(cmd);
+                if (wanted.Contains(frame))
+                {
+                    captured[frame] = Capture(particles);
+                }
+            }
+
+            var rows = new List<TexelRow>();
+            for (int i = 0; i < times.Length; i++)
+            {
+                int frame = (int)Math.Round(times[i] * fps, MidpointRounding.AwayFromZero);
+                Shot now = captured[frame];
+                Shot before = captured[frame - 1];
+                rows.Add(new TexelRow
+                {
+                    Texel = label,
+                    Fps = fps,
+                    Seed = seed,
+                    Variant = variant,
+                    Time = times[i],
+                    Metrics = Measure(now.Position, now.Heading, before.Heading, now.Team),
+                    Shape = MeasureShape(now.Position, now.Heading, now.Team),
+                });
+            }
+
+            return rows;
+        }
+        finally
+        {
+            teams?.Dispose();
+            cmd.Release();
+            fields.Dispose();
+            particles.Dispose();
+            IReadOnlyList<SimPass> passes = copy.Passes;
+            for (int i = 0; i < passes.Count; i++)
+            {
+                if (passes[i] is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+
+            UnityEngine.Object.DestroyImmediate(copy);
+        }
+    }
+
+    private static string TexelToCsv(List<TexelRow> rows)
+    {
+        var text = new StringBuilder();
+        text.AppendLine(
+            "texel,fps,seed,variant,t,contact,enemy,flocks0,flocks1,flocks,pol,turn,turnSd," +
+            "rhoMed,rhoP90,thinMed,fracThin,nThin,cells,axisHead,axisLine");
+        for (int i = 0; i < rows.Count; i++)
+        {
+            TexelRow row = rows[i];
+            Metrics metrics = row.Metrics;
+            ShapeMetrics shape = row.Shape;
+            text.Append(row.Texel);
+            text.Append(',').Append(row.Fps.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(row.Seed.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(Name(row.Variant));
+            text.Append(',').Append(row.Time.ToString("0.#", CultureInfo.InvariantCulture));
+            text.Append(',').Append(Num(metrics.Contact));
+            text.Append(',').Append(Num(metrics.Enemy));
+            text.Append(',').Append(metrics.Flocks0.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(metrics.Flocks1.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(metrics.Flocks.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(Num(metrics.Pol));
+            text.Append(',').Append(Num(metrics.Turn));
+            text.Append(',').Append(Num(metrics.TurnSd));
+            text.Append(',').Append(Num(shape.RhoMed));
+            text.Append(',').Append(Num(shape.RhoP90));
+            text.Append(',').Append(NumOpt(shape.ThinMed));
+            text.Append(',').Append(NumOpt(shape.FracThin));
+            text.Append(',').Append(shape.NThin.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(shape.Cells.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(Num(shape.AxisHead));
+            text.Append(',').Append(NumOpt(shape.AxisLine));
+            text.AppendLine();
+        }
+
+        return text.ToString();
+    }
+
+    private static string TexelToMarkdown(List<TexelRow> rows, double seconds)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("# Тексель 0,6 и 0,5 м");
+        text.AppendLine();
+        text.AppendLine(
+            "Длительность прогона 15,1 с. K = 1 выставляет `RefreshInterval = 1` на экземпляре. " +
+            "K = 3 оставляет значение ассета. Снимки uncapped, cap48 и поле при текселе 1 м не перезапускались. " +
+            "Матрица заняла " +
+            seconds.ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',') + " с.");
+        text.AppendLine();
+        text.AppendLine("Сводка по 5 seed: среднее, минимум, максимум. Строки по seed лежат в CSV. Вердикта нет.");
+        text.AppendLine();
+        text.AppendLine("| тексель | вариант | FPS | t, с | метрика | среднее | минимум | максимум |");
+        text.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
+        string[] labels = { "t06", "t05" };
+        var variants = new[] { Variant.FieldK1, Variant.FieldK3 };
+        int[] rates = { 30, 60 };
+        double[] stamps = { 1.0, 2.0, 5.0, 10.0, 15.0 };
+        string[] metrics =
+        {
+            "contact", "enemy", "flocks", "pol", "turn", "turnSd",
+            "rhoMed", "rhoP90", "thinMed", "fracThin", "cells", "axisHead", "axisLine", "nThin",
+        };
+        for (int a = 0; a < labels.Length; a++)
+        {
+            for (int v = 0; v < variants.Length; v++)
+            {
+                for (int r = 0; r < rates.Length; r++)
+                {
+                    for (int s = 0; s < stamps.Length; s++)
+                    {
+                        for (int m = 0; m < metrics.Length; m++)
+                        {
+                            AppendTexelSummary(text, rows, labels[a], variants[v], rates[r], stamps[s], metrics[m]);
+                        }
+                    }
+                }
+            }
+        }
+
+        return text.ToString();
+    }
+
+    private static void AppendTexelSummary(
+        StringBuilder text,
+        List<TexelRow> rows,
+        string label,
+        Variant variant,
+        int fps,
+        double time,
+        string metric)
+    {
+        double min = double.PositiveInfinity;
+        double max = double.NegativeInfinity;
+        double sum = 0.0;
+        int count = 0;
+        for (int i = 0; i < rows.Count; i++)
+        {
+            TexelRow row = rows[i];
+            if (row.Texel != label || row.Variant != variant || row.Fps != fps || Math.Abs(row.Time - time) > 1e-6)
+            {
+                continue;
+            }
+
+            if (!TryTexel(row, metric, out double value))
+            {
+                continue;
+            }
+
+            sum += value;
+            if (value < min)
+            {
+                min = value;
+            }
+
+            if (value > max)
+            {
+                max = value;
+            }
+
+            count++;
+        }
+
+        text.Append("| ").Append(label);
+        text.Append(" | ").Append(Name(variant));
+        text.Append(" | ").Append(fps.ToString(CultureInfo.InvariantCulture));
+        text.Append(" | ").Append(time.ToString("0.#", CultureInfo.InvariantCulture));
+        text.Append(" | ").Append(metric);
+        if (count == 0)
+        {
+            text.AppendLine(" | — | — | — |");
+            return;
+        }
+
+        text.Append(" | ").Append(Comma(sum / count));
+        text.Append(" | ").Append(Comma(min));
+        text.Append(" | ").Append(Comma(max));
+        text.AppendLine(" |");
+    }
+
+    private static bool TryTexel(TexelRow row, string metric, out double value)
+    {
+        Metrics behavior = row.Metrics;
+        ShapeMetrics shape = row.Shape;
+        switch (metric)
+        {
+            case "contact":
+                value = behavior.Contact;
+                return true;
+            case "enemy":
+                value = behavior.Enemy;
+                return true;
+            case "flocks":
+                value = behavior.Flocks;
+                return true;
+            case "pol":
+                value = behavior.Pol;
+                return true;
+            case "turn":
+                value = behavior.Turn;
+                return true;
+            case "turnSd":
+                value = behavior.TurnSd;
+                return true;
+            case "rhoMed":
+                value = shape.RhoMed;
+                return true;
+            case "rhoP90":
+                value = shape.RhoP90;
+                return true;
+            case "thinMed":
+                value = shape.ThinMed ?? 0.0;
+                return shape.ThinMed.HasValue;
+            case "fracThin":
+                value = shape.FracThin ?? 0.0;
+                return shape.FracThin.HasValue;
+            case "cells":
+                value = shape.Cells;
+                return true;
+            case "axisHead":
+                value = shape.AxisHead;
+                return true;
+            case "axisLine":
+                value = shape.AxisLine ?? 0.0;
+                return shape.AxisLine.HasValue;
+            case "nThin":
+                value = shape.NThin;
+                return true;
+            default:
+                value = 0.0;
+                return false;
+        }
+    }
+
     private enum Variant
     {
         Uncapped,
@@ -1566,6 +1919,17 @@ public class BehaviorProbe
         public int Seed;
         public Variant Variant;
         public double Time;
+        public ShapeMetrics Shape;
+    }
+
+    private struct TexelRow
+    {
+        public string Texel;
+        public int Fps;
+        public int Seed;
+        public Variant Variant;
+        public double Time;
+        public Metrics Metrics;
         public ShapeMetrics Shape;
     }
 }

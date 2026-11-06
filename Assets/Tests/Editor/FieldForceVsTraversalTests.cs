@@ -26,6 +26,7 @@ public class FieldForceVsTraversalTests
     private const double AngleLengthFloor = 1e-8;
     private const double CohDisplacementFloor = 0.1;
     private const int Frames = 900;
+    private const string MeasureCode = "PENDINGHASH";
 
     private static readonly string[] Computers = { "field", "cap48", "cap192" };
     private static readonly string[] Groups = { "all", "inside", "edge" };
@@ -50,18 +51,209 @@ public class FieldForceVsTraversalTests
         Assert.AreEqual(1, walkForce.WalkMode);
         Assert.IsFalse(walkForce.AlignFromVelocity);
 
+        var rows = new List<Row>();
+        var notes = new List<string>();
+        BuildRows(shots, asset, walkHash, walkForce, FindCollect(asset.Passes).TexelSize, rows, notes);
+
+        string dir = MeasureOutput.DirectoryPath();
+        Directory.CreateDirectory(dir);
+        string csvPath = Path.Combine(dir, "error-91e5602.csv");
+        string mdPath = Path.Combine(dir, "error-91e5602.md");
+        File.WriteAllText(csvPath, ToCsv(rows), new UTF8Encoding(false));
+        File.WriteAllText(mdPath, ToMarkdown(rows, notes), new UTF8Encoding(false));
+
+        for (int i = 0; i < rows.Count; i++)
+        {
+            Row row = rows[i];
+            AssertFinite(row.AngleMedian, row.Key + " angle median");
+            AssertFinite(row.AngleP95, row.Key + " angle p95");
+            AssertFinite(row.MagMedian, row.Key + " mag median");
+            AssertFinite(row.MagP95, row.Key + " mag p95");
+            if (row.Computer == "field")
+            {
+                AssertFinite(row.SepMedian, row.Key + " sep");
+                AssertFinite(row.AlignMedian, row.Key + " align");
+                AssertFinite(row.CohMedian, row.Key + " coh");
+            }
+        }
+    }
+
+    [Test]
+    [Timeout(600000)]
+    public void SmallerTexels_UseTheFieldSnapshots()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(FieldPath);
+        Assert.IsNotNull(asset, FieldPath);
+        FieldNeighborCollectPass assetCollect = FindCollect(asset.Passes);
+        Assert.AreEqual(3, assetCollect.RefreshInterval);
+        Assert.AreEqual(1f, assetCollect.TexelSize);
+        Shot[] shots = RunSnapshots();
+        Assert.AreEqual(3, assetCollect.RefreshInterval, "the field asset RefreshInterval was changed");
+        Assert.AreEqual(1f, assetCollect.TexelSize, "the field asset TexelSize was changed");
+
+        EffectAsset walk = AssetDatabase.LoadAssetAtPath<EffectAsset>(WalkPath);
+        BuildSpatialHashPass walkHash = FindHash(walk.Passes);
+        BoidNeighborForcePass walkForce = FindWalk(walk.Passes);
+        var baseline = new List<Row>();
+        var baselineNotes = new List<string>();
+        BuildRows(shots, asset, walkHash, walkForce, 1f, baseline, baselineNotes);
+        string mismatch = FieldRowsDiffer(baseline);
+        if (mismatch != null)
+        {
+            Assert.Fail(mismatch);
+        }
+
+        WriteTexel(shots, asset, walkHash, walkForce, 0.6f, "error-" + MeasureCode + "-t06");
+        WriteTexel(shots, asset, walkHash, walkForce, 0.5f, "error-" + MeasureCode + "-t05");
+    }
+
+    private static void WriteTexel(
+        Shot[] shots,
+        EffectAsset asset,
+        BuildSpatialHashPass walkHash,
+        BoidNeighborForcePass walkForce,
+        float texel,
+        string stem)
+    {
+        var rows = new List<Row>();
+        var notes = new List<string>();
+        BuildRows(shots, asset, walkHash, walkForce, texel, rows, notes);
+        string dir = MeasureOutput.DirectoryPath();
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, stem + ".csv"), ToCsv(rows), new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(dir, stem + ".md"), ToMarkdown(rows, notes), new UTF8Encoding(false));
+        for (int i = 0; i < rows.Count; i++)
+        {
+            Row row = rows[i];
+            AssertFinite(row.AngleMedian, row.Key + " angle median");
+            AssertFinite(row.AngleP95, row.Key + " angle p95");
+            AssertFinite(row.MagMedian, row.Key + " mag median");
+            AssertFinite(row.MagP95, row.Key + " mag p95");
+            if (row.Computer == "field")
+            {
+                AssertFinite(row.SepMedian, row.Key + " sep");
+                AssertFinite(row.AlignMedian, row.Key + " align");
+                AssertFinite(row.CohMedian, row.Key + " coh");
+            }
+        }
+    }
+
+    private static string FieldRowsDiffer(List<Row> rows)
+    {
+        string path = Path.GetFullPath(Path.Combine(
+            Application.dataPath, "..", "DOC", "MEASURE", "p8-field-force", "error-91e5602.csv"));
+        string[] committed = File.ReadAllLines(path);
+        string[] fresh = ToCsv(rows).Replace("\r\n", "\n").Split('\n');
+        var left = FieldLines(committed);
+        var right = FieldLines(fresh);
+        var text = new StringBuilder();
+        int n = Math.Min(left.Count, right.Count);
+        for (int i = 0; i < n; i++)
+        {
+            string diff = FieldLineDiff(left[i], right[i]);
+            if (diff != null)
+            {
+                text.Append(diff).Append('\n');
+            }
+        }
+
+        if (left.Count != right.Count)
+        {
+            text.Append("field row count committed ").Append(left.Count).Append(" fresh ").Append(right.Count).Append('\n');
+        }
+
+        return text.Length == 0 ? null : text.ToString();
+    }
+
+    private static string FieldLineDiff(string committed, string fresh)
+    {
+        string[] a = committed.Split(',');
+        string[] b = fresh.Split(',');
+        if (a.Length != b.Length || a[1] != b[1] || a[2] != b[2])
+        {
+            return "committed " + committed + "\nfresh " + fresh;
+        }
+
+        int[] counts = { 3, 4, 7, 10, 13, 16 };
+        for (int i = 0; i < counts.Length; i++)
+        {
+            int column = counts[i];
+            if (column >= a.Length || a[column] != b[column])
+            {
+                return "count column " + column + " committed " + committed + "\nfresh " + fresh;
+            }
+        }
+
+        int[] values = { 0, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18 };
+        for (int i = 0; i < values.Length; i++)
+        {
+            int column = values[i];
+            if (column >= a.Length)
+            {
+                continue;
+            }
+
+            if (a[column].Length == 0 && b[column].Length == 0)
+            {
+                continue;
+            }
+
+            double left = double.Parse(a[column], CultureInfo.InvariantCulture);
+            double right = double.Parse(b[column], CultureInfo.InvariantCulture);
+            double scale = Math.Max(Math.Abs(left), Math.Abs(right));
+            if (scale == 0d)
+            {
+                continue;
+            }
+
+            if (Math.Abs(left - right) > 1e-5 * scale)
+            {
+                return "column " + column + " committed " + a[column] + " fresh " + b[column]
+                    + "\n" + committed;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<string> FieldLines(string[] lines)
+    {
+        var field = new List<string>();
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Length == 0)
+            {
+                continue;
+            }
+
+            string[] parts = lines[i].Split(',');
+            if (parts.Length > 1 && parts[1] == "field")
+            {
+                field.Add(lines[i]);
+            }
+        }
+
+        return field;
+    }
+
+    private static void BuildRows(
+        Shot[] shots,
+        EffectAsset asset,
+        BuildSpatialHashPass walkHash,
+        BoidNeighborForcePass walkForce,
+        float texel,
+        List<Row> rows,
+        List<string> notes)
+    {
         FieldNeighborCollectPass fieldCollect = FindCollect(asset.Passes);
         Vector3 center = fieldCollect.Center;
         Vector3 extents = fieldCollect.Extents;
-        float texel = fieldCollect.TexelSize;
         SpatialHashLayout layout = SpatialHashSet.ComputeLayout(center, extents, texel);
         Vector2 world = new Vector2(extents.x * 2f, extents.z * 2f);
         Vector3[] weights = Weights(asset);
         double[] inter = Inter(asset);
         double radius = asset.Teams[0].SeparationRadius;
-
-        var rows = new List<Row>();
-        var notes = new List<string>();
         using (FieldEval field = new FieldEval(shots[0], center, extents, texel, asset))
         using (WalkEval cap48 = new WalkEval(shots[0], walkHash, 48, walkForce.WalkMode, asset))
         using (WalkEval cap192 = new WalkEval(shots[0], walkHash, 192, walkForce.WalkMode, asset))
@@ -120,28 +312,6 @@ public class FieldForceVsTraversalTests
                             parts[c]));
                     }
                 }
-            }
-        }
-
-        string dir = MeasureOutput.DirectoryPath();
-        Directory.CreateDirectory(dir);
-        string csvPath = Path.Combine(dir, "error-91e5602.csv");
-        string mdPath = Path.Combine(dir, "error-91e5602.md");
-        File.WriteAllText(csvPath, ToCsv(rows), new UTF8Encoding(false));
-        File.WriteAllText(mdPath, ToMarkdown(rows, notes), new UTF8Encoding(false));
-
-        for (int i = 0; i < rows.Count; i++)
-        {
-            Row row = rows[i];
-            AssertFinite(row.AngleMedian, row.Key + " angle median");
-            AssertFinite(row.AngleP95, row.Key + " angle p95");
-            AssertFinite(row.MagMedian, row.Key + " mag median");
-            AssertFinite(row.MagP95, row.Key + " mag p95");
-            if (row.Computer == "field")
-            {
-                AssertFinite(row.SepMedian, row.Key + " sep");
-                AssertFinite(row.AlignMedian, row.Key + " align");
-                AssertFinite(row.CohMedian, row.Key + " coh");
             }
         }
     }
