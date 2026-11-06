@@ -62,5 +62,11 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Boids_Hash_P400c_Field.unity
     guid: 58ad0e5e1ee229f4aa9e378f71fe4aa5
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_2Teams_Field_T06.unity
+    guid: 860805ba2541aa44e8c2a96fb860daaa
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_2Teams_Field_T05.unity
+    guid: 8d76583b3902f8f40b234e4097137a9f
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

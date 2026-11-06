@@ -11,8 +11,12 @@ public class BoidsHashFieldForcePresetTests
     private const string TwoTeamsWalkPath = "Assets/Effects/Boids_hash_2teams.asset";
     private const string TwoTeamsPath = "Assets/Effects/Boids_hash_2teams_field.asset";
     private const string P400cPath = "Assets/Effects/Boids_hash_P400c_field.asset";
+    private const string TexelSixPath = "Assets/Effects/Boids_hash_2teams_field_t06.asset";
+    private const string TexelFivePath = "Assets/Effects/Boids_hash_2teams_field_t05.asset";
     private const string TwoTeamsScene = "Assets/Scenes/Boids_Hash_2Teams_Field.unity";
     private const string P400cScene = "Assets/Scenes/Boids_Hash_P400c_Field.unity";
+    private const string TexelSixScene = "Assets/Scenes/Boids_Hash_2Teams_Field_T06.unity";
+    private const string TexelFiveScene = "Assets/Scenes/Boids_Hash_2Teams_Field_T05.unity";
     private const float DeltaTime = 1f / 60f;
     private const int Frames = 30;
 
@@ -119,6 +123,84 @@ public class BoidsHashFieldForcePresetTests
     public void P400cChain_ThirtyFrames_StaysFiniteAndConservesN()
     {
         RunChain(P400cPath, particlesPerTeam: 200000, worldExtent: 112f);
+    }
+
+    [Test]
+    public void TexelPresets_MatchTheFieldTwinExceptTexelSize()
+    {
+        AssertTexelTwin(TexelSixPath, 0.6f);
+        AssertTexelTwin(TexelFivePath, 0.5f);
+    }
+
+    [Test]
+    public void TexelPresets_ValidatorAcceptsWithoutWarnings()
+    {
+        AssertAccepted(Load(TexelSixPath));
+        AssertAccepted(Load(TexelFivePath));
+    }
+
+    [Test]
+    public void TexelScenes_AreEnabledInTheBuild()
+    {
+        Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(TexelSixScene), TexelSixScene);
+        Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(TexelFiveScene), TexelFiveScene);
+        Assert.IsTrue(IsEnabledInBuild(TexelSixScene), TexelSixScene);
+        Assert.IsTrue(IsEnabledInBuild(TexelFiveScene), TexelFiveScene);
+    }
+
+    [Test]
+    [Timeout(180000)]
+    public void TexelChains_ThirtyFrames_StayFiniteAndConserveN()
+    {
+        RunChain(TexelSixPath, particlesPerTeam: 1500, worldExtent: 45f);
+        RunChain(TexelFivePath, particlesPerTeam: 1500, worldExtent: 45f);
+    }
+
+    private static void AssertTexelTwin(string path, float texel)
+    {
+        EffectAsset field = Load(TwoTeamsPath);
+        EffectAsset twin = Load(path);
+        Assert.AreEqual(field.SimulationSpeed, twin.SimulationSpeed);
+        Assert.AreEqual(field.ParticleSize, twin.ParticleSize);
+        SwarmSource fieldSwarm = (SwarmSource)field.ResolveSource();
+        SwarmSource twinSwarm = (SwarmSource)twin.ResolveSource();
+        Assert.AreEqual(fieldSwarm.Seed, twinSwarm.Seed);
+        Assert.AreEqual(fieldSwarm.JitterDegrees, twinSwarm.JitterDegrees);
+        Assert.AreEqual(fieldSwarm.Spawns.Count, twinSwarm.Spawns.Count);
+        for (int i = 0; i < fieldSwarm.Spawns.Count; i++)
+        {
+            AssertSpawnEqual(fieldSwarm.Spawns[i], twinSwarm.Spawns[i]);
+        }
+
+        Assert.AreEqual(field.Teams.Count, twin.Teams.Count);
+        for (int i = 0; i < field.Teams.Count; i++)
+        {
+            AssertTeamEqual(field.Teams[i], twin.Teams[i]);
+        }
+
+        Assert.AreEqual(field.Passes.Count, twin.Passes.Count);
+        for (int i = 0; i < field.Passes.Count; i++)
+        {
+            Assert.AreEqual(field.Passes[i].GetType(), twin.Passes[i].GetType());
+        }
+
+        FieldNeighborCollectPass fieldCollect = (FieldNeighborCollectPass)field.Passes[0];
+        FieldNeighborCollectPass twinCollect = (FieldNeighborCollectPass)twin.Passes[0];
+        Assert.AreEqual(fieldCollect.Mode, twinCollect.Mode);
+        Assert.AreEqual(fieldCollect.RefreshInterval, twinCollect.RefreshInterval);
+        Assert.AreEqual(fieldCollect.Center, twinCollect.Center);
+        Assert.AreEqual(fieldCollect.Extents, twinCollect.Extents);
+        Assert.AreEqual(texel, twinCollect.TexelSize);
+        FieldNeighborForcePass fieldForce = (FieldNeighborForcePass)field.Passes[3];
+        FieldNeighborForcePass twinForce = (FieldNeighborForcePass)twin.Passes[3];
+        Assert.AreEqual(fieldForce.Center, twinForce.Center);
+        Assert.AreEqual(fieldForce.Extents, twinForce.Extents);
+        Assert.AreEqual(texel, twinForce.TexelSize);
+        BoxBoundsPass fieldBox = FindBox(field.Passes);
+        BoxBoundsPass twinBox = FindBox(twin.Passes);
+        Assert.AreEqual(fieldBox.Center, twinBox.Center);
+        Assert.AreEqual(fieldBox.Extents, twinBox.Extents);
+        Assert.AreEqual(fieldBox.Behaviour, twinBox.Behaviour);
     }
 
     private void RunChain(string path, int particlesPerTeam, float worldExtent)

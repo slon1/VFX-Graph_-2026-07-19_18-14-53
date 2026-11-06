@@ -2756,8 +2756,12 @@ public static class M3DDemoTools
 
     private const string BoidsHashTwoTeamsFieldPath = EffectsFolder + "/Boids_hash_2teams_field.asset";
     private const string BoidsHashP400cFieldForcePath = EffectsFolder + "/Boids_hash_P400c_field.asset";
+    private const string BoidsHashTwoTeamsFieldT06Path = EffectsFolder + "/Boids_hash_2teams_field_t06.asset";
+    private const string BoidsHashTwoTeamsFieldT05Path = EffectsFolder + "/Boids_hash_2teams_field_t05.asset";
     private const string BoidsHashTwoTeamsFieldScene = "Assets/Scenes/Boids_Hash_2Teams_Field.unity";
     private const string BoidsHashP400cFieldForceScene = "Assets/Scenes/Boids_Hash_P400c_Field.unity";
+    private const string BoidsHashTwoTeamsFieldT06Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_T06.unity";
+    private const string BoidsHashTwoTeamsFieldT05Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_T05.unity";
 
     [MenuItem("Tools/M3D/Create Boids Hash Field Force Effects")]
     public static void CreateBoidsHashFieldForceEffects()
@@ -2781,7 +2785,50 @@ public static class M3DDemoTools
         Debug.Log("M3D: created Boids hash field force assets and scenes.");
     }
 
-    private static void CreateBoidsHashTwoTeamsFieldAsset(string path)
+    [MenuItem("Tools/M3D/Create Boids Hash Field Texel Effects")]
+    public static void CreateBoidsHashFieldTexelEffects()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashTwoTeamsFieldAsset(BoidsHashTwoTeamsFieldT06Path, 0.6f);
+        CreateBoidsHashTwoTeamsFieldAsset(BoidsHashTwoTeamsFieldT05Path, 0.5f);
+        CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldT06Scene, BoidsHashTwoTeamsFieldT06Path);
+        CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldT05Scene, BoidsHashTwoTeamsFieldT05Path);
+        EnableInBuild(BoidsHashTwoTeamsFieldT06Scene, BoidsHashTwoTeamsFieldT05Scene);
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created Boids hash field texel assets and scenes.");
+    }
+
+    private static void EnableInBuild(params string[] scenePaths)
+    {
+        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        for (int i = 0; i < scenePaths.Length; i++)
+        {
+            string path = scenePaths[i];
+            bool found = false;
+            for (int s = 0; s < scenes.Count; s++)
+            {
+                if (scenes[s].path == path)
+                {
+                    scenes[s] = new EditorBuildSettingsScene(path, true);
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                scenes.Add(new EditorBuildSettingsScene(path, true));
+            }
+        }
+
+        EditorBuildSettings.scenes = scenes.ToArray();
+    }
+
+    private static void CreateBoidsHashTwoTeamsFieldAsset(string path, float texelSize = 1f)
     {
         EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
         if (existing != null)
@@ -2800,7 +2847,7 @@ public static class M3DDemoTools
                     Mode = FieldCollectMode.Scatter,
                     Center = Vector3.zero,
                     Extents = new Vector3(45f, 0f, 45f),
-                    TexelSize = 1f,
+                    TexelSize = texelSize,
                     RefreshInterval = 3,
                 },
                 new FieldNeighborConvolvePass(),
@@ -2809,7 +2856,7 @@ public static class M3DDemoTools
                 {
                     Center = Vector3.zero,
                     Extents = new Vector3(45f, 0f, 45f),
-                    TexelSize = 1f,
+                    TexelSize = texelSize,
                 },
                 new TeamHeadingSteerPass(),
                 new IntegratePass(),
