@@ -310,7 +310,7 @@ public class BehaviorProbe
         BoidNeighborForcePass walk = AssetWalk();
         Assert.AreEqual(48, walk.MaxNeighbors);
 
-        string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "DOC", "MEASURE", "p8-field-force"));
+        string dir = MeasureOutput.DirectoryPath();
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "probe-60984cc.csv"), ToCsv(samples), new UTF8Encoding(false));
         File.WriteAllText(
@@ -348,7 +348,7 @@ public class BehaviorProbe
         watch.Stop();
         Assert.AreEqual(3, AssetCollect().RefreshInterval);
         Assert.AreEqual(48, AssetWalk().MaxNeighbors);
-        string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "DOC", "MEASURE", "p8-field-force"));
+        string dir = MeasureOutput.DirectoryPath();
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, ShapeStem + ".csv"), ShapeToCsv(samples), new UTF8Encoding(false));
         File.WriteAllText(

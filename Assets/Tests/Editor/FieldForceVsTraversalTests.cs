@@ -123,7 +123,7 @@ public class FieldForceVsTraversalTests
             }
         }
 
-        string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "DOC", "MEASURE", "p8-field-force"));
+        string dir = MeasureOutput.DirectoryPath();
         Directory.CreateDirectory(dir);
         string csvPath = Path.Combine(dir, "error-91e5602.csv");
         string mdPath = Path.Combine(dir, "error-91e5602.md");
