@@ -27,6 +27,18 @@ public static class FieldForceReference
 
         /// <summary>Length of the mean own-neighbour displacement. Filled by <see cref="FullTraversal"/>.</summary>
         public double MeanDisplacement;
+
+        /// <summary>Separation count after subtracting self. Filled by <see cref="FieldRead"/>.</summary>
+        public double Ns;
+
+        /// <summary>Own-neighbour count after subtracting self. Filled by <see cref="FieldRead"/>.</summary>
+        public double Ng;
+
+        /// <summary>Length of the alignment vector after subtracting self. Filled by <see cref="FieldRead"/>.</summary>
+        public double AlignLength;
+
+        /// <summary>Length of Ks/Ng after subtracting self. Filled by <see cref="FieldRead"/>.</summary>
+        public double MeanLength;
     }
 
     public static Sample[] FieldRead(
@@ -41,8 +53,10 @@ public static class FieldForceReference
         var samples = new Sample[count];
         int resX = layout.Resolution.x;
         int resY = layout.Resolution.y;
-        double texelX = layout.CellSize.x;
-        double texelY = layout.CellSize.y;
+        float cellX = layout.CellSize.x;
+        float cellY = layout.CellSize.y;
+        float originX = layout.Origin.x;
+        float originY = layout.Origin.y;
         for (int i = 0; i < count; i++)
         {
             int team = teams[i];
@@ -51,11 +65,12 @@ public static class FieldForceReference
                 continue;
             }
 
-            Vector2 u = (positions[i] - layout.Origin) / layout.CellSize;
-            int i0x = (int)Math.Floor(u.x);
-            int i0y = (int)Math.Floor(u.y);
-            double fx = u.x - i0x;
-            double fy = u.y - i0y;
+            float ux = (positions[i].x - originX) / cellX;
+            float uy = (positions[i].y - originY) / cellY;
+            int i0x = (int)Math.Floor(ux);
+            int i0y = (int)Math.Floor(uy);
+            float fx = ux - i0x;
+            float fy = uy - i0y;
             double gsx = 0;
             double gsy = 0;
             double ns = 0;
@@ -68,9 +83,9 @@ public static class FieldForceReference
             {
                 for (int dx = 0; dx <= 1; dx++)
                 {
-                    double wx = dx == 0 ? 1.0 - fx : fx;
-                    double wz = dz == 0 ? 1.0 - fy : fy;
-                    double weight = wx * wz;
+                    float wx = dx == 0 ? 1f - fx : fx;
+                    float wy = dz == 0 ? 1f - fy : fy;
+                    float weight = wx * wy;
                     int cell = Wrap(i0x + dx, i0y + dz, resX, resY);
                     int b = cell * FieldNeighborReference.FieldFloats + team * 8;
                     double ntot = field[b + 2];
@@ -81,10 +96,10 @@ public static class FieldForceReference
                     asx += weight * field[b + 4];
                     asy += weight * field[b + 5];
                     ng += weight * ngk;
-                    double texelFromParticleX = (dx - fx) * texelX;
-                    double texelFromParticleY = (dz - fy) * texelY;
-                    ksx += weight * (field[b + 6] + ngk * texelFromParticleX);
-                    ksy += weight * (field[b + 7] + ngk * texelFromParticleY);
+                    float offX = ((float)dx - fx) * cellX;
+                    float offY = ((float)dz - fy) * cellY;
+                    ksx += weight * (field[b + 6] + ngk * offX);
+                    ksy += weight * (field[b + 7] + ngk * offY);
                 }
             }
 
@@ -93,7 +108,192 @@ public static class FieldForceReference
             asy -= headings[i].y;
             ng -= 1.0;
             Vector3 teamWeights = weights[team];
-            samples[i] = Compose(gsx, gsy, ns, asx, asy, ksx, ksy, ng, teamWeights.x, teamWeights.y, teamWeights.z);
+            Sample sample = Compose(
+                gsx, gsy, ns, asx, asy, ksx, ksy, ng, teamWeights.x, teamWeights.y, teamWeights.z);
+            sample.Ns = ns;
+            sample.Ng = ng;
+            sample.AlignLength = Math.Sqrt(asx * asx + asy * asy);
+            if (Math.Abs(ng) > 1e-12)
+            {
+                double mx = ksx / ng;
+                double my = ksy / ng;
+                sample.MeanLength = Math.Sqrt(mx * mx + my * my);
+            }
+
+            samples[i] = sample;
+        }
+
+        return samples;
+    }
+
+    /// <summary>
+    /// Force in float32, same adds and thresholds as FieldNeighborForce.
+    /// Sa, Sk, Sg are the sums of absolute scalar terms added into align, ks and gs.
+    /// </summary>
+    public struct FloatSample
+    {
+        public float Fx;
+        public float Fy;
+        public float Sa;
+        public float Sk;
+        public float Sg;
+        public float AbsAs;
+        public float AbsKs;
+        public float AbsNs;
+    }
+
+    public static FloatSample[] FloatRead(
+        Vector4[] slots,
+        Vector2[] positions,
+        Vector2[] headings,
+        int[] teams,
+        Vector3[] weights,
+        SpatialHashLayout layout,
+        Vector2[] cic = null)
+    {
+        int count = positions.Length;
+        var samples = new FloatSample[count];
+        int resX = layout.Resolution.x;
+        int resY = layout.Resolution.y;
+        float cellX = layout.CellSize.x;
+        float cellY = layout.CellSize.y;
+        float originX = layout.Origin.x;
+        float originY = layout.Origin.y;
+        for (int i = 0; i < count; i++)
+        {
+            int team = teams[i];
+            if (team != 0 && team != 1)
+            {
+                continue;
+            }
+
+            float fx;
+            float fy;
+            var cornerW = new float[4];
+            var cornerCell = new int[4];
+            if (cic == null)
+            {
+                float ux = (positions[i].x - originX) / cellX;
+                float uy = (positions[i].y - originY) / cellY;
+                int i0x = (int)MathF.Floor(ux);
+                int i0y = (int)MathF.Floor(uy);
+                fx = ux - i0x;
+                fy = uy - i0y;
+                cornerW[0] = (1f - fx) * (1f - fy);
+                cornerW[1] = fx * (1f - fy);
+                cornerW[2] = (1f - fx) * fy;
+                cornerW[3] = fx * fy;
+                for (int k = 0; k < 4; k++)
+                {
+                    int dx = k == 1 || k == 3 ? 1 : 0;
+                    int dz = k >= 2 ? 1 : 0;
+                    cornerCell[k] = Wrap(i0x + dx, i0y + dz, resX, resY);
+                }
+            }
+            else
+            {
+                int b = i * 4;
+                cornerW[0] = cic[b].y;
+                cornerW[1] = cic[b + 1].y;
+                cornerW[2] = cic[b + 2].y;
+                cornerW[3] = cic[b + 3].y;
+                fx = cornerW[1] + cornerW[3];
+                fy = cornerW[2] + cornerW[3];
+                for (int k = 0; k < 4; k++)
+                {
+                    cornerCell[k] = (int)cic[b + k].x;
+                }
+            }
+
+            float gsx = 0f;
+            float gsy = 0f;
+            float ns = 0f;
+            float ax = 0f;
+            float ay = 0f;
+            float ng = 0f;
+            float kx = 0f;
+            float ky = 0f;
+            float sg = 0f;
+            float sa = 0f;
+            float sk = 0f;
+            for (int k = 0; k < 4; k++)
+            {
+                int dx = k == 1 || k == 3 ? 1 : 0;
+                int dz = k >= 2 ? 1 : 0;
+                float w = cornerW[k];
+                int cell = cornerCell[k];
+                int slot = cell * 4 + team * 2;
+                Vector4 packedG = slots[slot];
+                Vector4 packedA = slots[slot + 1];
+                float gx = w * packedG.x;
+                float gz = w * packedG.y;
+                gsx += gx;
+                gsy += gz;
+                sg += Math.Abs(gx) + Math.Abs(gz);
+                ns += w * packedG.z;
+                ng += w * packedG.w;
+                float lax = w * packedA.x;
+                float lay = w * packedA.y;
+                ax += lax;
+                ay += lay;
+                sa += Math.Abs(lax) + Math.Abs(lay);
+                float offX = ((float)dx - fx) * cellX;
+                float offY = ((float)dz - fy) * cellY;
+                float lkx = w * (packedA.z + packedG.w * offX);
+                float lky = w * (packedA.w + packedG.w * offY);
+                kx += lkx;
+                ky += lky;
+                sk += Math.Abs(lkx) + Math.Abs(lky);
+            }
+
+            float hx = headings[i].x;
+            float hy = headings[i].y;
+            ns -= 1f;
+            ax -= hx;
+            ay -= hy;
+            ng -= 1f;
+            sa += Math.Abs(hx) + Math.Abs(hy);
+            Vector3 teamWeights = weights[team];
+            float forceX = 0f;
+            float forceY = 0f;
+            if (ns > 0.001f)
+            {
+                forceX += (gsx / ns) * teamWeights.x;
+                forceY += (gsy / ns) * teamWeights.x;
+            }
+
+            float align2 = ax * ax + ay * ay;
+            if (align2 > 1e-6f)
+            {
+                float inv = 1f / MathF.Sqrt(align2);
+                forceX += ax * inv * teamWeights.y;
+                forceY += ay * inv * teamWeights.y;
+            }
+
+            if (ng > 0.001f)
+            {
+                float mx = kx / ng;
+                float my = ky / ng;
+                float mean2 = mx * mx + my * my;
+                if (mean2 > 1e-6f)
+                {
+                    float inv = 1f / MathF.Sqrt(mean2);
+                    forceX += mx * inv * teamWeights.z;
+                    forceY += my * inv * teamWeights.z;
+                }
+            }
+
+            samples[i] = new FloatSample
+            {
+                Fx = forceX,
+                Fy = forceY,
+                Sa = sa,
+                Sk = sk,
+                Sg = sg,
+                AbsAs = MathF.Sqrt(align2),
+                AbsKs = MathF.Sqrt(kx * kx + ky * ky),
+                AbsNs = Math.Abs(ns),
+            };
         }
 
         return samples;

@@ -312,6 +312,12 @@ internal static class SpatialHashValidator
                 "SimulationWorld: a field-neighbor chain requires an enabled BoxBounds Wrap pass.");
         }
 
+        if (!(collect.TexelSize > 0f))
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: field-neighbor R/t must lie in [3, 8], found texel " + collect.TexelSize + ".");
+        }
+
         SpatialHashLayout layout = SpatialHashSet.ComputeLayout(
             collect.Center, collect.Extents, collect.TexelSize);
         SpatialHashSet.ValidateLayout(layout, wrap: true);
@@ -343,10 +349,11 @@ internal static class SpatialHashValidator
         }
 
         float texel = collect.TexelSize;
-        if (!(texel > 0f) || Mathf.Abs(radius / texel - 3f) > 1e-4f)
+        float ratio = texel > 0f ? radius / texel : 0f;
+        if (!(texel > 0f) || ratio < 3f - 1e-4f || ratio > 8f + 1e-4f)
         {
             throw new InvalidOperationException(
-                "SimulationWorld: field-neighbor R/t must be 3, found " + radius + " / " + texel + ".");
+                "SimulationWorld: field-neighbor R/t must lie in [3, 8], found " + radius + " / " + texel + ".");
         }
     }
 

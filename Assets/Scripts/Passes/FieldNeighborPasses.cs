@@ -215,7 +215,7 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
 
         ComputeShader shader = mode == FieldCollectMode.Gather ? gatherKernel.Shader : clearKernel.Shader;
         CommandBuffer cmd = context.Cmd;
-        field.PushParams(cmd, shader, radiusTexels: 3f, radius: 3f);
+        field.PushParams(cmd, shader, field.RadiusTexels(context.Teams), field.TeamRadius(context.Teams));
         cmd.SetComputeIntParam(shader, SimShaderIds.ParticleCount, field.ParticleCount);
 
         if (mode == FieldCollectMode.Gather)
@@ -352,7 +352,6 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
 public sealed class FieldNeighborConvolvePass : SimPass, IFieldNeighborPass, IDisposable
 {
     private const int ThreadGroupSize = 64;
-    private const float RadiusTexels = 3f;
 
     [NonSerialized] private KernelHandle potentialRawKernel;
     [NonSerialized] private KernelHandle potentialAccumKernel;
@@ -421,7 +420,7 @@ public sealed class FieldNeighborConvolvePass : SimPass, IFieldNeighborPass, IDi
         KernelHandle potential = field.Scatter ? potentialAccumKernel : potentialRawKernel;
         ComputeShader shader = potential.Shader;
         CommandBuffer cmd = context.Cmd;
-        field.PushParams(cmd, shader, RadiusTexels, 0f);
+        field.PushParams(cmd, shader, field.RadiusTexels(context.Teams), field.TeamRadius(context.Teams));
         Bind(cmd, potential, "Teams", context.Teams);
         Bind(cmd, potential, "Phi", field.Phi);
         Bind(cmd, potential, "FieldSlots", field.Field);
@@ -623,7 +622,7 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
         liveVelocity = context.Particles.Get(BuiltinAttributes.Velocity);
         CommandBuffer cmd = context.Cmd;
         ComputeShader shader = kernel.Shader;
-        field.PushParams(cmd, shader, radiusTexels: 3f, radius: 3f);
+        field.PushParams(cmd, shader, field.RadiusTexels(context.Teams), field.TeamRadius(context.Teams));
         cmd.SetComputeIntParam(shader, SimShaderIds.ParticleCount, count);
         Bind(cmd, "position", context.Particles.Get(BuiltinAttributes.Position));
         Bind(cmd, "heading", context.Particles.Get(BuiltinAttributes.Heading));

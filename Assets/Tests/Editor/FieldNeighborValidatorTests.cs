@@ -45,9 +45,9 @@ public class FieldNeighborValidatorTests
     }
 
     [Test]
-    public void RadiusOverTexelNotThree_Throws()
+    public void RadiusOverTexelOutsideBand_Throws()
     {
-        EffectAsset effect = Effect(2, 4f);
+        EffectAsset effect = Effect(2, 2f);
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
             () => SpatialHashValidator.Validate(Gather(), effect));
         StringAssert.Contains("R/t", exception.Message);
@@ -277,6 +277,34 @@ public class FieldNeighborValidatorTests
     }
 
     [Test]
+    public void Texels_One_PointSix_And_PointFive_AreAccepted()
+    {
+        float[] texels = { 1f, 0.6f, 0.5f };
+        for (int i = 0; i < texels.Length; i++)
+        {
+            EffectAsset effect = Effect(2, 3f);
+            Assert.DoesNotThrow(() => SpatialHashValidator.Validate(Scatter(texels[i]), effect));
+            UnityEngine.Object.DestroyImmediate(effect);
+        }
+    }
+
+    [Test]
+    public void Texel_OutsideTheRadiusBand_IsRejected()
+    {
+        AssertTexelRejected(1.5f);
+        AssertTexelRejected(0.3f);
+        AssertTexelRejected(0f);
+    }
+
+    [Test]
+    public void SceneWorld_TexelGrid_MatchesTheNominalSize()
+    {
+        AssertGrid(1f, 90, 1f);
+        AssertGrid(0.6f, 150, 0.6f);
+        AssertGrid(0.5f, 180, 0.5f);
+    }
+
+    [Test]
     public void PlayRadiusCheck_StaysQuietWithoutNeighborForce()
     {
         TeamProfile profile = new TeamProfile
@@ -303,6 +331,36 @@ public class FieldNeighborValidatorTests
         return false;
     }
 
+    private static void AssertTexelRejected(float texel)
+    {
+        EffectAsset effect = Effect(2, 3f);
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(Scatter(texel, 8f), effect));
+        StringAssert.Contains("R/t", exception.Message);
+        UnityEngine.Object.DestroyImmediate(effect);
+    }
+
+    private static void AssertGrid(float texel, int cells, float size)
+    {
+        SpatialHashLayout layout = SpatialHashSet.ComputeLayout(
+            Vector3.zero, new Vector3(45f, 0f, 45f), texel);
+        Assert.AreEqual(cells, layout.Resolution.x, "x " + texel);
+        Assert.AreEqual(cells, layout.Resolution.y, "y " + texel);
+        Assert.AreEqual(size, layout.CellSize.x, 1e-6f, "cell x " + texel);
+        Assert.AreEqual(size, layout.CellSize.y, 1e-6f, "cell y " + texel);
+    }
+
+    private static SimPass[] Scatter(float texel, float extent = 45f)
+    {
+        return new SimPass[]
+        {
+            Collect(FieldCollectMode.Scatter, extent, texel),
+            new FieldNeighborConvolvePass(),
+            Bounds(extent),
+            Force(extent, texel),
+        };
+    }
+
     private static SimPass[] Gather(float extent = 8f)
     {
         return new SimPass[]
@@ -325,24 +383,24 @@ public class FieldNeighborValidatorTests
         };
     }
 
-    private static FieldNeighborForcePass Force(float extent = 8f)
+    private static FieldNeighborForcePass Force(float extent = 8f, float texel = 1f)
     {
         return new FieldNeighborForcePass
         {
             Center = Vector3.zero,
             Extents = new Vector3(extent, 0f, extent),
-            TexelSize = 1f,
+            TexelSize = texel,
         };
     }
 
-    private static FieldNeighborCollectPass Collect(FieldCollectMode mode, float extent = 8f)
+    private static FieldNeighborCollectPass Collect(FieldCollectMode mode, float extent = 8f, float texel = 1f)
     {
         return new FieldNeighborCollectPass
         {
             Mode = mode,
             Center = Vector3.zero,
             Extents = new Vector3(extent, 0f, extent),
-            TexelSize = 1f,
+            TexelSize = texel,
         };
     }
 

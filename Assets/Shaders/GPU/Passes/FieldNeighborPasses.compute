@@ -43,10 +43,11 @@ RWStructuredBuffer<float4> FieldSlots;
 RWStructuredBuffer<float3> velocity;
 RWStructuredBuffer<float2> CicOut;
 
+// Integer modulo. c - r*floor(c/r) returns 150 on a 150-grid when the reciprocal is short.
+// Every texel-index wrap goes through here: deposit, gather, disk, gradient, force, CIC.
 int2 WrapCell(int2 c)
 {
-    float2 r = (float2)HashRes;
-    return (int2)(float2(c) - r * floor(float2(c) / r));
+    return ((c % HashRes) + HashRes) % HashRes;
 }
 
 int2 TexelCoord(uint index)

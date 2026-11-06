@@ -66,6 +66,47 @@ public sealed class FieldNeighborSet : IDisposable
         }
     }
 
+    private float teamRadius;
+
+    /// <summary>Teams[0].Radii.x, read once. The play path uploads that slot before Execute.</summary>
+    internal float TeamRadius(GraphicsBuffer teams)
+    {
+        if (teamRadius > 0f)
+        {
+            return teamRadius;
+        }
+
+        if (teams == null)
+        {
+            throw new InvalidOperationException("Field neighbor radius needs a team buffer.");
+        }
+
+        var slot = new TeamParams[1];
+        teams.GetData(slot, 0, 0, 1);
+        teamRadius = slot[0].Radii.x;
+        if (!(teamRadius > 0f) || float.IsNaN(teamRadius) || float.IsInfinity(teamRadius))
+        {
+            throw new InvalidOperationException(
+                "Field neighbor radius needs Teams[0].Radii.x > 0, found " + teamRadius + ".");
+        }
+
+        return teamRadius;
+    }
+
+    /// <summary>R divided by the real layout cell, not the nominal TexelSize.</summary>
+    internal float RadiusTexels(GraphicsBuffer teams)
+    {
+        float cell = Layout.CellSize.x;
+        float radius = TeamRadius(teams);
+        if (!(cell > 0f))
+        {
+            throw new InvalidOperationException(
+                "Field neighbor radius needs a positive cell size, found " + cell + ".");
+        }
+
+        return radius / cell;
+    }
+
     internal void PushParams(CommandBuffer cmd, ComputeShader shader, float radiusTexels, float radius)
     {
         SpatialHashLayout layout = Layout;

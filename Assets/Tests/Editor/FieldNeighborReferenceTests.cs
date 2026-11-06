@@ -4,6 +4,14 @@ using UnityEngine;
 public class FieldNeighborReferenceTests
 {
     [Test]
+    public void Disk_KeepsTwentyFiveOffsetsAtThree_AndGrowsWithRt()
+    {
+        Assert.AreEqual(25, FieldNeighborReference.DiskOffsetCount(3.0));
+        Assert.AreEqual(69, FieldNeighborReference.DiskOffsetCount(5.0));
+        Assert.AreEqual(109, FieldNeighborReference.DiskOffsetCount(6.0));
+    }
+
+    [Test]
     public void CenterParticle_PutsAllMassOnOneTexel()
     {
         SpatialHashLayout layout = Layout(8f);
