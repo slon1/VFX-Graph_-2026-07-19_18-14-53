@@ -1,0 +1,61 @@
+t075 1 t= 5 thinMed=0.111 fracThin=0.914 cells=108.000 rhoMed=10.823 axisHead=0.260 axisLine=0.469
+t075 1 t=10 thinMed=0.018 fracThin=0.978 cells=102.000 rhoMed=11.176 axisHead=0.569 axisLine=0.997
+t075 1 t=15 thinMed=0.010 fracThin=0.954 cells=96.000 rhoMed=11.141 axisHead=0.634 axisLine=0.996
+t075 1 time 7.2
+t075 2 t= 5 thinMed=0.118 fracThin=0.771 cells=102.000 rhoMed=14.448 axisHead=0.065 axisLine=0.375
+t075 2 t=10 thinMed=0.033 fracThin=0.950 cells=84.000 rhoMed=17.295 axisHead=0.000 axisLine=0.069
+t075 2 t=15 thinMed=0.025 fracThin=0.969 cells=82.000 rhoMed=19.134 axisHead=0.000 axisLine=0.030
+t075 2 time 7.4
+t075 3 t= 5 thinMed=0.071 fracThin=0.877 cells=106.000 rhoMed=9.903 axisHead=0.194 axisLine=0.494
+t075 3 t=10 thinMed=0.020 fracThin=0.976 cells=100.000 rhoMed=10.610 axisHead=0.325 axisLine=0.604
+t075 3 t=15 thinMed=0.011 fracThin=0.966 cells=96.000 rhoMed=10.699 axisHead=0.723 axisLine=0.864
+t075 3 time 7.0
+t075 4 t= 5 thinMed=0.161 fracThin=0.849 cells=126.000 rhoMed=10.327 axisHead=0.042 axisLine=0.239
+t075 4 t=10 thinMed=0.070 fracThin=0.920 cells=107.000 rhoMed=12.644 axisHead=0.162 axisLine=0.456
+t075 4 t=15 thinMed=0.076 fracThin=0.904 cells=109.000 rhoMed=12.732 axisHead=0.059 axisLine=0.712
+t075 4 time 6.9
+t075 5 t= 5 thinMed=0.141 fracThin=0.715 cells=95.000 rhoMed=15.491 axisHead=0.025 axisLine=0.003
+t075 5 t=10 thinMed=0.011 fracThin=0.991 cells=78.000 rhoMed=16.676 axisHead=0.272 axisLine=0.673
+t075 5 t=15 thinMed=0.004 fracThin=0.995 cells=74.000 rhoMed=16.729 axisHead=0.840 axisLine=0.999
+t075 5 time 7.3
+t067 1 t= 5 thinMed=0.213 fracThin=0.629 cells=107.000 rhoMed=13.510 axisHead=0.051 axisLine=0.000
+t067 1 t=10 thinMed=0.149 fracThin=0.722 cells=97.000 rhoMed=13.829 axisHead=0.031 axisLine=0.295
+t067 1 t=15 thinMed=0.166 fracThin=0.671 cells=103.000 rhoMed=13.970 axisHead=0.000 axisLine=0.126
+t067 1 time 8.1
+t067 2 t= 5 thinMed=0.231 fracThin=0.542 cells=113.000 rhoMed=12.308 axisHead=0.177 axisLine=0.279
+t067 2 t=10 thinMed=0.112 fracThin=0.724 cells=102.000 rhoMed=12.697 axisHead=0.155 axisLine=0.359
+t067 2 t=15 thinMed=0.106 fracThin=0.861 cells=96.000 rhoMed=17.330 axisHead=0.259 axisLine=0.384
+t067 2 time 7.6
+t067 3 t= 5 thinMed=0.120 fracThin=0.784 cells=76.000 rhoMed=17.684 axisHead=0.119 axisLine=0.464
+t067 3 t=10 thinMed=0.032 fracThin=0.808 cells=69.000 rhoMed=17.649 axisHead=0.132 axisLine=0.229
+t067 3 t=15 thinMed=0.018 fracThin=0.860 cells=60.000 rhoMed=18.816 axisHead=0.010 axisLine=0.103
+t067 3 time 8.1
+t067 4 t= 5 thinMed=0.214 fracThin=0.612 cells=98.000 rhoMed=12.025 axisHead=0.079 axisLine=0.321
+t067 4 t=10 thinMed=0.263 fracThin=0.464 cells=91.000 rhoMed=13.121 axisHead=0.166 axisLine=0.215
+t067 4 t=15 thinMed=0.289 fracThin=0.418 cells=92.000 rhoMed=13.121 axisHead=0.166 axisLine=0.239
+t067 4 time 7.6
+t067 5 t= 5 thinMed=0.172 fracThin=0.760 cells=86.000 rhoMed=15.809 axisHead=0.075 axisLine=0.110
+t067 5 t=10 thinMed=0.126 fracThin=0.727 cells=77.000 rhoMed=17.224 axisHead=0.226 axisLine=0.455
+t067 5 t=15 thinMed=0.137 fracThin=0.697 cells=76.000 rhoMed=17.507 axisHead=0.001 axisLine=0.026
+t067 5 time 8.2
+t06 1 t= 5 thinMed=0.142 fracThin=0.754 cells=141.000 rhoMed=9.938 axisHead=0.459 axisLine=0.840
+t06 1 t=10 thinMed=0.260 fracThin=0.424 cells=129.000 rhoMed=16.163 axisHead=0.006 axisLine=0.104
+t06 1 t=15 thinMed=0.181 fracThin=0.698 cells=97.000 rhoMed=29.903 axisHead=0.000 axisLine=0.000
+t06 1 time 8.9
+t06 2 t= 5 thinMed=0.153 fracThin=0.701 cells=142.000 rhoMed=12.980 axisHead=0.029 axisLine=0.104
+t06 2 t=10 thinMed=0.194 fracThin=0.596 cells=110.000 rhoMed=17.224 axisHead=0.000 axisLine=0.000
+t06 2 t=15 thinMed=0.216 fracThin=0.554 cells=108.000 rhoMed=17.295 axisHead=0.000 axisLine=0.001
+t06 2 time 8.7
+t06 3 t= 5 thinMed=0.134 fracThin=0.760 cells=137.000 rhoMed=9.974 axisHead=0.211 axisLine=0.189
+t06 3 t=10 thinMed=0.176 fracThin=0.578 cells=118.000 rhoMed=12.556 axisHead=0.035 axisLine=0.244
+t06 3 t=15 thinMed=0.110 fracThin=0.620 cells=96.000 rhoMed=15.244 axisHead=0.006 axisLine=0.633
+t06 3 time 8.7
+t06 4 t= 5 thinMed=0.185 fracThin=0.732 cells=179.000 rhoMed=7.887 axisHead=0.064 axisLine=0.325
+t06 4 t=10 thinMed=0.347 fracThin=0.409 cells=184.000 rhoMed=9.832 axisHead=0.059 axisLine=0.266
+t06 4 t=15 thinMed=0.211 fracThin=0.559 cells=165.000 rhoMed=10.893 axisHead=0.009 axisLine=0.004
+t06 4 time 8.5
+t06 5 t= 5 thinMed=0.160 fracThin=0.764 cells=120.000 rhoMed=13.475 axisHead=0.086 axisLine=0.194
+t06 5 t=10 thinMed=0.213 fracThin=0.580 cells=110.000 rhoMed=16.092 axisHead=0.305 axisLine=0.661
+t06 5 t=15 thinMed=0.225 fracThin=0.550 cells=113.000 rhoMed=16.110 axisHead=0.050 axisLine=0.873
+t06 5 time 8.8
+ALLDONE
