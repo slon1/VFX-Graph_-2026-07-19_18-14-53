@@ -26,7 +26,7 @@ public class BehaviorProbe
     private const string ShapeStem = "shape-9696694";
     private const string TexelSixPath = "Assets/Effects/Boids_hash_2teams_field_t06.asset";
     private const string TexelFivePath = "Assets/Effects/Boids_hash_2teams_field_t05.asset";
-    private const string MeasureCode = "PENDINGHASH";
+    private const string MeasureCode = "153912c";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()

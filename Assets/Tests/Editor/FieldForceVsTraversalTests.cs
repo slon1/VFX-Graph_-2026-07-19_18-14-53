@@ -26,7 +26,7 @@ public class FieldForceVsTraversalTests
     private const double AngleLengthFloor = 1e-8;
     private const double CohDisplacementFloor = 0.1;
     private const int Frames = 900;
-    private const string MeasureCode = "PENDINGHASH";
+    private const string MeasureCode = "153912c";
 
     private static readonly string[] Computers = { "field", "cap48", "cap192" };
     private static readonly string[] Groups = { "all", "inside", "edge" };
