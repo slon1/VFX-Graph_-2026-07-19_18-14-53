@@ -1,0 +1,15 @@
+sh_base 1 fracThin=1.000 thinMed=0.017 widthMed=0.027 nnMed=0.004 stack=0.973 cells=82.000 rho=13.935 axH=0.315 axL=0.610
+sh_base 2 fracThin=1.000 thinMed=0.006 widthMed=0.009 nnMed=0.004 stack=0.983 cells=57.000 rho=16.269 axH=0.241 axL=0.639
+sh_base 3 fracThin=1.000 thinMed=0.019 widthMed=0.030 nnMed=0.005 stack=0.967 cells=75.000 rho=10.221 axH=0.401 axL=0.700
+sh_p25 1 fracThin=0.042 thinMed=0.413 widthMed=0.636 nnMed=0.077 stack=0.376 cells=298.000 rho=8.347 axH=0.169 axL=0.827
+sh_p25 2 fracThin=0.001 thinMed=0.507 widthMed=0.744 nnMed=0.075 stack=0.378 cells=280.000 rho=11.070 axH=0.012 axL=1.000
+sh_p25 3 fracThin=0.000 thinMed=0.491 widthMed=0.683 nnMed=0.085 stack=0.361 cells=323.000 rho=8.594 axH=0.087 axL=1.000
+sh_p35 1 fracThin=0.063 thinMed=0.460 widthMed=0.688 nnMed=0.051 stack=0.496 cells=306.000 rho=8.382 axH=0.302 axL=0.974
+sh_p35 2 fracThin=0.000 thinMed=0.427 widthMed=0.669 nnMed=0.033 stack=0.616 cells=275.000 rho=10.186 axH=0.386 axL=nan
+sh_p35 3 fracThin=0.003 thinMed=0.478 widthMed=0.692 nnMed=0.052 stack=0.489 cells=321.000 rho=8.276 axH=0.015 axL=0.000
+sh_p25w08 1 fracThin=0.207 thinMed=0.353 widthMed=0.540 nnMed=0.071 stack=0.401 cells=276.000 rho=7.958 axH=0.352 axL=0.910
+sh_p25w08 2 fracThin=0.033 thinMed=0.379 widthMed=0.603 nnMed=0.045 stack=0.532 cells=209.000 rho=12.980 axH=0.120 axL=0.420
+sh_p25w08 3 fracThin=0.246 thinMed=0.361 widthMed=0.537 nnMed=0.059 stack=0.456 cells=266.000 rho=9.196 axH=0.191 axL=0.650
+ns_p25 2 fracThin=0.001 thinMed=0.422 widthMed=0.665 nnMed=0.078 stack=0.379 cells=257.000 rho=10.823 axH=0.259 axL=0.000
+ns_p25 3 fracThin=0.035 thinMed=0.547 widthMed=0.745 nnMed=0.094 stack=0.305 cells=274.000 rho=9.691 axH=0.266 axL=0.538
+ALLDONE
