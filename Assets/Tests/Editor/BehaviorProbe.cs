@@ -13,7 +13,7 @@ using UnityEngine.Rendering;
 /// ADR-062 §2.7. Metrics match DOC/MEASURE/p8-field-model README §6 and the model loop:
 /// periodic distance on a 90 m world, R = 3, r² &lt; R². K = 1 sets RefreshInterval on the
 /// in-memory copy. K = 3 leaves the asset value. The assets themselves are not saved.
-/// Shape metrics (rho, thin, cells, axis) are a separate pass and do not enter the §2.7 numbers.
+/// Shape metrics (rho, thin, width, nearest, stack, cells, axis) are a separate pass and do not enter the §2.7 numbers.
 /// </summary>
 [TestFixture]
 public class BehaviorProbe
@@ -269,7 +269,151 @@ public class BehaviorProbe
         ShapeMetrics six = MeasureShape(Line(6, 0.0), LineHeading(6), LineTeam(6));
         Assert.AreEqual(6, six.NThin);
         Assert.AreEqual(0.0, six.ThinMed.Value, 1e-6);
+        Assert.AreEqual(0.0, six.WidthMed.Value, 1e-6);
         AssertDefined(six);
+
+        Assert.IsFalse(one.WidthMed.HasValue);
+        Assert.IsFalse(one.NnMed.HasValue);
+        Assert.AreEqual(0.0, one.Stack, 0.0);
+        Assert.IsFalse(few.WidthMed.HasValue);
+        Assert.AreEqual(0.2, few.NnMed.Value, 1e-6);
+        Assert.AreEqual(0.0, few.Stack, 0.0);
+    }
+
+    [Test]
+    public void Shape_WidthNnStack_MatchTheHandChains()
+    {
+        Vector2[] heading = LineHeading(60);
+        int[] team = LineTeam(60);
+        ShapeMetrics spaced = MeasureShape(Line(60, 0.0), heading, team);
+        Assert.AreEqual(0.1, spaced.NnMed.Value, 1e-6);
+        Assert.AreEqual(0.0, spaced.Stack, 0.0);
+        Assert.AreEqual(0.0, spaced.WidthMed.Value, 1e-6);
+        Assert.AreEqual(spaced.NThin, 60);
+
+        var tight = new Vector2[60];
+        for (int i = 0; i < tight.Length; i++)
+        {
+            tight[i] = new Vector2(0.04f * i, 0f);
+        }
+
+        ShapeMetrics piled = MeasureShape(tight, heading, team);
+        Assert.AreEqual(1.0, piled.Stack, 0.0);
+        Assert.AreEqual(0.04, piled.NnMed.Value, 1e-6);
+
+        const int width = 15;
+        var lattice = new Vector2[width * width];
+        var latticeHeading = new Vector2[lattice.Length];
+        var latticeTeam = new int[lattice.Length];
+        int cursor = 0;
+        for (int ix = 0; ix < width; ix++)
+        {
+            for (int iz = 0; iz < width; iz++)
+            {
+                lattice[cursor] = new Vector2(ix * 0.5f, iz * 0.5f);
+                latticeHeading[cursor] = new Vector2(1f, 0f);
+                cursor++;
+            }
+        }
+
+        ShapeMetrics grid = MeasureShape(lattice, latticeHeading, latticeTeam);
+        Assert.AreEqual(0.5, grid.NnMed.Value, 1e-9);
+        Assert.AreEqual(0.0, grid.Stack, 0.0);
+
+        var eighth = new Vector2[60];
+        var across = new Vector2[60];
+        for (int i = 0; i < eighth.Length; i++)
+        {
+            eighth[i] = new Vector2(0.125f * i, 0f);
+            across[i] = new Vector2((float)WrapAxis(eighth[i].x + 40.0), 0f);
+        }
+
+        ShapeMetrics open = MeasureShape(eighth, heading, team);
+        ShapeMetrics seam = MeasureShape(across, heading, team);
+        Assert.AreEqual(open.WidthMed.Value, seam.WidthMed.Value, 1e-9);
+        Assert.AreEqual(open.NnMed.Value, seam.NnMed.Value, 1e-9);
+        Assert.AreEqual(open.Stack, seam.Stack, 1e-9);
+        Assert.Greater(across[39].x, 0f);
+        Assert.Less(across[41].x, 0f);
+    }
+
+    [Test]
+    public void Shape_PairAcrossTheSeam_IsNearest()
+    {
+        var position = new[] { new Vector2(44f, 0f), new Vector2(-44f, 0f) };
+        var heading = new[] { new Vector2(1f, 0f), new Vector2(1f, 0f) };
+        var team = new[] { 0, 1 };
+        double wrapped = Math.Abs(MinImage(position[1].x - position[0].x));
+        double raw = Math.Abs(position[1].x - position[0].x);
+        Assert.AreEqual(2.0, wrapped, 1e-9);
+        Assert.Greater(raw, 80.0);
+        ShapeMetrics shape = MeasureShape(position, heading, team);
+        Assert.AreEqual(wrapped, shape.NnMed.Value, 1e-9);
+        Assert.AreEqual(0.0, shape.Stack, 0.0);
+        Assert.IsFalse(shape.WidthMed.HasValue);
+    }
+
+    [Test]
+    public void Shape_Empty_LeavesWidthAndNearestBlank()
+    {
+        ShapeMetrics empty = MeasureShape(new Vector2[0], new Vector2[0], new int[0]);
+        Assert.AreEqual(0, empty.NThin);
+        Assert.IsFalse(empty.WidthMed.HasValue);
+        Assert.IsFalse(empty.NnMed.HasValue);
+        Assert.AreEqual(0.0, empty.Stack, 0.0);
+        Assert.AreEqual(0, empty.Cells);
+        AssertDefined(empty);
+    }
+
+    [Test]
+    public void FlockPng_CornerAndZoom_HaveTheExpectedColors()
+    {
+        var world = new[]
+        {
+            new Vector2(-45f, -45f),
+            new Vector2(0f, 0f),
+        };
+        var worldTeam = new[] { 0, 1 };
+        byte[] worldPng = RenderWorldPng(world, worldTeam);
+        AssertPng(worldPng, 0, 0, new Color32(0xd6, 0x33, 0x6c, 255));
+        AssertPng(worldPng, 450, 450, new Color32(0x74, 0xb8, 0x16, 255));
+        AssertPng(worldPng, 452, 450, new Color32(0x68, 0x60, 0x58, 255));
+        AssertPng(worldPng, 10, 10, new Color32(0x68, 0x60, 0x58, 255));
+
+        var zoom = new[]
+        {
+            new Vector2(44f, 0f),
+            new Vector2(-44f, 0f),
+            new Vector2(44.5f, 0f),
+        };
+        var zoomTeam = new[] { 0, 0, 0 };
+        Assert.AreEqual(0, ZoomCenter(zoom, zoomTeam));
+        byte[] zoomPng = RenderZoomPng(zoom, zoomTeam);
+        AssertPng(zoomPng, 450, 450, new Color32(0xd6, 0x33, 0x6c, 255));
+        AssertPng(zoomPng, 600, 450, new Color32(0xd6, 0x33, 0x6c, 255));
+        AssertPng(zoomPng, 10, 10, new Color32(0x68, 0x60, 0x58, 255));
+
+        string path = FlockPicturePath("probe-png-path-check.png");
+        if (MeasureOutput.WriteToDoc)
+        {
+            StringAssert.Contains(Path.Combine("DOC", "MEASURE", "p8-field-force"), path);
+        }
+        else
+        {
+            StringAssert.Contains(Path.Combine("Temp", "p8-field-force"), path);
+            try
+            {
+                WriteFlockPng("probe-png-path-check.png", worldPng);
+                Assert.IsTrue(File.Exists(path));
+            }
+            finally
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+        }
     }
 
     [Test]
@@ -1155,14 +1299,195 @@ public class BehaviorProbe
         }
     }
 
+    private const int PictureSize = 900;
+
+    internal static string FlockPicturePath(string fileName)
+    {
+        return Path.Combine(MeasureOutput.DirectoryPath(), fileName);
+    }
+
+    internal static void WriteFlockPng(string fileName, byte[] png)
+    {
+        string path = FlockPicturePath(fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        File.WriteAllBytes(path, png);
+    }
+
+    internal static byte[] RenderWorldPng(Vector2[] position, int[] team)
+    {
+        return RenderPng(position, team, zoom: false);
+    }
+
+    internal static byte[] RenderZoomPng(Vector2[] position, int[] team)
+    {
+        return RenderPng(position, team, zoom: true);
+    }
+
+    internal static int ZoomCenter(Vector2[] position, int[] team)
+    {
+        int count = position.Length;
+        int best = 0;
+        int bestCount = -1;
+        double radius2 = Radius * Radius;
+        for (int i = 0; i < count; i++)
+        {
+            int own = 0;
+            for (int j = 0; j < count; j++)
+            {
+                if (j == i || team[j] != team[i])
+                {
+                    continue;
+                }
+
+                double dx = MinImage(position[j].x - position[i].x);
+                double dy = MinImage(position[j].y - position[i].y);
+                if (dx * dx + dy * dy < radius2)
+                {
+                    own++;
+                }
+            }
+
+            if (own > bestCount || (own == bestCount && i < best))
+            {
+                best = i;
+                bestCount = own;
+            }
+        }
+
+        return best;
+    }
+
+    private static byte[] RenderPng(Vector2[] position, int[] team, bool zoom)
+    {
+        var pixels = new Color32[PictureSize * PictureSize];
+        var background = new Color32(0x68, 0x60, 0x58, 255);
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = background;
+        }
+
+        int dot = zoom ? 7 : 3;
+        int center = zoom && position.Length > 0 ? ZoomCenter(position, team) : 0;
+        for (int i = 0; i < position.Length; i++)
+        {
+            if (!TeamColor(team[i], out Color32 color))
+            {
+                continue;
+            }
+
+            double x = position[i].x;
+            double y = position[i].y;
+            if (zoom)
+            {
+                x = MinImage(position[i].x - position[center].x);
+                y = MinImage(position[i].y - position[center].y);
+            }
+
+            int px = PicturePixel(x, zoom);
+            int py = PicturePixel(y, zoom);
+            Stamp(pixels, px, py, dot, color);
+        }
+
+        var texture = new Texture2D(PictureSize, PictureSize, TextureFormat.RGBA32, false);
+        try
+        {
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            return texture.EncodeToPNG();
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(texture);
+        }
+    }
+
+    private static int PicturePixel(double world, bool zoom)
+    {
+        if (zoom)
+        {
+            return (int)Math.Floor((world + 6.0) * (PictureSize / 12.0));
+        }
+
+        return (int)Math.Floor((world + 45.0) / 0.1);
+    }
+
+    private static bool TeamColor(int team, out Color32 color)
+    {
+        if (team == 0)
+        {
+            color = new Color32(0xd6, 0x33, 0x6c, 255);
+            return true;
+        }
+
+        if (team == 1)
+        {
+            color = new Color32(0x74, 0xb8, 0x16, 255);
+            return true;
+        }
+
+        color = default;
+        return false;
+    }
+
+    private static void Stamp(Color32[] pixels, int cx, int cy, int dot, Color32 color)
+    {
+        int half = dot / 2;
+        for (int y = cy - half; y <= cy + half; y++)
+        {
+            if ((uint)y >= PictureSize)
+            {
+                continue;
+            }
+
+            for (int x = cx - half; x <= cx + half; x++)
+            {
+                if ((uint)x >= PictureSize)
+                {
+                    continue;
+                }
+
+                pixels[x + y * PictureSize] = color;
+            }
+        }
+    }
+
+    private static void AssertPng(byte[] png, int x, int y, Color32 expected)
+    {
+        var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        try
+        {
+            Assert.IsTrue(texture.LoadImage(png));
+            Assert.AreEqual(PictureSize, texture.width);
+            Assert.AreEqual(PictureSize, texture.height);
+            Color32[] pixels = texture.GetPixels32();
+            Color32 pixel = pixels[x + y * PictureSize];
+            Assert.AreEqual(expected.r, pixel.r, "r " + x + "," + y);
+            Assert.AreEqual(expected.g, pixel.g, "g " + x + "," + y);
+            Assert.AreEqual(expected.b, pixel.b, "b " + x + "," + y);
+            Assert.AreEqual(expected.a, pixel.a, "a " + x + "," + y);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(texture);
+        }
+    }
+
     internal static ShapeMetrics MeasureShape(
         Vector2[] position, Vector2[] heading, int[] team, double[] rhoOut = null)
     {
         int count = position.Length;
+        if (count == 0)
+        {
+            return new ShapeMetrics();
+        }
+
         double radius2 = Radius * Radius;
         double area = Math.PI * radius2;
         var rho = new List<double>(count);
         var thin = new List<double>();
+        var width = new List<double>();
+        var nearest = new List<double>(count);
+        int stacked = 0;
         int lineCount = 0;
         int lineHits = 0;
         int headHits = 0;
@@ -1173,22 +1498,39 @@ public class BehaviorProbe
         {
             dxs.Clear();
             dys.Clear();
+            double nearest2 = double.PositiveInfinity;
             for (int j = 0; j < count; j++)
             {
-                if (j == i || team[j] != team[i])
+                if (j == i)
                 {
                     continue;
                 }
 
                 double dx = MinImage(position[j].x - position[i].x);
                 double dy = MinImage(position[j].y - position[i].y);
-                if (dx * dx + dy * dy >= radius2)
+                double distance2 = dx * dx + dy * dy;
+                if (distance2 < nearest2)
+                {
+                    nearest2 = distance2;
+                }
+
+                if (team[j] != team[i] || distance2 >= radius2)
                 {
                     continue;
                 }
 
                 dxs.Add(dx);
                 dys.Add(dy);
+            }
+
+            if (count > 1)
+            {
+                double distance = Math.Sqrt(nearest2);
+                nearest.Add(distance);
+                if (distance < 0.05)
+                {
+                    stacked++;
+                }
             }
 
             double density = dxs.Count / area;
@@ -1238,6 +1580,7 @@ public class BehaviorProbe
 
                 double value = lMax <= 1e-12 ? 1.0 : Math.Sqrt(lMin / lMax);
                 thin.Add(value);
+                width.Add(Math.Sqrt(lMin));
                 if (value < 0.25)
                 {
                     PrincipalAxis(cxx, cyy, cxy, lMax, out double axisX, out double axisY);
@@ -1265,6 +1608,9 @@ public class BehaviorProbe
             RhoP90 = ShapePercentile(rho, 90.0),
             ThinMed = thin.Count == 0 ? (double?)null : ShapePercentile(thin, 50.0),
             FracThin = thin.Count == 0 ? (double?)null : (double)lineCount / thin.Count,
+            WidthMed = width.Count == 0 ? (double?)null : ShapePercentile(width, 50.0),
+            NnMed = nearest.Count == 0 ? (double?)null : ShapePercentile(nearest, 50.0),
+            Stack = count == 0 ? 0.0 : (double)stacked / count,
             NThin = thin.Count,
             Cells = cells.Count,
             AxisHead = count == 0 ? 0.0 : (double)headHits / count,
@@ -1559,6 +1905,19 @@ public class BehaviorProbe
         if (shape.AxisLine.HasValue)
         {
             AssertFinite(shape.AxisLine.Value, "axisLine");
+        }
+
+        Assert.GreaterOrEqual(shape.Stack, 0.0);
+        Assert.LessOrEqual(shape.Stack, 1.0);
+        if (shape.WidthMed.HasValue)
+        {
+            AssertFinite(shape.WidthMed.Value, "widthMed");
+        }
+
+        if (shape.NnMed.HasValue)
+        {
+            AssertFinite(shape.NnMed.Value, "nnMed");
+            Assert.GreaterOrEqual(shape.NnMed.Value, 0.0);
         }
     }
 
@@ -1907,6 +2266,9 @@ public class BehaviorProbe
         public double RhoP90;
         public double? ThinMed;
         public double? FracThin;
+        public double? WidthMed;
+        public double? NnMed;
+        public double Stack;
         public int NThin;
         public int Cells;
         public double AxisHead;
