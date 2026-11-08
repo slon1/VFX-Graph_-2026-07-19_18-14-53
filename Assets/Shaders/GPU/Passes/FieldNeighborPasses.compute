@@ -13,6 +13,8 @@
 #define THREADS 64
 #define FIXED_SCALE 16384.0
 
+#include "Assets/Shaders/GPU/Includes/FieldCic.hlsl"
+
 float FieldRt;
 float FieldR;
 float FieldEps;
@@ -43,13 +45,6 @@ RWStructuredBuffer<float4> FieldSlots;
 RWStructuredBuffer<float3> velocity;
 RWStructuredBuffer<float2> CicOut;
 
-// Integer modulo. c - r*floor(c/r) returns 150 on a 150-grid when the reciprocal is short.
-// Every texel-index wrap goes through here: deposit, gather, disk, gradient, force, CIC.
-int2 WrapCell(int2 c)
-{
-    return ((c % HashRes) + HashRes) % HashRes;
-}
-
 int2 TexelCoord(uint index)
 {
     uint rx = (uint)HashRes.x;
@@ -58,7 +53,7 @@ int2 TexelCoord(uint index)
 
 uint TexelIndex(int2 c)
 {
-    return HashCellIndex(WrapCell(c));
+    return HashCellIndex(WrapCell(c, HashRes));
 }
 
 float3 LoadRaw(uint texel, uint team)
@@ -96,55 +91,6 @@ void StoreN(int2 i0, int q00, int q10, int q01, int q11, uint channel)
 int RoundHalfAway(float x)
 {
     return (int)(x >= 0.0 ? floor(x + 0.5) : ceil(x - 0.5));
-}
-
-// Same corners and weights for Scatter deposit and FieldNeighborForce (ADR-062 §2.2).
-void CicCorners(float2 p, out int2 i0, out float2 f, out float w00, out float w10, out float w01, out float w11)
-{
-    float2 u = (p - HashOrigin) / HashCellSize;
-    i0 = (int2)floor(u);
-    f = u - float2(i0);
-    w00 = (1.0 - f.x) * (1.0 - f.y);
-    w10 = f.x * (1.0 - f.y);
-    w01 = (1.0 - f.x) * f.y;
-    w11 = f.x * f.y;
-}
-
-// Four rounded weights that sum to FIXED_SCALE, each within one ulp of w * scale.
-void QuantizeWeights(float w00, float w10, float w01, float w11, out int q00, out int q10, out int q01, out int q11)
-{
-    float s = FIXED_SCALE;
-    float t0 = w00 * s;
-    float t1 = w10 * s;
-    float t2 = w01 * s;
-    float t3 = w11 * s;
-    q00 = (int)floor(t0 + 0.5);
-    q10 = (int)floor(t1 + 0.5);
-    q01 = (int)floor(t2 + 0.5);
-    q11 = (int)floor(t3 + 0.5);
-    int diff = (int)s - (q00 + q10 + q01 + q11);
-    [loop]
-    for (int step = 0; step < 4 && diff != 0; step++)
-    {
-        float e0 = (float)q00 - t0;
-        float e1 = (float)q10 - t1;
-        float e2 = (float)q01 - t2;
-        float e3 = (float)q11 - t3;
-        int pick = 0;
-        float best = diff > 0 ? e0 : -e0;
-        float b1 = diff > 0 ? e1 : -e1;
-        float b2 = diff > 0 ? e2 : -e2;
-        float b3 = diff > 0 ? e3 : -e3;
-        if (b1 < best) { best = b1; pick = 1; }
-        if (b2 < best) { best = b2; pick = 2; }
-        if (b3 < best) { pick = 3; }
-        int stepQ = diff > 0 ? 1 : -1;
-        if (pick == 0) q00 += stepQ;
-        else if (pick == 1) q10 += stepQ;
-        else if (pick == 2) q01 += stepQ;
-        else q11 += stepQ;
-        diff -= stepQ;
-    }
 }
 
 [numthreads(THREADS, 1, 1)]
@@ -240,7 +186,7 @@ void FieldScatter(uint3 id : SV_DispatchThreadID)
     int2 i0;
     float2 f;
     float w00, w10, w01, w11;
-    CicCorners(p, i0, f, w00, w10, w01, w11);
+    CicCorners(p, HashOrigin, HashCellSize, i0, f, w00, w10, w01, w11);
     int q00, q10, q01, q11;
     QuantizeWeights(w00, w10, w01, w11, q00, q10, q01, q11);
     uint channel = team * 3u;
@@ -385,7 +331,7 @@ void FieldNeighborForce(uint3 id : SV_DispatchThreadID)
     int2 i0;
     float2 f;
     float w00, w10, w01, w11;
-    CicCorners(p, i0, f, w00, w10, w01, w11);
+    CicCorners(p, HashOrigin, HashCellSize, i0, f, w00, w10, w01, w11);
     int2 corner0 = i0;
     int2 corner1 = i0 + int2(1, 0);
     int2 corner2 = i0 + int2(0, 1);
@@ -459,7 +405,7 @@ void FieldCicWeights(uint3 id : SV_DispatchThreadID)
     int2 i0;
     float2 f;
     float w00, w10, w01, w11;
-    CicCorners(p, i0, f, w00, w10, w01, w11);
+    CicCorners(p, HashOrigin, HashCellSize, i0, f, w00, w10, w01, w11);
     uint b = id.x * 4u;
     CicOut[b] = float2(TexelIndex(i0), w00);
     CicOut[b + 1u] = float2(TexelIndex(i0 + int2(1, 0)), w10);

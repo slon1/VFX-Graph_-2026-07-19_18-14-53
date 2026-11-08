@@ -1,0 +1,198 @@
+// Density pressure: count grid, no convolution (ADR-062 §2.10).
+#pragma kernel PressureClear
+#pragma kernel PressureScatter
+#pragma kernel PressureGradient
+#pragma kernel PressureForce
+#pragma kernel PressureCicWeights
+
+#define THREADS 64
+#define FIXED_SCALE 16384.0
+
+#include "Assets/Shaders/GPU/Includes/FieldCic.hlsl"
+
+uint ParticleCount;
+uint PressureCells;
+float2 PressureOrigin;
+float2 PressureCellSize;
+int2 PressureRes;
+float PressureWeight;
+float PressureG0;
+
+struct FieldTeamSlot
+{
+    float4 Radii;
+    float4 Weights;
+    float4 Motion;
+    float4 Classic;
+};
+
+StructuredBuffer<float3> position;
+StructuredBuffer<uint> teamId;
+StructuredBuffer<FieldTeamSlot> Teams;
+RWStructuredBuffer<uint> Density;
+RWStructuredBuffer<float2> Grad;
+RWStructuredBuffer<float3> velocity;
+RWStructuredBuffer<float2> CicOut;
+
+uint CellIndex(int2 c)
+{
+    int2 w = WrapCell(c, PressureRes);
+    return (uint)(w.y * PressureRes.x + w.x);
+}
+
+void Deposit(int2 cell, int q, uint team)
+{
+    if (q == 0)
+    {
+        return;
+    }
+
+    InterlockedAdd(Density[CellIndex(cell) * 2u + team], (uint)q);
+}
+
+float Rho(uint cell, uint team)
+{
+    return (float)Density[cell * 2u + team] / FIXED_SCALE / (PressureCellSize.x * PressureCellSize.y);
+}
+
+float WeightedRho(int2 cell, uint team)
+{
+    uint other = 1u - team;
+    float mine = Rho(CellIndex(cell), team);
+    float foreign = Rho(CellIndex(cell), other);
+    return mine + Teams[team].Radii.w * foreign;
+}
+
+[numthreads(THREADS, 1, 1)]
+void PressureClear(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= PressureCells)
+    {
+        return;
+    }
+
+    Density[id.x * 2u] = 0u;
+    Density[id.x * 2u + 1u] = 0u;
+}
+
+[numthreads(THREADS, 1, 1)]
+void PressureScatter(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    uint team = teamId[id.x];
+    if (team > 1u)
+    {
+        return;
+    }
+
+    float2 p = position[id.x].xz;
+    int2 i0;
+    float2 f;
+    float w00, w10, w01, w11;
+    CicCorners(p, PressureOrigin, PressureCellSize, i0, f, w00, w10, w01, w11);
+    int q00, q10, q01, q11;
+    QuantizeWeights(w00, w10, w01, w11, q00, q10, q01, q11);
+    Deposit(i0, q00, team);
+    Deposit(i0 + int2(1, 0), q10, team);
+    Deposit(i0 + int2(0, 1), q01, team);
+    Deposit(i0 + int2(1, 1), q11, team);
+}
+
+[numthreads(THREADS, 1, 1)]
+void PressureGradient(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= PressureCells)
+    {
+        return;
+    }
+
+    int rx = PressureRes.x;
+    int2 c = int2((int)(id.x % (uint)rx), (int)(id.x / (uint)rx));
+    [unroll]
+    for (uint team = 0u; team < 2u; team++)
+    {
+        float gx = (WeightedRho(c + int2(1, 0), team) - WeightedRho(c - int2(1, 0), team)) / (2.0 * PressureCellSize.x);
+        float gz = (WeightedRho(c + int2(0, 1), team) - WeightedRho(c - int2(0, 1), team)) / (2.0 * PressureCellSize.y);
+        Grad[id.x * 2u + team] = float2(gx, gz);
+    }
+}
+
+float2 SelfGradient(int q00, int q10, int q01, int q11)
+{
+    float scale = FIXED_SCALE;
+    float hx = PressureCellSize.x;
+    float hy = PressureCellSize.y;
+    float inv = 1.0 / (scale * hx * hy);
+    float r00 = (float)q00 * inv;
+    float r10 = (float)q10 * inv;
+    float r01 = (float)q01 * inv;
+    float r11 = (float)q11 * inv;
+    float w00 = (float)q00 / scale;
+    float w10 = (float)q10 / scale;
+    float w01 = (float)q01 / scale;
+    float w11 = (float)q11 / scale;
+    float2 s = 0;
+    s += w00 * float2(r10 / (2.0 * hx), r01 / (2.0 * hy));
+    s += w10 * float2(-r00 / (2.0 * hx), r11 / (2.0 * hy));
+    s += w01 * float2(r11 / (2.0 * hx), -r00 / (2.0 * hy));
+    s += w11 * float2(-r01 / (2.0 * hx), -r10 / (2.0 * hy));
+    return s;
+}
+
+[numthreads(THREADS, 1, 1)]
+void PressureForce(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    uint team = teamId[id.x];
+    if (team > 1u)
+    {
+        return;
+    }
+
+    float2 p = position[id.x].xz;
+    int2 i0;
+    float2 f;
+    float w00, w10, w01, w11;
+    CicCorners(p, PressureOrigin, PressureCellSize, i0, f, w00, w10, w01, w11);
+    int q00, q10, q01, q11;
+    QuantizeWeights(w00, w10, w01, w11, q00, q10, q01, q11);
+    float scale = FIXED_SCALE;
+    float2 g = ((float)q00 / scale) * Grad[CellIndex(i0) * 2u + team];
+    g += ((float)q10 / scale) * Grad[CellIndex(i0 + int2(1, 0)) * 2u + team];
+    g += ((float)q01 / scale) * Grad[CellIndex(i0 + int2(0, 1)) * 2u + team];
+    g += ((float)q11 / scale) * Grad[CellIndex(i0 + int2(1, 1)) * 2u + team];
+    g -= SelfGradient(q00, q10, q01, q11);
+    float2 force = -PressureWeight * g / (length(g) + PressureG0);
+    velocity[id.x] += float3(force.x, 0, force.y);
+}
+
+// Test kernel: wrapped cell index and the quantized weight that entered Density.
+[numthreads(THREADS, 1, 1)]
+void PressureCicWeights(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= ParticleCount)
+    {
+        return;
+    }
+
+    float2 p = position[id.x].xz;
+    int2 i0;
+    float2 f;
+    float w00, w10, w01, w11;
+    CicCorners(p, PressureOrigin, PressureCellSize, i0, f, w00, w10, w01, w11);
+    int q00, q10, q01, q11;
+    QuantizeWeights(w00, w10, w01, w11, q00, q10, q01, q11);
+    uint b = id.x * 4u;
+    CicOut[b] = float2((float)CellIndex(i0), (float)q00);
+    CicOut[b + 1u] = float2((float)CellIndex(i0 + int2(1, 0)), (float)q10);
+    CicOut[b + 2u] = float2((float)CellIndex(i0 + int2(0, 1)), (float)q01);
+    CicOut[b + 3u] = float2((float)CellIndex(i0 + int2(1, 1)), (float)q11);
+}

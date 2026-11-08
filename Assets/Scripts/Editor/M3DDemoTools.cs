@@ -72,6 +72,7 @@ public static class M3DDemoTools
         "Assets/Shaders/GPU/Passes/HashDebugPasses.compute",
         "Assets/Shaders/GPU/Passes/BoidsPasses.compute",
         "Assets/Shaders/GPU/Passes/FieldNeighborPasses.compute",
+        "Assets/Shaders/GPU/Passes/FieldDensityPressure.compute",
     };
 
     [MenuItem("Tools/M3D/Create Demo Effects")]
