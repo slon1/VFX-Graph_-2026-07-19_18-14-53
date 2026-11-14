@@ -53,30 +53,59 @@ public class FieldDensityPressureTests
     public void Force_MatchesGpuCicWeights()
     {
         Assume.That(SystemInfo.supportsComputeShaders);
-        Vector2[] positions = Crowd(24, 3);
-        double max = RunForce(positions, Teams(positions.Length, 1), "force");
-        Assert.Pass("maxAbs=" + max.ToString("G6"));
+        Vector2[] positions = DenseSquare(64, 2f, new System.Random(3));
+        ForceStats stats = RunForce(positions, Teams(positions.Length, 1), "force");
+        Assert.Greater(stats.FracAboveOneMilli, 0.0, "at least one |F| > 1e-3");
+        Assert.Pass(
+            "maxAbs=" + stats.MaxAbs.ToString("G6")
+            + " meanAbs=" + stats.MeanAbs.ToString("G6")
+            + " fracAbove1e-3=" + stats.FracAboveOneMilli.ToString("G6"));
+    }
+
+    [Test]
+    public void Force_DenseCrowd_MatchesGpuCicWeights()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        Vector2[] positions = DenseSquare(5000, 10f, new System.Random(7));
+        ForceStats stats = RunForce(positions, Teams(positions.Length, 0), "dense");
+        Assert.GreaterOrEqual(stats.FracAboveOneMilli, 0.5, "fraction with |F| > 1e-3");
+        Assert.Pass(
+            "maxAbs=" + stats.MaxAbs.ToString("G6")
+            + " meanAbs=" + stats.MeanAbs.ToString("G6")
+            + " fracAbove1e-3=" + stats.FracAboveOneMilli.ToString("G6"));
     }
 
     [Test]
     public void SeamAndCorners_MatchTheGpuWeights()
     {
         Assume.That(SystemInfo.supportsComputeShaders);
-        const float edge = 45f - 1e-3f;
-        var positions = new[]
-        {
-            new Vector2(edge, 0f),
-            new Vector2(-edge, 0f),
-            new Vector2(0f, edge),
-            new Vector2(0f, -edge),
-            new Vector2(edge, edge),
-            new Vector2(-edge, -edge),
-            new Vector2(-edge, edge),
-            new Vector2(edge, -edge),
-            new Vector2(0f, 0f),
-        };
-        double max = RunForce(positions, Teams(positions.Length, 4), "seam");
-        Assert.Pass("maxAbs=" + max.ToString("G6"));
+        const float a = 0.15625f;
+        Vector2[] lineInside = { new Vector2(-a, 0f), new Vector2(a, 0f) };
+        Vector2[] lineSeam = { new Vector2(45f - a, 0f), new Vector2(-45f + a, 0f) };
+        Vector2[] cornerInside = { new Vector2(-a, -a), new Vector2(a, a) };
+        Vector2[] cornerSeam = { new Vector2(45f - a, 45f - a), new Vector2(-45f + a, -45f + a) };
+
+        float lineSame = PairMagnitude(lineInside, sameTeam: true);
+        float lineOther = PairMagnitude(lineInside, sameTeam: false);
+        float cornerSame = PairMagnitude(cornerInside, sameTeam: true);
+        float cornerOther = PairMagnitude(cornerInside, sameTeam: false);
+        Assert.AreEqual(0.218182f, lineSame, 1e-4f, "line same |F|");
+        Assert.AreEqual(0.480000f, lineOther, 1e-4f, "line other |F|");
+        Assert.AreEqual(0.055521f, cornerSame, 1e-4f, "corner same |F|");
+        Assert.AreEqual(0.183815f, cornerOther, 1e-4f, "corner other |F|");
+
+        double maxDiff = 0.0;
+        maxDiff = Math.Max(maxDiff, CompareSeamToInside(lineSeam, lineInside, sameTeam: true, "line same"));
+        maxDiff = Math.Max(maxDiff, CompareSeamToInside(lineSeam, lineInside, sameTeam: false, "line other"));
+        maxDiff = Math.Max(maxDiff, CompareSeamToInside(cornerSeam, cornerInside, sameTeam: true, "corner same"));
+        maxDiff = Math.Max(maxDiff, CompareSeamToInside(cornerSeam, cornerInside, sameTeam: false, "corner other"));
+
+        Assert.Pass(
+            "maxAbsDiff=" + maxDiff.ToString("G6")
+            + " lineSame=" + lineSame.ToString("G6")
+            + " lineOther=" + lineOther.ToString("G6")
+            + " cornerSame=" + cornerSame.ToString("G6")
+            + " cornerOther=" + cornerOther.ToString("G6"));
     }
 
     [Test]
@@ -254,7 +283,14 @@ public class FieldDensityPressureTests
         }
     }
 
-    private static double RunForce(Vector2[] positions, int[] teams, string label)
+    private struct ForceStats
+    {
+        public double MaxAbs;
+        public double MeanAbs;
+        public double FracAboveOneMilli;
+    }
+
+    private static ForceStats RunForce(Vector2[] positions, int[] teams, string label)
     {
         using (Rig rig = new Rig(positions, teams, 45f, jitter: false))
         {
@@ -265,6 +301,9 @@ public class FieldDensityPressureTests
             Vector2[] grad = rig.ReadGrad();
             Vector3[] velocity = rig.ReadVelocity();
             double max = 0.0;
+            double sumAbs = 0.0;
+            int counted = 0;
+            int above = 0;
             for (int i = 0; i < positions.Length; i++)
             {
                 if (teams[i] > 1)
@@ -278,10 +317,79 @@ public class FieldDensityPressureTests
                 Assert.AreEqual(expected.x, velocity[i].x, 1e-4f, label + " x " + i);
                 Assert.AreEqual(expected.y, velocity[i].z, 1e-4f, label + " z " + i);
                 Assert.AreEqual(0f, velocity[i].y, 0f);
+                double mag = Math.Sqrt(
+                    (double)velocity[i].x * velocity[i].x + (double)velocity[i].z * velocity[i].z);
+                sumAbs += mag;
+                counted++;
+                if (mag > 1e-3)
+                {
+                    above++;
+                }
             }
 
-            return max;
+            return new ForceStats
+            {
+                MaxAbs = max,
+                MeanAbs = counted == 0 ? 0.0 : sumAbs / counted,
+                FracAboveOneMilli = counted == 0 ? 0.0 : (double)above / counted,
+            };
         }
+    }
+
+    private static float PairMagnitude(Vector2[] positions, bool sameTeam)
+    {
+        int[] teams = sameTeam ? new[] { 0, 0 } : new[] { 0, 1 };
+        using (Rig rig = new Rig(positions, teams, 45f, jitter: false))
+        {
+            rig.Step();
+            Vector3[] velocity = rig.ReadVelocity();
+            return new Vector2(velocity[0].x, velocity[0].z).magnitude;
+        }
+    }
+
+    private static double CompareSeamToInside(
+        Vector2[] seam, Vector2[] inside, bool sameTeam, string label)
+    {
+        int[] teams = sameTeam ? new[] { 0, 0 } : new[] { 0, 1 };
+        Vector3[] seamVel;
+        Vector3[] insideVel;
+        using (Rig rig = new Rig(seam, teams, 45f, jitter: false))
+        {
+            rig.Step();
+            seamVel = rig.ReadVelocity();
+        }
+
+        using (Rig rig = new Rig(inside, teams, 45f, jitter: false))
+        {
+            rig.Step();
+            insideVel = rig.ReadVelocity();
+        }
+
+        double max = 0.0;
+        for (int i = 0; i < 2; i++)
+        {
+            Assert.AreEqual(insideVel[i].x, seamVel[i].x, 1e-6f, label + " x " + i);
+            Assert.AreEqual(insideVel[i].z, seamVel[i].z, 1e-6f, label + " z " + i);
+            Assert.AreEqual(0f, seamVel[i].y, 0f);
+            max = Math.Max(max, Math.Abs(seamVel[i].x - insideVel[i].x));
+            max = Math.Max(max, Math.Abs(seamVel[i].z - insideVel[i].z));
+        }
+
+        return max;
+    }
+
+    private static Vector2[] DenseSquare(int count, float side, System.Random random)
+    {
+        float half = side * 0.5f;
+        var positions = new Vector2[count];
+        for (int i = 0; i < count; i++)
+        {
+            positions[i] = new Vector2(
+                (float)(-half + random.NextDouble() * side),
+                (float)(-half + random.NextDouble() * side));
+        }
+
+        return positions;
     }
 
     private static Vector2[] Crowd(int count, int seed)
