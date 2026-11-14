@@ -66,6 +66,8 @@ internal static class SpatialHashValidator
                 "SimulationWorld: Build Spatial Hash RefreshInterval above 1 is only valid in a field-neighbor chain.");
         }
 
+        ValidateDensityPressure(passes);
+
         if (builder == null)
         {
             if (consumerIndices.Count > 0)
@@ -521,6 +523,121 @@ internal static class SpatialHashValidator
             {
                 throw new InvalidOperationException(
                     "SimulationWorld: Team Classic Steer requires a non-empty team list.");
+            }
+        }
+    }
+
+    private static void ValidateDensityPressure(IReadOnlyList<SimPass> passes)
+    {
+        FieldNeighborCollectPass collect = null;
+        for (int i = 0; i < passes.Count; i++)
+        {
+            SimPass pass = passes[i];
+            if (pass is FieldNeighborCollectPass found && pass.Enabled)
+            {
+                collect = found;
+                break;
+            }
+        }
+
+        for (int i = 0; i < passes.Count; i++)
+        {
+            if (!(passes[i] is FieldDensityPressurePass pressure) || !pressure.Enabled)
+            {
+                continue;
+            }
+
+            bool clearBefore = false;
+            bool steerAfter = false;
+            for (int j = 0; j < passes.Count; j++)
+            {
+                SimPass other = passes[j];
+                if (other == null || !other.Enabled)
+                {
+                    continue;
+                }
+
+                if (j < i && other is ClearVelocityPass)
+                {
+                    clearBefore = true;
+                }
+
+                if (j > i && other is TeamHeadingSteerPass)
+                {
+                    steerAfter = true;
+                }
+            }
+
+            if (!clearBefore)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure requires Clear Velocity before it.");
+            }
+
+            if (!steerAfter)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure requires Team Heading Steer after it.");
+            }
+
+            if (!(pressure.PressureTexel > 0f))
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure PressureTexel must be > 0, found " +
+                    pressure.PressureTexel + ".");
+            }
+
+            SpatialHashLayout layout = SpatialHashSet.ComputeLayout(
+                pressure.Center, pressure.Extents, pressure.PressureTexel);
+            float tol = 1e-4f * pressure.PressureTexel;
+            if (Mathf.Abs(layout.CellSize.x - pressure.PressureTexel) > tol ||
+                Mathf.Abs(layout.CellSize.y - pressure.PressureTexel) > tol)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure texel does not divide the world " +
+                    "(texel " + pressure.PressureTexel + ", cell " + layout.CellSize.x + " x " +
+                    layout.CellSize.y + ").");
+            }
+
+            long cells = (long)layout.Resolution.x * layout.Resolution.y;
+            if (layout.Resolution.x < 3 || layout.Resolution.y < 3)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure grid needs at least 3 cells per axis, found " +
+                    layout.Resolution.x + "x" + layout.Resolution.y + ".");
+            }
+
+            if (cells > FieldDensityPressurePass.MaxCells)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure grid " + layout.Resolution.x + "x" +
+                    layout.Resolution.y + " = " + cells + " exceeds " + FieldDensityPressurePass.MaxCells + ".");
+            }
+
+            if (pressure.Weight < 0f)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure Weight must be >= 0, found " + pressure.Weight + ".");
+            }
+
+            if (!(pressure.G0 > 0f))
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure G0 must be > 0, found " + pressure.G0 + ".");
+            }
+
+            if (collect != null)
+            {
+                if (Mathf.Abs(pressure.Center.x - collect.Center.x) > BoundsTolerance ||
+                    Mathf.Abs(pressure.Center.z - collect.Center.z) > BoundsTolerance ||
+                    Mathf.Abs(pressure.Extents.x - collect.Extents.x) > BoundsTolerance ||
+                    Mathf.Abs(pressure.Extents.z - collect.Extents.z) > BoundsTolerance)
+                {
+                    throw new InvalidOperationException(
+                        "SimulationWorld: Field Density Pressure layout does not match Field Neighbor Collect " +
+                        "(pressure center " + pressure.Center + ", extents " + pressure.Extents +
+                        "; collect center " + collect.Center + ", extents " + collect.Extents + ").");
+                }
             }
         }
     }
