@@ -2759,10 +2759,14 @@ public static class M3DDemoTools
     private const string BoidsHashP400cFieldForcePath = EffectsFolder + "/Boids_hash_P400c_field.asset";
     private const string BoidsHashTwoTeamsFieldT06Path = EffectsFolder + "/Boids_hash_2teams_field_t06.asset";
     private const string BoidsHashTwoTeamsFieldT05Path = EffectsFolder + "/Boids_hash_2teams_field_t05.asset";
+    private const string BoidsHashTwoTeamsFieldPress08Path = EffectsFolder + "/Boids_hash_2teams_field_press08.asset";
+    private const string BoidsHashTwoTeamsFieldPress10Path = EffectsFolder + "/Boids_hash_2teams_field_press10.asset";
     private const string BoidsHashTwoTeamsFieldScene = "Assets/Scenes/Boids_Hash_2Teams_Field.unity";
     private const string BoidsHashP400cFieldForceScene = "Assets/Scenes/Boids_Hash_P400c_Field.unity";
     private const string BoidsHashTwoTeamsFieldT06Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_T06.unity";
     private const string BoidsHashTwoTeamsFieldT05Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_T05.unity";
+    private const string BoidsHashTwoTeamsFieldP08Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P08.unity";
+    private const string BoidsHashTwoTeamsFieldP10Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P10.unity";
 
     [MenuItem("Tools/M3D/Create Boids Hash Field Force Effects")]
     public static void CreateBoidsHashFieldForceEffects()
@@ -2803,6 +2807,23 @@ public static class M3DDemoTools
         Debug.Log("M3D: created Boids hash field texel assets and scenes.");
     }
 
+    [MenuItem("Tools/M3D/Create Boids Hash Field Pressure Effects")]
+    public static void CreateBoidsHashFieldPressureEffects()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashTwoTeamsFieldPressureAsset(BoidsHashTwoTeamsFieldPress08Path, 0.8f);
+        CreateBoidsHashTwoTeamsFieldPressureAsset(BoidsHashTwoTeamsFieldPress10Path, 1.0f);
+        CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldP08Scene, BoidsHashTwoTeamsFieldPress08Path);
+        CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldP10Scene, BoidsHashTwoTeamsFieldPress10Path);
+        EnableInBuild(BoidsHashTwoTeamsFieldP08Scene, BoidsHashTwoTeamsFieldP10Scene);
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created Boids hash field pressure assets and scenes.");
+    }
+
     private static void EnableInBuild(params string[] scenePaths)
     {
         var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
@@ -2827,6 +2848,63 @@ public static class M3DDemoTools
         }
 
         EditorBuildSettings.scenes = scenes.ToArray();
+    }
+
+    private static void CreateBoidsHashTwoTeamsFieldPressureAsset(string path, float weight)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            1f,
+            new SimPass[]
+            {
+                new FieldNeighborCollectPass
+                {
+                    Mode = FieldCollectMode.Scatter,
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    TexelSize = 1f,
+                    RefreshInterval = 3,
+                },
+                new FieldNeighborConvolvePass(),
+                new ClearVelocityPass(),
+                new FieldNeighborForcePass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    TexelSize = 1f,
+                },
+                new FieldDensityPressurePass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    PressureTexel = 0.25f,
+                    Weight = weight,
+                    G0 = 40f,
+                    Jitter = true,
+                    JitterSeed = 1,
+                },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                new BoxBoundsPass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(45f, 0f, 45f),
+                    Behaviour = BoundsBehaviour.Wrap,
+                },
+                new HeadingToValuePass(),
+            });
+
+        ConfigureTwoTeamsFieldSource(asset);
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
     }
 
     private static void CreateBoidsHashTwoTeamsFieldAsset(string path, float texelSize = 1f)
@@ -2870,6 +2948,14 @@ public static class M3DDemoTools
                 new HeadingToValuePass(),
             });
 
+        ConfigureTwoTeamsFieldSource(asset);
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void ConfigureTwoTeamsFieldSource(EffectAsset asset)
+    {
         SwarmSource swarm = (SwarmSource)asset.ResolveSource();
         swarm.Seed = 1;
         swarm.JitterDegrees = 0f;
@@ -2929,10 +3015,6 @@ public static class M3DDemoTools
         so.FindProperty("particleValueScale").floatValue = 1f;
         so.ApplyModifiedPropertiesWithoutUndo();
         SetField(asset, "particleGradient", DebugFieldQuadSlot.DefaultFireGradient());
-
-        AssetDatabase.CreateAsset(asset, path);
-        EditorUtility.SetDirty(asset);
-        AssetDatabase.SaveAssetIfDirty(asset);
     }
 
     /// <summary>

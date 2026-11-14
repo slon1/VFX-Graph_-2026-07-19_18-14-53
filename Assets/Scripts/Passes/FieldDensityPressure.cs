@@ -132,6 +132,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
             throw new InvalidOperationException("Field Density Pressure requires a team buffer.");
         }
 
+        frameIndex = 0;
         clearKernel = context.FindKernel("PressureClear");
         scatterKernel = context.FindKernel("PressureScatter");
         gradientKernel = context.FindKernel("PressureGradient");
