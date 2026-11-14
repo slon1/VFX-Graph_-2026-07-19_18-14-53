@@ -17,6 +17,7 @@ public enum FieldRepeatStage
     Grad = 3,
     Off = 4,
     Force = 5,
+    Press = 6,
 }
 
 public static class FieldRepeatStages
@@ -43,6 +44,9 @@ public static class FieldRepeatStages
             case "off":
                 stage = FieldRepeatStage.Off;
                 return true;
+            case "press":
+                stage = FieldRepeatStage.Press;
+                return true;
             default:
                 stage = FieldRepeatStage.All;
                 return false;
@@ -63,6 +67,8 @@ public static class FieldRepeatStages
                 return "force";
             case FieldRepeatStage.Off:
                 return "off";
+            case FieldRepeatStage.Press:
+                return "press";
             default:
                 return "all";
         }

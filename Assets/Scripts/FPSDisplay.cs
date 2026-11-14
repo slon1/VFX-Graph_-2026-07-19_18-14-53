@@ -90,6 +90,7 @@ public sealed class FPSDisplay : MonoBehaviour
 	private FieldNeighborCollectPass fieldCollectPass;
 	private FieldNeighborConvolvePass fieldConvolvePass;
 	private FieldNeighborForcePass fieldForcePass;
+	private FieldDensityPressurePass fieldPressurePass;
 	private BuildSpatialHashPass hashBuilder;
 	private HashCountsToFieldPass hashCountsPass;
 	private GameObject debugQuads;
@@ -271,6 +272,7 @@ public sealed class FPSDisplay : MonoBehaviour
 			fieldCollectPass = null;
 			fieldConvolvePass = null;
 			fieldForcePass = null;
+			fieldPressurePass = null;
 			hashCountsPass = null;
 			debugQuads = null;
 			quadsSearchDone = false;
@@ -520,6 +522,7 @@ public sealed class FPSDisplay : MonoBehaviour
 		fieldCollectPass = null;
 		fieldConvolvePass = null;
 		fieldForcePass = null;
+		fieldPressurePass = null;
 		hashBuilder = null;
 		hashCountsPass = null;
 
@@ -573,6 +576,10 @@ public sealed class FPSDisplay : MonoBehaviour
 					else if (fieldForcePass == null && passes[i] is FieldNeighborForcePass neighborForce)
 					{
 						fieldForcePass = neighborForce;
+					}
+					else if (fieldPressurePass == null && passes[i] is FieldDensityPressurePass pressurePass)
+					{
+						fieldPressurePass = pressurePass;
 					}
 				}
 			}
@@ -1503,21 +1510,22 @@ public sealed class FPSDisplay : MonoBehaviour
 
 	private void ApplyFieldStage()
 	{
-		ApplyFieldStage(fieldCollectPass, fieldConvolvePass, fieldForcePass, perfArgs);
+		ApplyFieldStage(fieldCollectPass, fieldConvolvePass, fieldForcePass, perfArgs, fieldPressurePass);
 	}
 
 	internal static void ApplyFieldStage(
 		FieldNeighborCollectPass collect,
 		FieldNeighborConvolvePass convolve,
 		FieldNeighborForcePass force,
-		PerfArgs perfArgs)
+		PerfArgs perfArgs,
+		FieldDensityPressurePass pressure = null)
 	{
 		if (perfArgs == null || (!perfArgs.HasFieldStage && !perfArgs.HasFieldRep))
 		{
 			return;
 		}
 
-		if (collect == null && convolve == null && force == null)
+		if (collect == null && convolve == null && force == null && pressure == null)
 		{
 			if (perfArgs.HasFieldStage)
 			{
@@ -1568,6 +1576,19 @@ public sealed class FPSDisplay : MonoBehaviour
 			if (perfArgs.HasFieldRep)
 			{
 				force.FieldRepeatCount = perfArgs.FieldRep;
+			}
+		}
+
+		if (pressure != null)
+		{
+			if (perfArgs.HasFieldStage)
+			{
+				pressure.FieldStage = perfArgs.FieldStage;
+			}
+
+			if (perfArgs.HasFieldRep)
+			{
+				pressure.FieldRepeatCount = perfArgs.FieldRep;
 			}
 		}
 	}

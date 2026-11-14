@@ -154,8 +154,8 @@ if (-not [string]::IsNullOrWhiteSpace($ForceRep)) {
 $fieldStageText = ""
 if (-not [string]::IsNullOrWhiteSpace($FieldStage)) {
     $fieldStageText = $FieldStage.Trim().ToLowerInvariant()
-    if ($fieldStageText -notin @("collect", "conv", "grad", "force", "all", "off")) {
-        throw "Стадия поля: '$FieldStage' не разобрана. Нужно collect, conv, grad, force, all или off."
+    if ($fieldStageText -notin @("collect", "conv", "grad", "force", "all", "off", "press")) {
+        throw "Стадия поля: '$FieldStage' не разобрана. Нужно collect, conv, grad, force, all, off или press."
     }
 }
 

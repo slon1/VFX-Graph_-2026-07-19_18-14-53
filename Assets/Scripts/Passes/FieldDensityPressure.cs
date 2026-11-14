@@ -4,8 +4,8 @@ using UnityEngine.Rendering;
 
 /// <summary>
 /// Near-field density pressure on a fine count grid (ADR-062 §2.10).
-/// Runs every frame. Diagnostic repeats 2..N of <see cref="FieldRepeatStage.All"/> write scratch
-/// buffers. <see cref="SimPass.RepeatCount"/> stays 1. The stage token <c>press</c> is wired later.
+/// Runs every frame. Diagnostic repeats 2..N of <see cref="FieldRepeatStage.All"/> or
+/// <see cref="FieldRepeatStage.Press"/> write scratch buffers. <see cref="SimPass.RepeatCount"/> stays 1.
 /// </summary>
 [Serializable]
 public sealed class FieldDensityPressurePass : SimPass, IDisposable
@@ -197,7 +197,8 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
     }
 
     private bool RepeatsThisStage =>
-        fieldRepeatCount > 1 && FieldStage == FieldRepeatStage.All;
+        fieldRepeatCount > 1 &&
+        (FieldStage == FieldRepeatStage.All || FieldStage == FieldRepeatStage.Press);
 
     private bool KernelsReady =>
         clearKernel.IsValid && scatterKernel.IsValid && gradientKernel.IsValid && forceKernel.IsValid;

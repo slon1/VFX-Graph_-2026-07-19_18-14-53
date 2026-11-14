@@ -245,6 +245,12 @@ public class FieldDensityPressureTests
             rig.ZeroVelocity();
             rig.Step();
             Assert.IsNull(rig.Pass.ScratchVelocity);
+
+            rig.Pass.FieldStage = FieldRepeatStage.Press;
+            rig.Pass.FieldRepeatCount = 4;
+            rig.ZeroVelocity();
+            rig.Step();
+            Assert.IsNotNull(rig.Pass.ScratchVelocity);
         }
     }
 

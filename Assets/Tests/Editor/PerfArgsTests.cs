@@ -1,4 +1,6 @@
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 public class PerfArgsTests
 {
@@ -388,6 +390,7 @@ public class PerfArgsTests
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "grad" }).FieldStage, Is.EqualTo(FieldRepeatStage.Grad));
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "force" }).FieldStage, Is.EqualTo(FieldRepeatStage.Force));
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "all" }).FieldStage, Is.EqualTo(FieldRepeatStage.All));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "press" }).FieldStage, Is.EqualTo(FieldRepeatStage.Press));
 		PerfArgs off = PerfArgs.Parse(new[] { "-m3d_fieldstage", "off" });
 		Assert.That(off.HasFieldStage, Is.True);
 		Assert.That(off.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
@@ -460,11 +463,21 @@ public class PerfArgsTests
 		Assert.That(force.FieldRepeatCount, Is.EqualTo(4));
 		Assert.That(force.RepeatCount, Is.EqualTo(1));
 		Assert.That(force.ForceScratch, Is.Null);
+		FieldDensityPressurePass pressure = new FieldDensityPressurePass();
+		PerfArgs pressStage = PerfArgs.Parse(new[] { "-m3d_fieldstage", "press", "-m3d_fieldrep", "4" });
+		FPSDisplay.ApplyFieldStage(pass, convolve, force, pressStage, pressure);
+		Assert.That(pass.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		Assert.That(convolve.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		Assert.That(force.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		Assert.That(pressure.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		Assert.That(pressure.FieldRepeatCount, Is.EqualTo(4));
+		Assert.That(pressure.RepeatCount, Is.EqualTo(1));
 		PerfArgs off = PerfArgs.Parse(new[] { "-m3d_fieldstage", "off" });
-		FPSDisplay.ApplyFieldStage(pass, convolve, force, off);
+		FPSDisplay.ApplyFieldStage(pass, convolve, force, off, pressure);
 		Assert.That(pass.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
 		Assert.That(convolve.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
 		Assert.That(force.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
+		Assert.That(pressure.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
 		Assert.That(force.FieldRepeatCount, Is.EqualTo(4));
 		force.FieldRepeatCount = 1;
 		Assert.That(force.ForceScratch, Is.Null);
@@ -480,6 +493,25 @@ public class PerfArgsTests
 		Assert.That(convolveClamp.FieldRepeatCount, Is.EqualTo(64));
 		convolveClamp.FieldRepeatCount = 65;
 		Assert.That(convolveClamp.FieldRepeatCount, Is.EqualTo(64));
+	}
+
+	[Test]
+	public void ApplyFieldStage_PressWithoutPressure_MirrorsForceWithoutForcePass()
+	{
+		FieldNeighborCollectPass collect = new FieldNeighborCollectPass();
+		FieldNeighborConvolvePass convolve = new FieldNeighborConvolvePass();
+		FieldNeighborForcePass force = new FieldNeighborForcePass();
+		PerfArgs press = PerfArgs.Parse(new[] { "-m3d_fieldstage", "press", "-m3d_fieldrep", "4" });
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, press, null);
+		Assert.That(collect.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		Assert.That(convolve.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		Assert.That(force.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		Assert.That(collect.FieldRepeatCount, Is.EqualTo(4));
+		Assert.That(force.FieldRepeatCount, Is.EqualTo(4));
+
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=press");
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldrep=4");
+		FPSDisplay.ApplyFieldStage(null, null, null, press, null);
 	}
 
 	[Test]
