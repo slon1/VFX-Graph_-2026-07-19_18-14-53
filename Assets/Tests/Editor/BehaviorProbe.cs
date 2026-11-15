@@ -29,7 +29,7 @@ public class BehaviorProbe
     private const string Press08Path = "Assets/Effects/Boids_hash_2teams_field_press08.asset";
     private const string Press10Path = "Assets/Effects/Boids_hash_2teams_field_press10.asset";
     private const string MeasureCode = "153912c";
-    private const string PressMeasureCode = "PRESSWIP";
+    private const string PressMeasureCode = "a77f8f8";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()
