@@ -26,7 +26,10 @@ public class BehaviorProbe
     private const string ShapeStem = "shape-9696694";
     private const string TexelSixPath = "Assets/Effects/Boids_hash_2teams_field_t06.asset";
     private const string TexelFivePath = "Assets/Effects/Boids_hash_2teams_field_t05.asset";
+    private const string Press08Path = "Assets/Effects/Boids_hash_2teams_field_press08.asset";
+    private const string Press10Path = "Assets/Effects/Boids_hash_2teams_field_press10.asset";
     private const string MeasureCode = "153912c";
+    private const string PressMeasureCode = "PRESSWIP";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()
@@ -553,6 +556,108 @@ public class BehaviorProbe
             AssertFinite(rows[i].Metrics);
             AssertDefined(rows[i].Shape);
         }
+    }
+
+    [Test]
+    [Explicit]
+    [Timeout(600000)]
+    public void PressSmoke_OneSeed_UncappedAndPress08K1_ToFiveSeconds()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        string[] kinds = { "uncapped", "press08-K1" };
+        double[] times = { 1.0, 2.0, 5.0 };
+        var rows = new List<PressRow>();
+        string temp = TempMeasureDir();
+        Directory.CreateDirectory(temp);
+        for (int k = 0; k < kinds.Length; k++)
+        {
+            rows.AddRange(RunPress(kinds[k], 60, 1, 5.1, times, writePictures: true, picturePrefix: "smoke-"));
+            WritePressPartial(kinds[k], rows.FindAll(r => r.Kind == kinds[k]), temp, "smoke-");
+        }
+
+        string csvPath = Path.Combine(temp, "smoke-press-" + PressMeasureCode + ".csv");
+        string mdPath = Path.Combine(temp, "smoke-press-" + PressMeasureCode + ".md");
+        File.WriteAllText(csvPath, PressToCsv(rows), new UTF8Encoding(false));
+        File.WriteAllText(mdPath, PressToMarkdown(rows, 0.0, kinds, new[] { 60 }, times), new UTF8Encoding(false));
+        string header = File.ReadAllLines(csvPath)[0];
+        StringAssert.Contains("widthMed", header);
+        StringAssert.Contains("nnMed", header);
+        StringAssert.Contains("stack", header);
+        StringAssert.Contains("nThin", header);
+        StringAssert.Contains("contact", header);
+        StringAssert.Contains("rhoMed", header);
+        StringAssert.Contains("seedsWithData", File.ReadAllText(mdPath));
+        Assert.IsTrue(File.Exists(Path.Combine(temp, "smoke-" + PressMeasureCode + "-uncapped-world-t5.png")));
+        Assert.IsFalse(MeasureOutput.WriteToDoc, "smoke must leave DOC write off");
+        Assert.IsTrue(temp.IndexOf("Temp", StringComparison.OrdinalIgnoreCase) >= 0);
+        for (int i = 0; i < rows.Count; i++)
+        {
+            AssertFinite(rows[i].Metrics);
+            AssertDefined(rows[i].Shape);
+        }
+    }
+
+    [Test]
+    [Explicit]
+    [Timeout(3600000)]
+    public void PressMatrix_FiveSeeds_TwoRates_SevenVariants()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        var watch = Stopwatch.StartNew();
+        string[] kinds =
+        {
+            "uncapped", "cap48", "field-1m-K1",
+            "press08-K1", "press08-K3", "press10-K1", "press10-K3",
+        };
+        int[] rates = { 30, 60 };
+        double[] times = { 1.0, 2.0, 5.0, 10.0, 15.0 };
+        var all = new List<PressRow>();
+        string temp = TempMeasureDir();
+        Directory.CreateDirectory(temp);
+        for (int k = 0; k < kinds.Length; k++)
+        {
+            var variantRows = new List<PressRow>();
+            for (int r = 0; r < rates.Length; r++)
+            {
+                for (int seed = 1; seed <= 5; seed++)
+                {
+                    bool pictures = seed == 1 && rates[r] == 60 && WantsPressPicture(kinds[k]);
+                    variantRows.AddRange(
+                        RunPress(kinds[k], rates[r], seed, 15.1, times, writePictures: pictures, picturePrefix: "img-"));
+                }
+            }
+
+            WritePressPartial(kinds[k], variantRows, temp, "");
+            all.AddRange(variantRows);
+        }
+
+        watch.Stop();
+        Assert.AreEqual(3, AssetCollect().RefreshInterval);
+        Assert.AreEqual(3, FindCollect(AssetDatabase.LoadAssetAtPath<EffectAsset>(Press08Path).Passes).RefreshInterval);
+        Assert.AreEqual(48, AssetWalk().MaxNeighbors);
+        string dir = MeasureOutput.DirectoryPath();
+        Directory.CreateDirectory(dir);
+        List<PressRow> assembled = LoadPressPartials(temp, kinds);
+        if (assembled.Count == 0)
+        {
+            assembled = all;
+        }
+
+        File.WriteAllText(
+            Path.Combine(dir, "press-" + PressMeasureCode + ".csv"),
+            PressToCsv(assembled),
+            new UTF8Encoding(false));
+        File.WriteAllText(
+            Path.Combine(dir, "press-" + PressMeasureCode + ".md"),
+            PressToMarkdown(assembled, watch.Elapsed.TotalSeconds, kinds, rates, times),
+            new UTF8Encoding(false));
+        for (int i = 0; i < assembled.Count; i++)
+        {
+            AssertFinite(assembled[i].Metrics);
+            AssertDefined(assembled[i].Shape);
+        }
+
+        Assert.Pass("seconds=" + watch.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture));
     }
 
     private static List<Sample> Run(Variant variant, int fps, int seed, double seconds, double[] times)
@@ -1154,6 +1259,7 @@ public class BehaviorProbe
             "Assets/Shaders/GPU/Passes/DynamicsPasses.compute",
             "Assets/Shaders/GPU/Passes/BoidsPasses.compute",
             "Assets/Shaders/GPU/Passes/FieldNeighborPasses.compute",
+            "Assets/Shaders/GPU/Passes/FieldDensityPressure.compute",
         };
         var shaders = new ComputeShader[paths.Length];
         for (int i = 0; i < paths.Length; i++)
@@ -2293,5 +2399,533 @@ public class BehaviorProbe
         public double Time;
         public Metrics Metrics;
         public ShapeMetrics Shape;
+    }
+
+    private struct PressRow
+    {
+        public string Kind;
+        public int Fps;
+        public int Seed;
+        public double Time;
+        public Metrics Metrics;
+        public ShapeMetrics Shape;
+    }
+
+    private static bool WantsPressPicture(string kind)
+    {
+        return kind == "uncapped"
+            || kind == "field-1m-K1"
+            || kind == "press08-K1"
+            || kind == "press10-K1"
+            || kind == "press08-K3";
+    }
+
+    private static string TempMeasureDir()
+    {
+        return Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Temp", "p8-field-force"));
+    }
+
+    private static List<PressRow> RunPress(
+        string kind, int fps, int seed, double seconds, double[] times, bool writePictures, string picturePrefix)
+    {
+        string path = PressAssetPath(kind);
+        EffectAsset copy = UnityEngine.Object.Instantiate(AssetDatabase.LoadAssetAtPath<EffectAsset>(path));
+        Assert.IsNotNull(copy, path);
+        copy.name = "BehaviorProbePress_" + kind + "_" + fps + "_" + seed;
+        ApplyPressKind(copy, kind);
+        ParticleSet particles = new ParticleSet();
+        FieldSet fields = new FieldSet();
+        CommandBuffer cmd = new CommandBuffer { name = "BehaviorProbePress" };
+        GraphicsBuffer teams = null;
+        try
+        {
+            SwarmSource swarm = (SwarmSource)copy.ResolveSource();
+            swarm.Seed = seed;
+            swarm.Setup(particles);
+            RegisterLikeWorld(particles, copy);
+            Graphics.CopyBuffer(
+                particles.Get(BuiltinAttributes.RestPosition),
+                particles.Get(BuiltinAttributes.Position));
+            fields.Allocate(copy.Fields, cmd);
+            Graphics.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+            teams = new GraphicsBuffer(
+                GraphicsBuffer.Target.Structured, TeamProfile.MaxTeams, TeamParams.Stride);
+            TeamParams.Upload(teams, copy.Teams);
+            SimContext context = new SimContext(particles, fields, LoadLibrary(), null);
+            context.Cmd = cmd;
+            context.Teams = teams;
+            IReadOnlyList<SimPass> passes = copy.Passes;
+            for (int i = 0; i < passes.Count; i++)
+            {
+                passes[i].Initialize(context);
+            }
+
+            int last = (int)Math.Round(seconds * fps, MidpointRounding.AwayFromZero);
+            var wanted = new HashSet<int>();
+            for (int i = 0; i < times.Length; i++)
+            {
+                int frame = (int)Math.Round(times[i] * fps, MidpointRounding.AwayFromZero);
+                wanted.Add(frame);
+                if (frame > 0)
+                {
+                    wanted.Add(frame - 1);
+                }
+            }
+
+            var captured = new Dictionary<int, Shot>();
+            float dt = copy.SimulationSpeed / fps;
+            for (int frame = 1; frame <= last; frame++)
+            {
+                cmd.Clear();
+                for (int i = 0; i < passes.Count; i++)
+                {
+                    passes[i].Execute(context, dt);
+                }
+
+                Graphics.ExecuteCommandBuffer(cmd);
+                if (wanted.Contains(frame))
+                {
+                    captured[frame] = Capture(particles);
+                }
+            }
+
+            var rows = new List<PressRow>();
+            for (int i = 0; i < times.Length; i++)
+            {
+                int frame = (int)Math.Round(times[i] * fps, MidpointRounding.AwayFromZero);
+                Shot now = captured[frame];
+                Shot before = captured[frame - 1];
+                rows.Add(new PressRow
+                {
+                    Kind = kind,
+                    Fps = fps,
+                    Seed = seed,
+                    Time = times[i],
+                    Metrics = Measure(now.Position, now.Heading, before.Heading, now.Team),
+                    Shape = MeasureShape(now.Position, now.Heading, now.Team),
+                });
+                if (writePictures && (Math.Abs(times[i] - 10.0) < 1e-6 || Math.Abs(times[i] - 15.0) < 1e-6
+                    || Math.Abs(times[i] - 5.0) < 1e-6))
+                {
+                    string stamp = times[i].ToString("0", CultureInfo.InvariantCulture);
+                    if (picturePrefix == "smoke-" && Math.Abs(times[i] - 5.0) > 1e-6)
+                    {
+                        continue;
+                    }
+
+                    if (picturePrefix != "smoke-" && Math.Abs(times[i] - 5.0) < 1e-6)
+                    {
+                        continue;
+                    }
+
+                    string stem = picturePrefix + PressMeasureCode + "-" + kind + "-";
+                    WriteFlockPng(stem + "world-t" + stamp + ".png", RenderWorldPng(now.Position, now.Team));
+                    WriteFlockPng(stem + "zoom-t" + stamp + ".png", RenderZoomPng(now.Position, now.Team));
+                }
+            }
+
+            return rows;
+        }
+        finally
+        {
+            teams?.Dispose();
+            cmd.Release();
+            fields.Dispose();
+            particles.Dispose();
+            IReadOnlyList<SimPass> passes = copy.Passes;
+            for (int i = 0; i < passes.Count; i++)
+            {
+                if (passes[i] is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+
+            UnityEngine.Object.DestroyImmediate(copy);
+        }
+    }
+
+    private static string PressAssetPath(string kind)
+    {
+        if (kind == "uncapped" || kind == "cap48")
+        {
+            return WalkPath;
+        }
+
+        if (kind == "field-1m-K1")
+        {
+            return FieldPath;
+        }
+
+        if (kind.StartsWith("press08", StringComparison.Ordinal))
+        {
+            return Press08Path;
+        }
+
+        return Press10Path;
+    }
+
+    private static void ApplyPressKind(EffectAsset copy, string kind)
+    {
+        if (kind == "uncapped")
+        {
+            FindWalk(copy.Passes).MaxNeighbors = 0;
+            return;
+        }
+
+        if (kind == "cap48")
+        {
+            Assert.AreEqual(48, FindWalk(copy.Passes).MaxNeighbors);
+            return;
+        }
+
+        FieldNeighborCollectPass collect = FindCollect(copy.Passes);
+        if (kind.EndsWith("-K1", StringComparison.Ordinal))
+        {
+            collect.RefreshInterval = 1;
+            return;
+        }
+
+        Assert.AreEqual(3, collect.RefreshInterval);
+    }
+
+    private static void WritePressPartial(string kind, List<PressRow> rows, string dir, string prefix)
+    {
+        Directory.CreateDirectory(dir);
+        string path = Path.Combine(dir, prefix + "press-partial-" + PressMeasureCode + "-" + kind + ".csv");
+        File.WriteAllText(path, PressToCsv(rows), new UTF8Encoding(false));
+    }
+
+    private static List<PressRow> LoadPressPartials(string dir, string[] kinds)
+    {
+        var rows = new List<PressRow>();
+        for (int k = 0; k < kinds.Length; k++)
+        {
+            string path = Path.Combine(dir, "press-partial-" + PressMeasureCode + "-" + kinds[k] + ".csv");
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            string[] lines = File.ReadAllLines(path);
+            for (int i = 1; i < lines.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(lines[i]))
+                {
+                    continue;
+                }
+
+                if (TryParsePressCsvLine(lines[i], out PressRow row))
+                {
+                    rows.Add(row);
+                }
+            }
+        }
+
+        return rows;
+    }
+
+    private static bool TryParsePressCsvLine(string line, out PressRow row)
+    {
+        row = default;
+        string[] parts = line.Split(',');
+        if (parts.Length < 23)
+        {
+            return false;
+        }
+
+        row = new PressRow
+        {
+            Kind = parts[0],
+            Fps = int.Parse(parts[1], CultureInfo.InvariantCulture),
+            Seed = int.Parse(parts[2], CultureInfo.InvariantCulture),
+            Time = double.Parse(parts[3], CultureInfo.InvariantCulture),
+            Metrics = new Metrics
+            {
+                Contact = ParseOpt(parts[4]),
+                Enemy = ParseOpt(parts[5]),
+                Flocks0 = int.Parse(parts[6], CultureInfo.InvariantCulture),
+                Flocks1 = int.Parse(parts[7], CultureInfo.InvariantCulture),
+                Flocks = int.Parse(parts[8], CultureInfo.InvariantCulture),
+                Pol = ParseOpt(parts[9]),
+                Turn = ParseOpt(parts[10]),
+                TurnSd = ParseOpt(parts[11]),
+            },
+            Shape = new ShapeMetrics
+            {
+                RhoMed = ParseOpt(parts[12]),
+                RhoP90 = ParseOpt(parts[13]),
+                ThinMed = ParseOptNullable(parts[14]),
+                FracThin = ParseOptNullable(parts[15]),
+                NThin = int.Parse(parts[16], CultureInfo.InvariantCulture),
+                Cells = int.Parse(parts[17], CultureInfo.InvariantCulture),
+                AxisHead = ParseOpt(parts[18]),
+                AxisLine = ParseOptNullable(parts[19]),
+                WidthMed = ParseOptNullable(parts[20]),
+                NnMed = ParseOptNullable(parts[21]),
+                Stack = ParseOpt(parts[22]),
+            },
+        };
+        return true;
+    }
+
+    private static double ParseOpt(string text)
+    {
+        return string.IsNullOrEmpty(text) ? double.NaN : double.Parse(text, CultureInfo.InvariantCulture);
+    }
+
+    private static double? ParseOptNullable(string text)
+    {
+        return string.IsNullOrEmpty(text)
+            ? (double?)null
+            : double.Parse(text, CultureInfo.InvariantCulture);
+    }
+
+    private static string PressToCsv(List<PressRow> rows)
+    {
+        var text = new StringBuilder();
+        text.AppendLine(
+            "variant,fps,seed,t,contact,enemy,flocks0,flocks1,flocks,pol,turn,turnSd," +
+            "rhoMed,rhoP90,thinMed,fracThin,nThin,cells,axisHead,axisLine,widthMed,nnMed,stack");
+        for (int i = 0; i < rows.Count; i++)
+        {
+            PressRow row = rows[i];
+            Metrics metrics = row.Metrics;
+            ShapeMetrics shape = row.Shape;
+            text.Append(row.Kind);
+            text.Append(',').Append(row.Fps.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(row.Seed.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(row.Time.ToString("0.#", CultureInfo.InvariantCulture));
+            text.Append(',').Append(Num(metrics.Contact));
+            text.Append(',').Append(Num(metrics.Enemy));
+            text.Append(',').Append(metrics.Flocks0.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(metrics.Flocks1.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(metrics.Flocks.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(Num(metrics.Pol));
+            text.Append(',').Append(Num(metrics.Turn));
+            text.Append(',').Append(Num(metrics.TurnSd));
+            text.Append(',').Append(Num(shape.RhoMed));
+            text.Append(',').Append(Num(shape.RhoP90));
+            text.Append(',').Append(NumOpt(shape.ThinMed));
+            text.Append(',').Append(NumOpt(shape.FracThin));
+            text.Append(',').Append(shape.NThin.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(shape.Cells.ToString(CultureInfo.InvariantCulture));
+            text.Append(',').Append(Num(shape.AxisHead));
+            text.Append(',').Append(NumOpt(shape.AxisLine));
+            text.Append(',').Append(NumOpt(shape.WidthMed));
+            text.Append(',').Append(NumOpt(shape.NnMed));
+            text.Append(',').Append(Num(shape.Stack));
+            text.AppendLine();
+        }
+
+        return text.ToString();
+    }
+
+    private static string PressToMarkdown(
+        List<PressRow> rows, double seconds, string[] kinds, int[] rates, double[] stamps)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("# Давление плотности");
+        text.AppendLine();
+        text.AppendLine(
+            "Длительность прогона 15,1 с. K = 1 выставляет `RefreshInterval = 1` на экземпляре грубого поля. " +
+            "K = 3 оставляет значение ассета. Давление каждый кадр. Матрица заняла " +
+            seconds.ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',') + " с.");
+        text.AppendLine();
+        text.AppendLine(
+            "Сводка по seed, у которых метрика определена. `seedsWithData` — их число. " +
+            "Пустая сводка — прочерк.");
+        text.AppendLine();
+        text.AppendLine("| вариант | FPS | t, с | метрика | среднее | минимум | максимум | seedsWithData |");
+        text.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
+        string[] metrics =
+        {
+            "contact", "enemy", "flocks", "pol", "turn", "turnSd",
+            "rhoMed", "rhoP90", "thinMed", "fracThin", "cells", "axisHead", "axisLine",
+            "nThin", "widthMed", "nnMed", "stack",
+        };
+        for (int k = 0; k < kinds.Length; k++)
+        {
+            for (int r = 0; r < rates.Length; r++)
+            {
+                for (int s = 0; s < stamps.Length; s++)
+                {
+                    for (int m = 0; m < metrics.Length; m++)
+                    {
+                        AppendPressSummary(text, rows, kinds[k], rates[r], stamps[s], metrics[m]);
+                    }
+                }
+            }
+        }
+
+        text.AppendLine();
+        text.AppendLine("Гейт Б при t = 5 с (`contact`, `enemy`, `flocks`), без вердикта.");
+        text.AppendLine();
+        text.AppendLine("| вариант | FPS | contact | enemy | flocks |");
+        text.AppendLine("| --- | --- | --- | --- | --- |");
+        string[] gateKinds = { "press08-K1", "press08-K3", "press10-K1", "press10-K3" };
+        for (int k = 0; k < gateKinds.Length; k++)
+        {
+            for (int r = 0; r < rates.Length; r++)
+            {
+                AppendPressGate(text, rows, gateKinds[k], rates[r]);
+            }
+        }
+
+        text.AppendLine();
+        text.AppendLine("Строки по seed лежат в CSV. Вердикта нет.");
+        return text.ToString();
+    }
+
+    private static void AppendPressGate(StringBuilder text, List<PressRow> rows, string kind, int fps)
+    {
+        text.Append("| ").Append(kind);
+        text.Append(" | ").Append(fps.ToString(CultureInfo.InvariantCulture));
+        text.Append(" | ").Append(Comma(MeanPress(rows, kind, fps, 5.0, "contact")));
+        text.Append(" | ").Append(Comma(MeanPress(rows, kind, fps, 5.0, "enemy")));
+        text.Append(" | ").Append(Comma(MeanPress(rows, kind, fps, 5.0, "flocks")));
+        text.AppendLine(" |");
+    }
+
+    private static double MeanPress(List<PressRow> rows, string kind, int fps, double time, string metric)
+    {
+        double sum = 0.0;
+        int count = 0;
+        for (int i = 0; i < rows.Count; i++)
+        {
+            PressRow row = rows[i];
+            if (row.Kind != kind || row.Fps != fps || Math.Abs(row.Time - time) > 1e-6)
+            {
+                continue;
+            }
+
+            if (!TryPress(row, metric, out double value))
+            {
+                continue;
+            }
+
+            sum += value;
+            count++;
+        }
+
+        return count == 0 ? double.NaN : sum / count;
+    }
+
+    private static void AppendPressSummary(
+        StringBuilder text, List<PressRow> rows, string kind, int fps, double time, string metric)
+    {
+        double min = double.PositiveInfinity;
+        double max = double.NegativeInfinity;
+        double sum = 0.0;
+        int count = 0;
+        for (int i = 0; i < rows.Count; i++)
+        {
+            PressRow row = rows[i];
+            if (row.Kind != kind || row.Fps != fps || Math.Abs(row.Time - time) > 1e-6)
+            {
+                continue;
+            }
+
+            if (!TryPress(row, metric, out double value))
+            {
+                continue;
+            }
+
+            sum += value;
+            if (value < min)
+            {
+                min = value;
+            }
+
+            if (value > max)
+            {
+                max = value;
+            }
+
+            count++;
+        }
+
+        text.Append("| ").Append(kind);
+        text.Append(" | ").Append(fps.ToString(CultureInfo.InvariantCulture));
+        text.Append(" | ").Append(time.ToString("0.#", CultureInfo.InvariantCulture));
+        text.Append(" | ").Append(metric);
+        if (count == 0)
+        {
+            text.Append(" | — | — | — | 0 |");
+        }
+        else
+        {
+            text.Append(" | ").Append(Comma(sum / count));
+            text.Append(" | ").Append(Comma(min));
+            text.Append(" | ").Append(Comma(max));
+            text.Append(" | ").Append(count.ToString(CultureInfo.InvariantCulture));
+            text.Append(" |");
+        }
+
+        text.AppendLine();
+    }
+
+    private static bool TryPress(PressRow row, string metric, out double value)
+    {
+        Metrics behavior = row.Metrics;
+        ShapeMetrics shape = row.Shape;
+        switch (metric)
+        {
+            case "contact":
+                value = behavior.Contact;
+                return true;
+            case "enemy":
+                value = behavior.Enemy;
+                return true;
+            case "flocks":
+                value = behavior.Flocks;
+                return true;
+            case "pol":
+                value = behavior.Pol;
+                return true;
+            case "turn":
+                value = behavior.Turn;
+                return true;
+            case "turnSd":
+                value = behavior.TurnSd;
+                return true;
+            case "rhoMed":
+                value = shape.RhoMed;
+                return true;
+            case "rhoP90":
+                value = shape.RhoP90;
+                return true;
+            case "thinMed":
+                value = shape.ThinMed ?? 0.0;
+                return shape.ThinMed.HasValue;
+            case "fracThin":
+                value = shape.FracThin ?? 0.0;
+                return shape.FracThin.HasValue;
+            case "cells":
+                value = shape.Cells;
+                return true;
+            case "axisHead":
+                value = shape.AxisHead;
+                return true;
+            case "axisLine":
+                value = shape.AxisLine ?? 0.0;
+                return shape.AxisLine.HasValue;
+            case "nThin":
+                value = shape.NThin;
+                return true;
+            case "widthMed":
+                value = shape.WidthMed ?? 0.0;
+                return shape.WidthMed.HasValue;
+            case "nnMed":
+                value = shape.NnMed ?? 0.0;
+                return shape.NnMed.HasValue;
+            case "stack":
+                value = shape.Stack;
+                return true;
+            default:
+                value = 0.0;
+                return false;
+        }
     }
 }
