@@ -2757,6 +2757,8 @@ public static class M3DDemoTools
 
     private const string BoidsHashTwoTeamsFieldPath = EffectsFolder + "/Boids_hash_2teams_field.asset";
     private const string BoidsHashP400cFieldForcePath = EffectsFolder + "/Boids_hash_P400c_field.asset";
+    private const string BoidsHashP400cFieldPressK1Path = EffectsFolder + "/Boids_hash_P400c_field_press_K1.asset";
+    private const string BoidsHashP400cFieldPressK3Path = EffectsFolder + "/Boids_hash_P400c_field_press_K3.asset";
     private const string BoidsHashTwoTeamsFieldT06Path = EffectsFolder + "/Boids_hash_2teams_field_t06.asset";
     private const string BoidsHashTwoTeamsFieldT05Path = EffectsFolder + "/Boids_hash_2teams_field_t05.asset";
     private const string BoidsHashTwoTeamsFieldPress08Path = EffectsFolder + "/Boids_hash_2teams_field_press08.asset";
@@ -2765,6 +2767,8 @@ public static class M3DDemoTools
     private const string BoidsHashTwoTeamsFieldPressMixPath = EffectsFolder + "/Boids_hash_2teams_field_press_mix.asset";
     private const string BoidsHashTwoTeamsFieldScene = "Assets/Scenes/Boids_Hash_2Teams_Field.unity";
     private const string BoidsHashP400cFieldForceScene = "Assets/Scenes/Boids_Hash_P400c_Field.unity";
+    private const string BoidsHashP400cFieldPressK1Scene = "Assets/Scenes/Boids_Hash_P400c_Field_Press_K1.unity";
+    private const string BoidsHashP400cFieldPressK3Scene = "Assets/Scenes/Boids_Hash_P400c_Field_Press_K3.unity";
     private const string BoidsHashTwoTeamsFieldT06Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_T06.unity";
     private const string BoidsHashTwoTeamsFieldT05Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_T05.unity";
     private const string BoidsHashTwoTeamsFieldP08Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P08.unity";
@@ -2843,6 +2847,23 @@ public static class M3DDemoTools
         EnableInBuild(BoidsHashTwoTeamsFieldPG25Scene, BoidsHashTwoTeamsFieldPMixScene);
         AssetDatabase.SaveAssets();
         Debug.Log("M3D: created Boids hash field pressure droplet and mix assets and scenes.");
+    }
+
+    [MenuItem("Tools/M3D/Create Boids Hash P400c Pressure Effects")]
+    public static void CreateBoidsHashP400cPressureEffects()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashP400cFieldPressureAsset(BoidsHashP400cFieldPressK1Path, refreshInterval: 1);
+        CreateBoidsHashP400cFieldPressureAsset(BoidsHashP400cFieldPressK3Path, refreshInterval: 3);
+        CreateBoidsHashP400cFieldForceScene(BoidsHashP400cFieldPressK1Scene, BoidsHashP400cFieldPressK1Path);
+        CreateBoidsHashP400cFieldForceScene(BoidsHashP400cFieldPressK3Scene, BoidsHashP400cFieldPressK3Path);
+        EnableInBuild(BoidsHashP400cFieldPressK1Scene, BoidsHashP400cFieldPressK3Scene);
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created P400c field pressure K1 and K3 assets and scenes.");
     }
 
     private static void EnableInBuild(params string[] scenePaths)
@@ -3082,6 +3103,65 @@ public static class M3DDemoTools
         box.Center = Vector3.zero;
         box.Extents = P400cExtents;
         box.Behaviour = BoundsBehaviour.Wrap;
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void CreateBoidsHashP400cFieldPressureAsset(string path, int refreshInterval)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        FieldNeighborCollectPass collect = new FieldNeighborCollectPass
+        {
+            Mode = FieldCollectMode.Scatter,
+            Center = Vector3.zero,
+            Extents = P400cExtents,
+            TexelSize = 1f,
+            RefreshInterval = refreshInterval,
+        };
+        BoxBoundsPass box = new BoxBoundsPass
+        {
+            Center = Vector3.zero,
+            Extents = P400cExtents,
+            Behaviour = BoundsBehaviour.Wrap,
+        };
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            P400cSimulationSpeed,
+            new SimPass[]
+            {
+                collect,
+                new FieldNeighborConvolvePass(),
+                new ClearVelocityPass(),
+                new FieldNeighborForcePass
+                {
+                    Center = Vector3.zero,
+                    Extents = P400cExtents,
+                    TexelSize = 1f,
+                },
+                new FieldDensityPressurePass
+                {
+                    Center = Vector3.zero,
+                    Extents = P400cExtents,
+                    PressureTexel = 0.25f,
+                    Weight = 0.8f,
+                    G0 = 25f,
+                    Jitter = true,
+                    JitterSeed = 1,
+                },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                box,
+                new HeadingToValuePass(),
+            });
+        ConfigureP400cSource(asset);
 
         AssetDatabase.CreateAsset(asset, path);
         EditorUtility.SetDirty(asset);
