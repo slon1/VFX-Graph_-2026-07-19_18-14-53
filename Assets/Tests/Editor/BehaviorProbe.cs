@@ -2613,12 +2613,13 @@ public class BehaviorProbe
                     || Math.Abs(times[i] - 5.0) < 1e-6))
                 {
                     string stamp = times[i].ToString("0", CultureInfo.InvariantCulture);
-                    if (picturePrefix == "smoke-" && Math.Abs(times[i] - 5.0) > 1e-6)
+                    bool smokePictures = picturePrefix == "smoke-" || picturePrefix == "smoke2-";
+                    if (smokePictures && Math.Abs(times[i] - 5.0) > 1e-6)
                     {
                         continue;
                     }
 
-                    if (picturePrefix != "smoke-" && Math.Abs(times[i] - 5.0) < 1e-6)
+                    if (!smokePictures && Math.Abs(times[i] - 5.0) < 1e-6)
                     {
                         continue;
                     }
