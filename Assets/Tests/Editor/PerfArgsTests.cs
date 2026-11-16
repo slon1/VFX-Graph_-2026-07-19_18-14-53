@@ -496,22 +496,77 @@ public class PerfArgsTests
 	}
 
 	[Test]
-	public void ApplyFieldStage_PressWithoutPressure_MirrorsForceWithoutForcePass()
+	public void ApplyFieldStage_PressWithoutPressure_WarnsAndDoesNotApply()
 	{
 		FieldNeighborCollectPass collect = new FieldNeighborCollectPass();
 		FieldNeighborConvolvePass convolve = new FieldNeighborConvolvePass();
 		FieldNeighborForcePass force = new FieldNeighborForcePass();
+		FieldRepeatStage before = collect.FieldStage;
 		PerfArgs press = PerfArgs.Parse(new[] { "-m3d_fieldstage", "press", "-m3d_fieldrep", "4" });
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=press pass=FieldDensityPressurePass");
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldrep=4");
 		FPSDisplay.ApplyFieldStage(collect, convolve, force, press, null);
-		Assert.That(collect.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
-		Assert.That(convolve.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
-		Assert.That(force.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
-		Assert.That(collect.FieldRepeatCount, Is.EqualTo(4));
-		Assert.That(force.FieldRepeatCount, Is.EqualTo(4));
+		Assert.That(collect.FieldStage, Is.EqualTo(before));
+		Assert.That(collect.FieldRepeatCount, Is.EqualTo(1));
+		Assert.That(force.FieldStage, Is.EqualTo(FieldRepeatStage.All));
 
 		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=press");
 		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldrep=4");
 		FPSDisplay.ApplyFieldStage(null, null, null, press, null);
+	}
+
+	[Test]
+	public void ApplyFieldStage_MissingRequiredPass_WarnsForEachStage()
+	{
+		FieldNeighborCollectPass collect = new FieldNeighborCollectPass();
+		FieldNeighborConvolvePass convolve = new FieldNeighborConvolvePass();
+		FieldNeighborForcePass force = new FieldNeighborForcePass();
+		FieldDensityPressurePass pressure = new FieldDensityPressurePass();
+
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=force pass=FieldNeighborForcePass");
+		FPSDisplay.ApplyFieldStage(collect, convolve, null, PerfArgs.Parse(new[] { "-m3d_fieldstage", "force" }), pressure);
+		Assert.That(collect.FieldStage, Is.EqualTo(FieldRepeatStage.All));
+
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=collect pass=FieldNeighborCollectPass");
+		FPSDisplay.ApplyFieldStage(null, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "collect" }), pressure);
+
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=conv pass=FieldNeighborConvolvePass");
+		FPSDisplay.ApplyFieldStage(collect, null, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "conv" }), pressure);
+
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=grad pass=FieldNeighborConvolvePass");
+		FPSDisplay.ApplyFieldStage(collect, null, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "grad" }), pressure);
+
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=all pass=FieldNeighborCollectPass");
+		FPSDisplay.ApplyFieldStage(null, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "all" }), pressure);
+
+		pressure.Enabled = false;
+		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=press pass=FieldDensityPressurePass");
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "press" }), pressure);
+	}
+
+	[Test]
+	public void ApplyFieldStage_RequiredPassPresent_DoesNotWarn()
+	{
+		FieldNeighborCollectPass collect = new FieldNeighborCollectPass();
+		FieldNeighborConvolvePass convolve = new FieldNeighborConvolvePass();
+		FieldNeighborForcePass force = new FieldNeighborForcePass();
+		FieldDensityPressurePass pressure = new FieldDensityPressurePass();
+
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "press" }), pressure);
+		Assert.That(pressure.FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "force" }), pressure);
+		Assert.That(force.FieldStage, Is.EqualTo(FieldRepeatStage.Force));
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "collect" }), pressure);
+		Assert.That(collect.FieldStage, Is.EqualTo(FieldRepeatStage.Collect));
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "conv" }), pressure);
+		Assert.That(convolve.FieldStage, Is.EqualTo(FieldRepeatStage.Conv));
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "grad" }), pressure);
+		Assert.That(convolve.FieldStage, Is.EqualTo(FieldRepeatStage.Grad));
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "all" }), pressure);
+		Assert.That(collect.FieldStage, Is.EqualTo(FieldRepeatStage.All));
+		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "off" }), pressure);
+		Assert.That(collect.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
+		Assert.That(pressure.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
 	}
 
 	[Test]

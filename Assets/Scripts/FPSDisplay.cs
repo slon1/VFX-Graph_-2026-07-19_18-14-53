@@ -1540,6 +1540,20 @@ public sealed class FPSDisplay : MonoBehaviour
 			return;
 		}
 
+		if (perfArgs.HasFieldStage &&
+			TryMissingFieldStagePass(perfArgs.FieldStage, collect, convolve, force, pressure, out string missingPass))
+		{
+			Debug.Log(
+				"M3D_PERF_WARN fieldstage=" + FieldRepeatStages.Name(perfArgs.FieldStage) +
+				" pass=" + missingPass);
+			if (perfArgs.HasFieldRep)
+			{
+				Debug.Log("M3D_PERF_WARN fieldrep=" + perfArgs.FieldRep.ToString(CultureInfo.InvariantCulture));
+			}
+
+			return;
+		}
+
 		if (collect != null)
 		{
 			if (perfArgs.HasFieldStage)
@@ -1591,6 +1605,72 @@ public sealed class FPSDisplay : MonoBehaviour
 				pressure.FieldRepeatCount = perfArgs.FieldRep;
 			}
 		}
+	}
+
+	/// <summary>
+	/// True when a diagnostic field stage was requested but its pass is absent or disabled.
+	/// <see cref="FieldRepeatStage.Off"/> needs no pass. ADR-063 §5.7 / P8.1-V0.
+	/// </summary>
+	internal static bool TryMissingFieldStagePass(
+		FieldRepeatStage stage,
+		FieldNeighborCollectPass collect,
+		FieldNeighborConvolvePass convolve,
+		FieldNeighborForcePass force,
+		FieldDensityPressurePass pressure,
+		out string missingPass)
+	{
+		missingPass = null;
+		switch (stage)
+		{
+			case FieldRepeatStage.Off:
+				return false;
+			case FieldRepeatStage.Press:
+				if (IsEnabledPass(pressure))
+				{
+					return false;
+				}
+
+				missingPass = nameof(FieldDensityPressurePass);
+				return true;
+			case FieldRepeatStage.Force:
+				if (IsEnabledPass(force))
+				{
+					return false;
+				}
+
+				missingPass = nameof(FieldNeighborForcePass);
+				return true;
+			case FieldRepeatStage.Collect:
+				if (IsEnabledPass(collect))
+				{
+					return false;
+				}
+
+				missingPass = nameof(FieldNeighborCollectPass);
+				return true;
+			case FieldRepeatStage.Conv:
+			case FieldRepeatStage.Grad:
+				if (IsEnabledPass(convolve))
+				{
+					return false;
+				}
+
+				missingPass = nameof(FieldNeighborConvolvePass);
+				return true;
+			default:
+				if (IsEnabledPass(collect))
+				{
+					return false;
+				}
+
+				missingPass = nameof(FieldNeighborCollectPass);
+				return true;
+		}
+	}
+
+	private static bool IsEnabledPass(SimPass pass)
+	{
+		return pass != null && pass.Enabled;
 	}
 
 	internal static void LoggedForceCap(
