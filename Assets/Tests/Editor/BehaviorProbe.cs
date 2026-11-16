@@ -32,7 +32,7 @@ public class BehaviorProbe
     private const string PressMixPath = "Assets/Effects/Boids_hash_2teams_field_press_mix.asset";
     private const string MeasureCode = "153912c";
     private const string PressMeasureCode = "a77f8f8";
-    private const string Press2MeasureCode = "PENDING";
+    private const string Press2MeasureCode = "8213b0d";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()
