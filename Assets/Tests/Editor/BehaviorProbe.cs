@@ -28,8 +28,11 @@ public class BehaviorProbe
     private const string TexelFivePath = "Assets/Effects/Boids_hash_2teams_field_t05.asset";
     private const string Press08Path = "Assets/Effects/Boids_hash_2teams_field_press08.asset";
     private const string Press10Path = "Assets/Effects/Boids_hash_2teams_field_press10.asset";
+    private const string PressG25Path = "Assets/Effects/Boids_hash_2teams_field_press_g25.asset";
+    private const string PressMixPath = "Assets/Effects/Boids_hash_2teams_field_press_mix.asset";
     private const string MeasureCode = "153912c";
     private const string PressMeasureCode = "a77f8f8";
+    private const string Press2MeasureCode = "PENDING";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()
@@ -650,6 +653,102 @@ public class BehaviorProbe
         File.WriteAllText(
             Path.Combine(dir, "press-" + PressMeasureCode + ".md"),
             PressToMarkdown(assembled, watch.Elapsed.TotalSeconds, kinds, rates, times),
+            new UTF8Encoding(false));
+        for (int i = 0; i < assembled.Count; i++)
+        {
+            AssertFinite(assembled[i].Metrics);
+            AssertDefined(assembled[i].Shape);
+        }
+
+        Assert.Pass("seconds=" + watch.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture));
+    }
+
+    [Test]
+    [Explicit]
+    [Timeout(600000)]
+    public void Press2Smoke_OneSeed_G25AndMix_ToFiveSeconds()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        string[] kinds = { "press-g25-K1", "press-mix-K1" };
+        double[] times = { 1.0, 2.0, 5.0 };
+        var rows = new List<PressRow>();
+        string temp = TempMeasureDir();
+        Directory.CreateDirectory(temp);
+        for (int k = 0; k < kinds.Length; k++)
+        {
+            rows.AddRange(RunPress(kinds[k], 60, 1, 5.1, times, writePictures: true, picturePrefix: "smoke2-"));
+            WritePress2Partial(kinds[k], rows.FindAll(r => r.Kind == kinds[k]), temp, "smoke2-");
+        }
+
+        string csvPath = Path.Combine(temp, "smoke-press2-" + Press2MeasureCode + ".csv");
+        string mdPath = Path.Combine(temp, "smoke-press2-" + Press2MeasureCode + ".md");
+        File.WriteAllText(csvPath, PressToCsv(rows), new UTF8Encoding(false));
+        File.WriteAllText(mdPath, Press2ToMarkdown(rows, 0.0, kinds, new[] { 60 }, times), new UTF8Encoding(false));
+        string header = File.ReadAllLines(csvPath)[0];
+        StringAssert.Contains("widthMed", header);
+        StringAssert.Contains("nnMed", header);
+        StringAssert.Contains("stack", header);
+        StringAssert.Contains("nThin", header);
+        StringAssert.Contains("contact", header);
+        StringAssert.Contains("seedsWithData", File.ReadAllText(mdPath));
+        Assert.IsTrue(File.Exists(Path.Combine(temp, "smoke2-" + Press2MeasureCode + "-press-g25-K1-world-t5.png")));
+        Assert.IsFalse(MeasureOutput.WriteToDoc, "smoke must leave DOC write off");
+        Assert.IsTrue(temp.IndexOf("Temp", StringComparison.OrdinalIgnoreCase) >= 0);
+        for (int i = 0; i < rows.Count; i++)
+        {
+            AssertFinite(rows[i].Metrics);
+            AssertDefined(rows[i].Shape);
+        }
+    }
+
+    [Test]
+    [Explicit]
+    [Timeout(3600000)]
+    public void Press2Matrix_FiveSeeds_TwoRates_FourVariants()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        var watch = Stopwatch.StartNew();
+        string[] kinds = { "press-g25-K1", "press-g25-K3", "press-mix-K1", "press-mix-K3" };
+        int[] rates = { 30, 60 };
+        double[] times = { 1.0, 2.0, 5.0, 10.0, 15.0 };
+        var all = new List<PressRow>();
+        string temp = TempMeasureDir();
+        Directory.CreateDirectory(temp);
+        for (int k = 0; k < kinds.Length; k++)
+        {
+            var variantRows = new List<PressRow>();
+            for (int r = 0; r < rates.Length; r++)
+            {
+                for (int seed = 1; seed <= 5; seed++)
+                {
+                    bool pictures = seed == 1 && rates[r] == 60 && WantsPress2Picture(kinds[k]);
+                    variantRows.AddRange(
+                        RunPress(kinds[k], rates[r], seed, 15.1, times, writePictures: pictures, picturePrefix: "img-"));
+                }
+            }
+
+            WritePress2Partial(kinds[k], variantRows, temp, "");
+            all.AddRange(variantRows);
+        }
+
+        watch.Stop();
+        Assert.AreEqual(3, FindCollect(AssetDatabase.LoadAssetAtPath<EffectAsset>(PressG25Path).Passes).RefreshInterval);
+        Assert.AreEqual(3, FindCollect(AssetDatabase.LoadAssetAtPath<EffectAsset>(PressMixPath).Passes).RefreshInterval);
+        string dir = MeasureOutput.DirectoryPath();
+        Directory.CreateDirectory(dir);
+        List<PressRow> assembled = LoadPress2Partials(temp, kinds);
+        if (assembled.Count == 0)
+        {
+            assembled = all;
+        }
+
+        File.WriteAllText(
+            Path.Combine(dir, "press2-" + Press2MeasureCode + ".csv"),
+            PressToCsv(assembled),
+            new UTF8Encoding(false));
+        File.WriteAllText(
+            Path.Combine(dir, "press2-" + Press2MeasureCode + ".md"),
+            Press2ToMarkdown(assembled, watch.Elapsed.TotalSeconds, kinds, rates, times),
             new UTF8Encoding(false));
         for (int i = 0; i < assembled.Count; i++)
         {
@@ -2420,6 +2519,11 @@ public class BehaviorProbe
             || kind == "press08-K3";
     }
 
+    private static bool WantsPress2Picture(string kind)
+    {
+        return kind == "press-g25-K1" || kind == "press-mix-K1";
+    }
+
     private static string TempMeasureDir()
     {
         return Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Temp", "p8-field-force"));
@@ -2519,7 +2623,11 @@ public class BehaviorProbe
                         continue;
                     }
 
-                    string stem = picturePrefix + PressMeasureCode + "-" + kind + "-";
+                    string code = kind.StartsWith("press-g25", StringComparison.Ordinal)
+                        || kind.StartsWith("press-mix", StringComparison.Ordinal)
+                        ? Press2MeasureCode
+                        : PressMeasureCode;
+                    string stem = picturePrefix + code + "-" + kind + "-";
                     WriteFlockPng(stem + "world-t" + stamp + ".png", RenderWorldPng(now.Position, now.Team));
                     WriteFlockPng(stem + "zoom-t" + stamp + ".png", RenderZoomPng(now.Position, now.Team));
                 }
@@ -2563,7 +2671,22 @@ public class BehaviorProbe
             return Press08Path;
         }
 
-        return Press10Path;
+        if (kind.StartsWith("press10", StringComparison.Ordinal))
+        {
+            return Press10Path;
+        }
+
+        if (kind.StartsWith("press-g25", StringComparison.Ordinal))
+        {
+            return PressG25Path;
+        }
+
+        if (kind.StartsWith("press-mix", StringComparison.Ordinal))
+        {
+            return PressMixPath;
+        }
+
+        throw new ArgumentException("unknown press kind: " + kind);
     }
 
     private static void ApplyPressKind(EffectAsset copy, string kind)
@@ -2597,12 +2720,29 @@ public class BehaviorProbe
         File.WriteAllText(path, PressToCsv(rows), new UTF8Encoding(false));
     }
 
+    private static void WritePress2Partial(string kind, List<PressRow> rows, string dir, string prefix)
+    {
+        Directory.CreateDirectory(dir);
+        string path = Path.Combine(dir, prefix + "press2-partial-" + Press2MeasureCode + "-" + kind + ".csv");
+        File.WriteAllText(path, PressToCsv(rows), new UTF8Encoding(false));
+    }
+
     private static List<PressRow> LoadPressPartials(string dir, string[] kinds)
+    {
+        return LoadPressPartialsWithStem(dir, kinds, "press-partial-" + PressMeasureCode + "-");
+    }
+
+    private static List<PressRow> LoadPress2Partials(string dir, string[] kinds)
+    {
+        return LoadPressPartialsWithStem(dir, kinds, "press2-partial-" + Press2MeasureCode + "-");
+    }
+
+    private static List<PressRow> LoadPressPartialsWithStem(string dir, string[] kinds, string stem)
     {
         var rows = new List<PressRow>();
         for (int k = 0; k < kinds.Length; k++)
         {
-            string path = Path.Combine(dir, "press-partial-" + PressMeasureCode + "-" + kinds[k] + ".csv");
+            string path = Path.Combine(dir, stem + kinds[k] + ".csv");
             if (!File.Exists(path))
             {
                 continue;
@@ -2773,6 +2913,66 @@ public class BehaviorProbe
             }
         }
 
+        text.AppendLine();
+        text.AppendLine("Строки по seed лежат в CSV. Вердикта нет.");
+        return text.ToString();
+    }
+
+    private static string Press2ToMarkdown(
+        List<PressRow> rows, double seconds, string[] kinds, int[] rates, double[] stamps)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("# Давление плотности — droplet и mix");
+        text.AppendLine();
+        text.AppendLine(
+            "Длительность прогона 15,1 с. K = 1 выставляет `RefreshInterval = 1` на экземпляре грубого поля. " +
+            "K = 3 оставляет значение ассета. Давление каждый кадр. Матрица заняла " +
+            seconds.ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',') + " с. " +
+            "Прежние варианты: [press-a77f8f8.md](press-a77f8f8.md).");
+        text.AppendLine();
+        text.AppendLine(
+            "Сводка по seed, у которых метрика определена. `seedsWithData` — их число. " +
+            "Пустая сводка — прочерк.");
+        text.AppendLine();
+        text.AppendLine("| вариант | FPS | t, с | метрика | среднее | минимум | максимум | seedsWithData |");
+        text.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
+        string[] metrics =
+        {
+            "contact", "enemy", "flocks", "pol", "turn", "turnSd",
+            "rhoMed", "rhoP90", "thinMed", "fracThin", "cells", "axisHead", "axisLine",
+            "nThin", "widthMed", "nnMed", "stack",
+        };
+        for (int k = 0; k < kinds.Length; k++)
+        {
+            for (int r = 0; r < rates.Length; r++)
+            {
+                for (int s = 0; s < stamps.Length; s++)
+                {
+                    for (int m = 0; m < metrics.Length; m++)
+                    {
+                        AppendPressSummary(text, rows, kinds[k], rates[r], stamps[s], metrics[m]);
+                    }
+                }
+            }
+        }
+
+        text.AppendLine();
+        text.AppendLine("Гейт Б при t = 5 с (`contact`, `enemy`, `flocks`), без вердикта.");
+        text.AppendLine();
+        text.AppendLine("| вариант | FPS | contact | enemy | flocks |");
+        text.AppendLine("| --- | --- | --- | --- | --- |");
+        string[] gateKinds = { "press-g25-K1", "press-g25-K3" };
+        for (int k = 0; k < gateKinds.Length; k++)
+        {
+            for (int r = 0; r < rates.Length; r++)
+            {
+                AppendPressGate(text, rows, gateKinds[k], rates[r]);
+            }
+        }
+
+        text.AppendLine();
+        text.AppendLine(
+            "Для `press-mix-K1` / `press-mix-K3` гейт не применяется (ADR-063 §3); числа зонда — в сводке выше.");
         text.AppendLine();
         text.AppendLine("Строки по seed лежат в CSV. Вердикта нет.");
         return text.ToString();
