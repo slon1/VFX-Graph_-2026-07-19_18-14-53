@@ -76,6 +76,33 @@ public class FieldDensityPressureTests
     }
 
     [Test]
+    public void Force_DenseCrowd_MagnitudeDoesNotExceedWeight()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        Vector2[] positions = DenseSquare(5000, 10f, new System.Random(7));
+        int[] teams = Teams(positions.Length, 0);
+        float[] weights = { 0.8f, 2.5f, 10f };
+        for (int w = 0; w < weights.Length; w++)
+        {
+            float weight = weights[w];
+            using (Rig rig = new Rig(positions, teams, 45f, jitter: false))
+            {
+                rig.Pass.Weight = weight;
+                rig.Pass.G0 = 12f;
+                rig.ZeroVelocity();
+                rig.Step();
+                Vector3[] velocity = rig.ReadVelocity();
+                float limit = weight + 1e-5f;
+                for (int i = 0; i < velocity.Length; i++)
+                {
+                    float mag = new Vector2(velocity[i].x, velocity[i].z).magnitude;
+                    Assert.LessOrEqual(mag, limit, "weight=" + weight + " i=" + i);
+                }
+            }
+        }
+    }
+
+    [Test]
     public void SeamAndCorners_MatchTheGpuWeights()
     {
         Assume.That(SystemInfo.supportsComputeShaders);

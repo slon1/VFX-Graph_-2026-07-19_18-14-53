@@ -2761,12 +2761,16 @@ public static class M3DDemoTools
     private const string BoidsHashTwoTeamsFieldT05Path = EffectsFolder + "/Boids_hash_2teams_field_t05.asset";
     private const string BoidsHashTwoTeamsFieldPress08Path = EffectsFolder + "/Boids_hash_2teams_field_press08.asset";
     private const string BoidsHashTwoTeamsFieldPress10Path = EffectsFolder + "/Boids_hash_2teams_field_press10.asset";
+    private const string BoidsHashTwoTeamsFieldPressG25Path = EffectsFolder + "/Boids_hash_2teams_field_press_g25.asset";
+    private const string BoidsHashTwoTeamsFieldPressMixPath = EffectsFolder + "/Boids_hash_2teams_field_press_mix.asset";
     private const string BoidsHashTwoTeamsFieldScene = "Assets/Scenes/Boids_Hash_2Teams_Field.unity";
     private const string BoidsHashP400cFieldForceScene = "Assets/Scenes/Boids_Hash_P400c_Field.unity";
     private const string BoidsHashTwoTeamsFieldT06Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_T06.unity";
     private const string BoidsHashTwoTeamsFieldT05Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_T05.unity";
     private const string BoidsHashTwoTeamsFieldP08Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P08.unity";
     private const string BoidsHashTwoTeamsFieldP10Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P10.unity";
+    private const string BoidsHashTwoTeamsFieldPG25Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P_G25.unity";
+    private const string BoidsHashTwoTeamsFieldPMixScene = "Assets/Scenes/Boids_Hash_2Teams_Field_P_MIX.unity";
 
     [MenuItem("Tools/M3D/Create Boids Hash Field Force Effects")]
     public static void CreateBoidsHashFieldForceEffects()
@@ -2815,13 +2819,30 @@ public static class M3DDemoTools
             AssetDatabase.CreateFolder("Assets", "Effects");
         }
 
-        CreateBoidsHashTwoTeamsFieldPressureAsset(BoidsHashTwoTeamsFieldPress08Path, 0.8f);
-        CreateBoidsHashTwoTeamsFieldPressureAsset(BoidsHashTwoTeamsFieldPress10Path, 1.0f);
+        CreateBoidsHashTwoTeamsFieldPressureAsset(BoidsHashTwoTeamsFieldPress08Path, 0.8f, 40f);
+        CreateBoidsHashTwoTeamsFieldPressureAsset(BoidsHashTwoTeamsFieldPress10Path, 1.0f, 40f);
         CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldP08Scene, BoidsHashTwoTeamsFieldPress08Path);
         CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldP10Scene, BoidsHashTwoTeamsFieldPress10Path);
         EnableInBuild(BoidsHashTwoTeamsFieldP08Scene, BoidsHashTwoTeamsFieldP10Scene);
         AssetDatabase.SaveAssets();
         Debug.Log("M3D: created Boids hash field pressure assets and scenes.");
+    }
+
+    [MenuItem("Tools/M3D/Create Boids Hash Field Pressure Presets")]
+    public static void CreateBoidsHashFieldPressurePresets()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateBoidsHashTwoTeamsFieldPressureAsset(BoidsHashTwoTeamsFieldPressG25Path, 0.8f, 25f);
+        CreateBoidsHashTwoTeamsFieldPressureAsset(BoidsHashTwoTeamsFieldPressMixPath, 2.5f, 12f);
+        CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldPG25Scene, BoidsHashTwoTeamsFieldPressG25Path);
+        CreateBoidsHashTwoTeamsFieldScene(BoidsHashTwoTeamsFieldPMixScene, BoidsHashTwoTeamsFieldPressMixPath);
+        EnableInBuild(BoidsHashTwoTeamsFieldPG25Scene, BoidsHashTwoTeamsFieldPMixScene);
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created Boids hash field pressure droplet and mix assets and scenes.");
     }
 
     private static void EnableInBuild(params string[] scenePaths)
@@ -2850,7 +2871,7 @@ public static class M3DDemoTools
         EditorBuildSettings.scenes = scenes.ToArray();
     }
 
-    private static void CreateBoidsHashTwoTeamsFieldPressureAsset(string path, float weight)
+    private static void CreateBoidsHashTwoTeamsFieldPressureAsset(string path, float weight, float g0 = 40f)
     {
         EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
         if (existing != null)
@@ -2886,7 +2907,7 @@ public static class M3DDemoTools
                     Extents = new Vector3(45f, 0f, 45f),
                     PressureTexel = 0.25f,
                     Weight = weight,
-                    G0 = 40f,
+                    G0 = g0,
                     Jitter = true,
                     JitterSeed = 1,
                 },

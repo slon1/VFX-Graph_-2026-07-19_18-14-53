@@ -11,10 +11,15 @@ public class BoidsHashFieldPressurePresetTests
     private const string FieldPath = "Assets/Effects/Boids_hash_2teams_field.asset";
     private const string Press08Path = "Assets/Effects/Boids_hash_2teams_field_press08.asset";
     private const string Press10Path = "Assets/Effects/Boids_hash_2teams_field_press10.asset";
+    private const string PressG25Path = "Assets/Effects/Boids_hash_2teams_field_press_g25.asset";
+    private const string PressMixPath = "Assets/Effects/Boids_hash_2teams_field_press_mix.asset";
     private const string Press08Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P08.unity";
     private const string Press10Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P10.unity";
+    private const string PressG25Scene = "Assets/Scenes/Boids_Hash_2Teams_Field_P_G25.unity";
+    private const string PressMixScene = "Assets/Scenes/Boids_Hash_2Teams_Field_P_MIX.unity";
     private const float DeltaTime = 1f / 60f;
     private const int Frames = 30;
+    private const int WideFrames = 60;
     private const int ParticlesPerTeam = 1500;
 
     private EffectAsset effectCopy;
@@ -41,20 +46,20 @@ public class BoidsHashFieldPressurePresetTests
     [Test]
     public void Press08Preset_MatchesPressureConstants()
     {
-        AssertPressureChain(Load(Press08Path), 0.8f);
+        AssertPressureChain(Load(Press08Path), 0.8f, 40f);
     }
 
     [Test]
     public void Press10Preset_MatchesPressureConstants()
     {
-        AssertPressureChain(Load(Press10Path), 1.0f);
+        AssertPressureChain(Load(Press10Path), 1.0f, 40f);
     }
 
     [Test]
     public void PressPresets_MatchFieldTwinExceptPressurePass()
     {
-        AssertPressureTwin(Press08Path, 0.8f);
-        AssertPressureTwin(Press10Path, 1.0f);
+        AssertPressureTwin(Press08Path, 0.8f, 40f);
+        AssertPressureTwin(Press10Path, 1.0f, 40f);
     }
 
     [Test]
@@ -74,6 +79,41 @@ public class BoidsHashFieldPressurePresetTests
     }
 
     [Test]
+    public void PressG25Preset_MatchesPressureConstants()
+    {
+        AssertPressureChain(Load(PressG25Path), 0.8f, 25f);
+    }
+
+    [Test]
+    public void PressMixPreset_MatchesPressureConstants()
+    {
+        AssertPressureChain(Load(PressMixPath), 2.5f, 12f);
+    }
+
+    [Test]
+    public void OwnerPresets_MatchFieldTwinExceptPressurePass()
+    {
+        AssertPressureTwin(PressG25Path, 0.8f, 25f);
+        AssertPressureTwin(PressMixPath, 2.5f, 12f);
+    }
+
+    [Test]
+    public void Validator_AcceptsOwnerPresetsWithoutWarnings()
+    {
+        AssertAccepted(Load(PressG25Path));
+        AssertAccepted(Load(PressMixPath));
+    }
+
+    [Test]
+    public void OwnerScenes_AreEnabledInTheBuild()
+    {
+        Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(PressG25Scene), PressG25Scene);
+        Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(PressMixScene), PressMixScene);
+        Assert.IsTrue(IsEnabledInBuild(PressG25Scene), PressG25Scene);
+        Assert.IsTrue(IsEnabledInBuild(PressMixScene), PressMixScene);
+    }
+
+    [Test]
     [Timeout(180000)]
     public void PressChains_ThirtyFrames_StayFiniteAndConserveBothN()
     {
@@ -83,10 +123,51 @@ public class BoidsHashFieldPressurePresetTests
 
     [Test]
     [Timeout(180000)]
+    public void OwnerPressChains_ThirtyFrames_StayFiniteAndConserveBothN()
+    {
+        RunChain(PressG25Path);
+        RunChain(PressMixPath);
+    }
+
+    [Test]
+    [Timeout(180000)]
     public void Press08_TwoRunsOnSameInstance_MatchPositionsWithinOneMicro()
     {
+        AssertRepro(Press08Path);
+    }
+
+    [Test]
+    [Timeout(180000)]
+    public void PressG25_TwoRunsOnSameInstance_MatchPositionsWithinOneMicro()
+    {
+        AssertRepro(PressG25Path);
+    }
+
+    [Test]
+    [Timeout(180000)]
+    public void PressMix_TwoRunsOnSameInstance_MatchPositionsWithinOneMicro()
+    {
+        AssertRepro(PressMixPath);
+    }
+
+    [Test]
+    [Timeout(180000)]
+    public void WideParams_Weight3_G0_12_SixtyFrames_StayFinite()
+    {
+        RunWideParams(3f, 12f);
+    }
+
+    [Test]
+    [Timeout(180000)]
+    public void WideParams_Weight10_G0_1eMinus3_SixtyFrames_StayFinite()
+    {
+        RunWideParams(10f, 1e-3f);
+    }
+
+    private void AssertRepro(string path)
+    {
         Assume.That(SystemInfo.supportsComputeShaders);
-        EffectAsset asset = InstantiateAsset(Press08Path);
+        EffectAsset asset = InstantiateAsset(path);
         Vector3[] first = RunPositions(asset);
         Vector3[] second = RunPositions(asset);
         double max = 0.0;
@@ -109,6 +190,51 @@ public class BoidsHashFieldPressurePresetTests
         }
 
         Assert.Pass("maxAbs=" + max.ToString("G6") + " worst=" + worst);
+    }
+
+    private void RunWideParams(float weight, float g0)
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        EffectAsset asset = InstantiateAsset(Press08Path);
+        FieldDensityPressurePass pressure = FindPressure(asset.Passes);
+        pressure.Weight = weight;
+        pressure.G0 = g0;
+        ParticleSet particles = new ParticleSet();
+        FieldSet fields = new FieldSet();
+        CommandBuffer cmd = new CommandBuffer { name = "PressureWideParams" };
+        GraphicsBuffer teams = null;
+        try
+        {
+            SetupAndRun(asset, particles, fields, cmd, out teams, WideFrames);
+            int count = particles.Count;
+            Vector3[] position = new Vector3[count];
+            Vector3[] heading = new Vector3[count];
+            particles.Get(BuiltinAttributes.Position).GetData(position);
+            particles.Get(BuiltinAttributes.Heading).GetData(heading);
+            for (int i = 0; i < count; i++)
+            {
+                AssertFinite(position[i]);
+                AssertFinite(heading[i]);
+                Assert.GreaterOrEqual(position[i].x, -45f - 1e-3f);
+                Assert.LessOrEqual(position[i].x, 45f + 1e-3f);
+                Assert.GreaterOrEqual(position[i].z, -45f - 1e-3f);
+                Assert.LessOrEqual(position[i].z, 45f + 1e-3f);
+            }
+
+            FieldNeighborCollectPass collect = FindCollect(asset.Passes);
+            Assert.AreEqual(ParticlesPerTeam, SumCollectN(collect, 0), 0.1d);
+            Assert.AreEqual(ParticlesPerTeam, SumCollectN(collect, 1), 0.1d);
+            Assert.AreEqual(ParticlesPerTeam * 16384L, SumPressureN(pressure, 0));
+            Assert.AreEqual(ParticlesPerTeam * 16384L, SumPressureN(pressure, 1));
+        }
+        finally
+        {
+            DisposePasses(asset);
+            teams?.Dispose();
+            cmd.Release();
+            fields.Dispose();
+            particles.Dispose();
+        }
     }
 
     [Test]
@@ -172,7 +298,7 @@ public class BoidsHashFieldPressurePresetTests
         }
     }
 
-    private static void AssertPressureChain(EffectAsset asset, float weight)
+    internal static void AssertPressureChain(EffectAsset asset, float weight, float g0)
     {
         Assert.AreEqual(1f, asset.SimulationSpeed);
         Assert.AreEqual(0.5f, asset.ParticleSize);
@@ -193,7 +319,7 @@ public class BoidsHashFieldPressurePresetTests
         FieldDensityPressurePass pressure = (FieldDensityPressurePass)passes[4];
         Assert.AreEqual(0.25f, pressure.PressureTexel);
         Assert.AreEqual(weight, pressure.Weight);
-        Assert.AreEqual(40f, pressure.G0);
+        Assert.AreEqual(g0, pressure.G0);
         Assert.IsTrue(pressure.Jitter);
         Assert.AreEqual(1, pressure.JitterSeed);
         Assert.AreEqual(collect.Center, pressure.Center);
@@ -204,7 +330,7 @@ public class BoidsHashFieldPressurePresetTests
         Assert.IsInstanceOf<HeadingToValuePass>(passes[8]);
     }
 
-    private static void AssertPressureTwin(string path, float weight)
+    internal static void AssertPressureTwin(string path, float weight, float g0)
     {
         EffectAsset field = Load(FieldPath);
         EffectAsset twin = Load(path);
@@ -246,7 +372,9 @@ public class BoidsHashFieldPressurePresetTests
         }
 
         Assert.IsInstanceOf<FieldDensityPressurePass>(twin.Passes[4]);
-        Assert.AreEqual(weight, ((FieldDensityPressurePass)twin.Passes[4]).Weight);
+        FieldDensityPressurePass pressure = (FieldDensityPressurePass)twin.Passes[4];
+        Assert.AreEqual(weight, pressure.Weight);
+        Assert.AreEqual(g0, pressure.G0);
         for (int i = 4; i < field.Passes.Count; i++)
         {
             Assert.AreEqual(field.Passes[i].GetType(), twin.Passes[i + 1].GetType());
