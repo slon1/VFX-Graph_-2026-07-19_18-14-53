@@ -1,0 +1,40 @@
+{
+    "series":  "BBB",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "",
+    "maxn":  "48",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\6d776be-1aef2251\\20261117-0808",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "v-PK1-collect16-B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "v-PK1-collect16-B2",
+                       "status":  "ok",
+                       "file":  "02-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "v-PK1-collect16-B3",
+                       "status":  "ok",
+                       "file":  "03-B-720.txt",
+                       "reason":  ""
+                   }
+               ]
+}

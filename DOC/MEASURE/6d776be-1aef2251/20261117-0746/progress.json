@@ -1,0 +1,58 @@
+{
+    "series":  "BABAB",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "",
+    "maxn":  "48",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\6d776be-1aef2251\\20261117-0746",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "v-SCAT-B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "A",
+                       "walk":  "",
+                       "tag":  "v-SCAT-A1",
+                       "status":  "ok",
+                       "file":  "02-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "v-SCAT-B2",
+                       "status":  "ok",
+                       "file":  "03-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  4,
+                       "mode":  "A",
+                       "walk":  "",
+                       "tag":  "v-SCAT-A2",
+                       "status":  "ok",
+                       "file":  "04-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  5,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "v-SCAT-B3",
+                       "status":  "ok",
+                       "file":  "05-B-720.txt",
+                       "reason":  ""
+                   }
+               ]
+}
