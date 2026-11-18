@@ -305,9 +305,9 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
             Array.Clear(scratchZeros, 0, scratchZeros.Length);
         }
 
+        cmd.SetBufferData(scratchVelocity, scratchZeros);
         for (int repeat = 2; repeat <= fieldRepeatCount; repeat++)
         {
-            cmd.SetBufferData(scratchVelocity, scratchZeros);
             DispatchChain(cmd, count, layout.CellCount, scratchDensity, scratchGrad, scratchVelocity, context);
         }
 
