@@ -2866,6 +2866,239 @@ public static class M3DDemoTools
         Debug.Log("M3D: created P400c field pressure K1 and K3 assets and scenes.");
     }
 
+    [MenuItem("Tools/M3D/Create Boids Hash Scaled Effects")]
+    public static void CreateBoidsHashScaledEffects()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            Debug.LogError("M3D: scaled effects cancelled.");
+            return;
+        }
+
+        var scenePaths = new System.Collections.Generic.List<string>();
+        float[] scales = { 0.375f, 0.5f, 0.625f, 0.75f, 0.875f };
+        string[] scaleLabels = { "56k", "100k", "156k", "225k", "306k" };
+        for (int i = 0; i < scales.Length; i++)
+        {
+            float s = scales[i];
+            string label = scaleLabels[i];
+            float world = 224f * s;
+            float extent = world * 0.5f;
+            int perTeam = Mathf.RoundToInt(200000f * s * s);
+            float spawnRadius = 45f * s;
+            float centerX = 55f * s;
+            Vector3 extents = new Vector3(extent, 0f, extent);
+
+            string baseAsset = EffectsFolder + "/Boids_hash_P" + label + "_base.asset";
+            string pressAsset = EffectsFolder + "/Boids_hash_P" + label + "_press_K3.asset";
+            string baseScene = "Assets/Scenes/Boids_Hash_P" + label + "_Base.unity";
+            string pressScene = "Assets/Scenes/Boids_Hash_P" + label + "_Press_K3.unity";
+
+            CreateScaledBaseAsset(baseAsset, extents, perTeam, spawnRadius, centerX);
+            CreateScaledPressK3Asset(pressAsset, extents, perTeam, spawnRadius, centerX, particleSize: P400cParticleSize);
+            CreateScaledScene(baseScene, baseAsset, extent, "M3D Boids Hash P" + label + " Base");
+            CreateScaledScene(pressScene, pressAsset, extent, "M3D Boids Hash P" + label + " Press K3");
+            scenePaths.Add(baseScene);
+            scenePaths.Add(pressScene);
+        }
+
+        int[] fixedNs = { 100000, 200000, 300000 };
+        string[] fixedLabels = { "100k", "200k", "300k" };
+        for (int i = 0; i < fixedNs.Length; i++)
+        {
+            int total = fixedNs[i];
+            string label = fixedLabels[i];
+            string pressAsset = EffectsFolder + "/Boids_hash_W224_" + label + "_press_K3.asset";
+            string pressScene = "Assets/Scenes/Boids_Hash_W224_" + label + "_Press_K3.unity";
+            CreateScaledPressK3Asset(
+                pressAsset,
+                P400cExtents,
+                total / 2,
+                spawnRadius: 45f,
+                centerX: 55f,
+                particleSize: P400cParticleSize);
+            CreateScaledScene(pressScene, pressAsset, P400cCameraSize, "M3D Boids Hash W224 " + label + " Press K3");
+            scenePaths.Add(pressScene);
+        }
+
+        string size025Asset = EffectsFolder + "/Boids_hash_P400c_field_press_K3_s025.asset";
+        string size0125Asset = EffectsFolder + "/Boids_hash_P400c_field_press_K3_s0125.asset";
+        string size025Scene = "Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_S025.unity";
+        string size0125Scene = "Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_S0125.unity";
+        CreateScaledPressK3Asset(
+            size025Asset, P400cExtents, 200000, spawnRadius: 45f, centerX: 55f, particleSize: 0.25f);
+        CreateScaledPressK3Asset(
+            size0125Asset, P400cExtents, 200000, spawnRadius: 45f, centerX: 55f, particleSize: 0.125f);
+        CreateScaledScene(size025Scene, size025Asset, P400cCameraSize, "M3D Boids Hash P400c Press K3 S025");
+        CreateScaledScene(size0125Scene, size0125Asset, P400cCameraSize, "M3D Boids Hash P400c Press K3 S0125");
+        scenePaths.Add(size025Scene);
+        scenePaths.Add(size0125Scene);
+
+        EnableInBuild(scenePaths.ToArray());
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created scaled C/W and particle-size probe assets and scenes (" + scenePaths.Count + ").");
+    }
+
+    private static void CreateScaledBaseAsset(
+        string path,
+        Vector3 extents,
+        int perTeam,
+        float spawnRadius,
+        float centerX)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        BuildSpatialHashPass hash = new BuildSpatialHashPass { MinCellSize = 3f };
+        BoxBoundsPass box = new BoxBoundsPass();
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            P400cSimulationSpeed,
+            new SimPass[]
+            {
+                hash,
+                new ClearVelocityPass(),
+                new BoidNeighborForcePass { MaxNeighbors = 48, CountCapHits = false },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                box,
+                new HeadingToValuePass(),
+            });
+        ConfigureP400cSource(asset);
+        ApplyScaledSource(asset, perTeam, spawnRadius, centerX, P400cParticleSize);
+        hash.Center = Vector3.zero;
+        hash.Extents = extents;
+        hash.Wrap = true;
+        box.Center = Vector3.zero;
+        box.Extents = extents;
+        box.Behaviour = BoundsBehaviour.Wrap;
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void CreateScaledPressK3Asset(
+        string path,
+        Vector3 extents,
+        int perTeam,
+        float spawnRadius,
+        float centerX,
+        float particleSize)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        FieldNeighborCollectPass collect = new FieldNeighborCollectPass
+        {
+            Mode = FieldCollectMode.Scatter,
+            Center = Vector3.zero,
+            Extents = extents,
+            TexelSize = 1f,
+            RefreshInterval = 3,
+        };
+        BoxBoundsPass box = new BoxBoundsPass
+        {
+            Center = Vector3.zero,
+            Extents = extents,
+            Behaviour = BoundsBehaviour.Wrap,
+        };
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(
+            DataSourceKind.Swarm,
+            P400cSimulationSpeed,
+            new SimPass[]
+            {
+                collect,
+                new FieldNeighborConvolvePass(),
+                new ClearVelocityPass(),
+                new FieldNeighborForcePass
+                {
+                    Center = Vector3.zero,
+                    Extents = extents,
+                    TexelSize = 1f,
+                },
+                new FieldDensityPressurePass
+                {
+                    Center = Vector3.zero,
+                    Extents = extents,
+                    PressureTexel = 0.25f,
+                    Weight = 0.8f,
+                    G0 = 25f,
+                    Jitter = true,
+                    JitterSeed = 1,
+                },
+                new TeamHeadingSteerPass(),
+                new IntegratePass(),
+                box,
+                new HeadingToValuePass(),
+            });
+        ConfigureP400cSource(asset);
+        ApplyScaledSource(asset, perTeam, spawnRadius, centerX, particleSize);
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    private static void ApplyScaledSource(
+        EffectAsset asset,
+        int perTeam,
+        float spawnRadius,
+        float centerX,
+        float particleSize)
+    {
+        SwarmSource swarm = (SwarmSource)asset.ResolveSource();
+        swarm.Spawns[0].Count = perTeam;
+        swarm.Spawns[0].Center = new Vector2(-centerX, 0f);
+        swarm.Spawns[0].Radius = spawnRadius;
+        swarm.Spawns[1].Count = perTeam;
+        swarm.Spawns[1].Center = new Vector2(centerX, 0f);
+        swarm.Spawns[1].Radius = spawnRadius;
+
+        SerializedObject so = new SerializedObject(asset);
+        so.FindProperty("particleSize").floatValue = particleSize;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateScaledScene(string scenePath, string assetPath, float cameraSize, string hostName)
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        Camera camera = Camera.main;
+        if (camera == null)
+        {
+            throw new System.InvalidOperationException("M3D: scaled scene has no main camera.");
+        }
+
+        ConfigureP400cCamera(camera);
+        camera.orthographicSize = cameraSize;
+        camera.gameObject.AddComponent<FPSDisplay>();
+
+        EffectAsset asset = AssetDatabase.LoadAssetAtPath<EffectAsset>(assetPath);
+        GameObject host = new GameObject(hostName);
+        SimulationWorld world = host.AddComponent<SimulationWorld>();
+        SerializedObject worldSo = new SerializedObject(world);
+        worldSo.FindProperty("effect").objectReferenceValue = asset;
+        worldSo.FindProperty("visualEffect").objectReferenceValue = null;
+        worldSo.FindProperty("inputRouter").objectReferenceValue = null;
+        EnsurePassLibrary(worldSo.FindProperty("passLibrary"));
+        worldSo.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, scenePath);
+    }
+
     private static void EnableInBuild(params string[] scenePaths)
     {
         var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
