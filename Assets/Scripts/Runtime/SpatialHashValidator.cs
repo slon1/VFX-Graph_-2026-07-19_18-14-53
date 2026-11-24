@@ -254,6 +254,11 @@ internal static class SpatialHashValidator
                     $"(force center {fieldForce.Center}, extents {fieldForce.Extents}, texel {fieldForce.TexelSize}; " +
                     $"collect center {collect.Center}, extents {collect.Extents}, texel {collect.TexelSize}).");
             }
+
+            if (fieldForce.SortedOrder)
+            {
+                RequireSortedHash(passes, forceIndex, collect.Center, collect.Extents);
+            }
         }
 
         if (collect == null || convolveIndex < 0)
@@ -364,6 +369,46 @@ internal static class SpatialHashValidator
             throw new InvalidOperationException(
                 "SimulationWorld: field resolution " + layout.Resolution.x + "x" + layout.Resolution.y +
                 " is below 2*ceil(R/t)+2 = " + wrapSpan + ".");
+        }
+    }
+
+    private static void RequireSortedHash(
+        IReadOnlyList<SimPass> passes,
+        int index,
+        Vector3 center,
+        Vector3 extents)
+    {
+        BuildSpatialHashPass hash = null;
+        for (int i = 0; i < index; i++)
+        {
+            if (passes[i] is BuildSpatialHashPass candidate && candidate.Enabled)
+            {
+                hash = candidate;
+            }
+        }
+
+        if (hash == null)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: SortedOrder requires Build Spatial Hash before the pass.");
+        }
+
+        float tol = BoundsTolerance;
+        float hashMinX = hash.Center.x - hash.Extents.x;
+        float hashMaxX = hash.Center.x + hash.Extents.x;
+        float hashMinZ = hash.Center.z - hash.Extents.z;
+        float hashMaxZ = hash.Center.z + hash.Extents.z;
+        float fieldMinX = center.x - extents.x;
+        float fieldMaxX = center.x + extents.x;
+        float fieldMinZ = center.z - extents.z;
+        float fieldMaxZ = center.z + extents.z;
+        if (hashMinX > fieldMinX + tol || hashMaxX < fieldMaxX - tol ||
+            hashMinZ > fieldMinZ + tol || hashMaxZ < fieldMaxZ - tol)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: spatial hash does not cover the field world " +
+                "(hash center " + hash.Center + ", extents " + hash.Extents +
+                "; field center " + center + ", extents " + extents + ").");
         }
     }
 
@@ -632,6 +677,11 @@ internal static class SpatialHashValidator
             {
                 throw new InvalidOperationException(
                     "SimulationWorld: Field Density Pressure G0 must be > 0, found " + pressure.G0 + ".");
+            }
+
+            if (pressure.SortedOrder)
+            {
+                RequireSortedHash(passes, i, pressure.Center, pressure.Extents);
             }
 
             if (collect != null)

@@ -19,6 +19,11 @@ float FieldRt;
 float FieldR;
 float FieldEps;
 uint ParticleCount;
+int ReadPattern;
+int RepeatSpan;
+int SortedOrder;
+
+StructuredBuffer<uint> SortedIndices;
 
 StructuredBuffer<float3> position;
 StructuredBuffer<float3> heading;
@@ -321,17 +326,48 @@ void FieldNeighborForce(uint3 id : SV_DispatchThreadID)
         return;
     }
 
-    uint team = teamId[id.x];
+    uint particle = SortedOrder != 0 ? SortedIndices[id.x] : id.x;
+    if (particle >= ParticleCount)
+    {
+        return;
+    }
+
+    uint team = teamId[particle];
     if (team > 1u)
     {
         return;
     }
 
-    float2 p = position[id.x].xz;
+    float2 p = position[particle].xz;
     int2 i0;
     float2 f;
     float w00, w10, w01, w11;
-    CicCorners(p, HashOrigin, HashCellSize, i0, f, w00, w10, w01, w11);
+    if (ReadPattern == 0)
+    {
+        CicCorners(p, HashOrigin, HashCellSize, i0, f, w00, w10, w01, w11);
+    }
+    else
+    {
+        uint cells = max(HashCellCount, 1u);
+        uint baseIndex = 0u;
+        if (ReadPattern == 2)
+        {
+            baseIndex = id.x % cells;
+        }
+        else if (ReadPattern == 3)
+        {
+            uint span = (uint)max(RepeatSpan, 1);
+            uint mixed = id.x * 747796405u + 2891336453u;
+            baseIndex = mixed % span;
+        }
+
+        i0 = ReadPattern == 1 ? int2(0, 0) : TexelCoord(baseIndex);
+        f = float2(0.5, 0.5);
+        w00 = 0.25;
+        w10 = 0.25;
+        w01 = 0.25;
+        w11 = 0.25;
+    }
     int2 corner0 = i0;
     int2 corner1 = i0 + int2(1, 0);
     int2 corner2 = i0 + int2(0, 1);
@@ -364,7 +400,7 @@ void FieldNeighborForce(uint3 id : SV_DispatchThreadID)
         ks += w * (packedA.zw + packedG.w * texelFromParticle);
     }
 
-    float2 headingXz = heading[id.x].xz;
+    float2 headingXz = heading[particle].xz;
     ns -= 1.0;
     align -= headingXz;
     ng -= 1.0;
@@ -389,7 +425,7 @@ void FieldNeighborForce(uint3 id : SV_DispatchThreadID)
         }
     }
 
-    velocity[id.x] += float3(force.x, 0, force.y);
+    velocity[particle] += float3(force.x, 0, force.y);
 }
 
 // Writes the four wrapped texel indices and CIC weights. Test (ж) only.

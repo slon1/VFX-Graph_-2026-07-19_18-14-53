@@ -9,6 +9,14 @@ public enum FieldCollectMode
 }
 
 /// <summary>Which field kernels a diagnostic repeat measures (ADR-061). All is the running chain.</summary>
+public enum FieldRepeatReadPattern
+{
+    Normal = 0,
+    OneTexel = 1,
+    LinearById = 2,
+    Span = 3,
+}
+
 public enum FieldRepeatStage
 {
     All = 0,
@@ -122,6 +130,7 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
     [NonSerialized] private int fieldRepeatCount = 1;
     [NonSerialized] private GraphicsBuffer scratchRaw;
     [NonSerialized] private GraphicsBuffer scratchAccum;
+    [NonSerialized] private GraphicsBuffer indexDummy;
 
     public FieldCollectMode Mode
     {
@@ -258,6 +267,7 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
             Bind(cmd, gatherKernel, "SortedDirections", hash.SortedDirections);
             Bind(cmd, gatherKernel, "SortedTeams", hash.SortedTeams);
             Bind(cmd, gatherKernel, "Raw", field.Raw);
+            BindSorted(cmd, gatherKernel);
             int groups = (field.Layout.CellCount + ThreadGroupSize - 1) / ThreadGroupSize;
             cmd.DispatchCompute(gatherKernel.Shader, gatherKernel.Index, groups, 1, 1);
             RepeatGather(cmd, groups);
@@ -269,6 +279,8 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
             Bind(cmd, scatterKernel, "heading", context.Particles.Get(BuiltinAttributes.Heading));
             Bind(cmd, scatterKernel, "teamId", context.Particles.Get(BuiltinAttributes.TeamId));
             Bind(cmd, scatterKernel, "Accum", field.Accum);
+            BindSorted(cmd, clearKernel);
+            BindSorted(cmd, scatterKernel);
             int accumCount = field.Layout.CellCount * FieldNeighborSet.ChannelsPerTexel;
             int clearGroups = (accumCount + ThreadGroupSize - 1) / ThreadGroupSize;
             int particleGroups = (field.ParticleCount + ThreadGroupSize - 1) / ThreadGroupSize;
@@ -285,8 +297,25 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
     public void Dispose()
     {
         ReleaseScratch();
+        indexDummy?.Release();
+        indexDummy = null;
         field?.Dispose();
         field = null;
+    }
+
+    private void BindSorted(CommandBuffer cmd, KernelHandle handle)
+    {
+        if (!handle.IsValid)
+        {
+            return;
+        }
+
+        if (indexDummy == null)
+        {
+            indexDummy = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
+        }
+
+        cmd.SetComputeBufferParam(handle.Shader, handle.Index, "SortedIndices", indexDummy);
     }
 
     private bool RepeatsCollect =>
@@ -388,6 +417,7 @@ public sealed class FieldNeighborConvolvePass : SimPass, IFieldNeighborPass, IDi
     [NonSerialized] private KernelHandle gradientKernel;
     [NonSerialized] private int fieldRepeatCount = 1;
     [NonSerialized] private GraphicsBuffer scratchPhi;
+    [NonSerialized] private GraphicsBuffer indexDummy;
     [NonSerialized] private GraphicsBuffer scratchField;
 
     public override string DisplayName => "Field Neighbor Convolve";
@@ -465,6 +495,8 @@ public sealed class FieldNeighborConvolvePass : SimPass, IFieldNeighborPass, IDi
 
         Bind(cmd, gradientKernel, "Phi", field.Phi);
         Bind(cmd, gradientKernel, "FieldSlots", field.Field);
+        BindSorted(cmd, potential);
+        BindSorted(cmd, gradientKernel);
         int groups = (field.Layout.CellCount + ThreadGroupSize - 1) / ThreadGroupSize;
         cmd.DispatchCompute(potential.Shader, potential.Index, groups, 1, 1);
         cmd.DispatchCompute(gradientKernel.Shader, gradientKernel.Index, groups, 1, 1);
@@ -476,6 +508,23 @@ public sealed class FieldNeighborConvolvePass : SimPass, IFieldNeighborPass, IDi
     public void Dispose()
     {
         ReleaseScratch();
+        indexDummy?.Release();
+        indexDummy = null;
+    }
+
+    private void BindSorted(CommandBuffer cmd, KernelHandle handle)
+    {
+        if (!handle.IsValid)
+        {
+            return;
+        }
+
+        if (indexDummy == null)
+        {
+            indexDummy = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
+        }
+
+        cmd.SetComputeBufferParam(handle.Shader, handle.Index, "SortedIndices", indexDummy);
     }
 
     private void RepeatPotential(CommandBuffer cmd, KernelHandle potential, FieldNeighborSet field, int groups)
@@ -563,8 +612,12 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
     [SerializeField] private Vector3 center = Vector3.zero;
     [SerializeField] private Vector3 extents = new Vector3(16f, 0f, 16f);
     [SerializeField, Min(1e-4f)] private float texelSize = 1f;
+    [SerializeField] private FieldRepeatReadPattern repeatReadPattern = FieldRepeatReadPattern.Normal;
+    [SerializeField, Min(1)] private int repeatSpan = 1;
+    [SerializeField] private bool sortedOrder;
 
     [NonSerialized] private KernelHandle kernel;
+    [NonSerialized] private GraphicsBuffer indexDummy;
     [NonSerialized] private int fieldRepeatCount = 1;
     [NonSerialized] private GraphicsBuffer scratchVelocity;
     [NonSerialized] private Vector3[] scratchZeros;
@@ -591,6 +644,24 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
     {
         get => texelSize;
         set => texelSize = value;
+    }
+
+    public FieldRepeatReadPattern RepeatReadPattern
+    {
+        get => repeatReadPattern;
+        set => repeatReadPattern = value;
+    }
+
+    public int RepeatSpan
+    {
+        get => repeatSpan;
+        set => repeatSpan = Mathf.Max(1, value);
+    }
+
+    public bool SortedOrder
+    {
+        get => sortedOrder;
+        set => sortedOrder = value;
     }
 
     /// <summary>Diagnostic stage. Does not change <see cref="SimPass.RepeatCount"/>.</summary>
@@ -653,6 +724,10 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
         CommandBuffer cmd = context.Cmd;
         ComputeShader shader = kernel.Shader;
         field.PushParams(cmd, shader, field.RadiusTexels(context.Teams), field.TeamRadius(context.Teams));
+        cmd.SetComputeIntParam(shader, ReadPatternId, (int)FieldRepeatReadPattern.Normal);
+        cmd.SetComputeIntParam(shader, RepeatSpanId, repeatSpan);
+        cmd.SetComputeIntParam(shader, SortedOrderId, sortedOrder ? 1 : 0);
+        BindIndices(cmd, kernel.Index, context);
         cmd.SetComputeIntParam(shader, SimShaderIds.ParticleCount, count);
         Bind(cmd, "position", context.Particles.Get(BuiltinAttributes.Position));
         Bind(cmd, "heading", context.Particles.Get(BuiltinAttributes.Heading));
@@ -669,6 +744,8 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
     public void Dispose()
     {
         ReleaseScratch();
+        indexDummy?.Release();
+        indexDummy = null;
         liveVelocity = null;
     }
 
@@ -700,12 +777,36 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
 
         cmd.SetBufferData(scratchVelocity, scratchZeros);
         Bind(cmd, "velocity", scratchVelocity);
+        cmd.SetComputeIntParam(kernel.Shader, ReadPatternId, (int)repeatReadPattern);
         for (int repeat = 2; repeat <= fieldRepeatCount; repeat++)
         {
             cmd.DispatchCompute(kernel.Shader, kernel.Index, groups, 1, 1);
         }
 
         Bind(cmd, "velocity", liveVelocity);
+        cmd.SetComputeIntParam(kernel.Shader, ReadPatternId, (int)FieldRepeatReadPattern.Normal);
+    }
+
+    private void BindIndices(CommandBuffer cmd, int kernelIndex, SimContext context)
+    {
+        GraphicsBuffer indices = indexDummy;
+        if (sortedOrder)
+        {
+            if (context.SpatialHash == null || context.SpatialHash.SortedIndices == null)
+            {
+                throw new InvalidOperationException(
+                    "Field Neighbor Force SortedOrder requires Build Spatial Hash earlier in the chain.");
+            }
+
+            indices = context.SpatialHash.SortedIndices;
+        }
+        else if (indexDummy == null)
+        {
+            indexDummy = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
+            indices = indexDummy;
+        }
+
+        cmd.SetComputeBufferParam(kernel.Shader, kernelIndex, "SortedIndices", indices);
     }
 
     private void Bind(CommandBuffer cmd, string name, GraphicsBuffer buffer)
@@ -719,4 +820,8 @@ public sealed class FieldNeighborForcePass : SimPass, IFieldNeighborPass, IDispo
         scratchVelocity = null;
         scratchZeros = null;
     }
+
+    private static readonly int ReadPatternId = Shader.PropertyToID("ReadPattern");
+    private static readonly int RepeatSpanId = Shader.PropertyToID("RepeatSpan");
+    private static readonly int SortedOrderId = Shader.PropertyToID("SortedOrder");
 }

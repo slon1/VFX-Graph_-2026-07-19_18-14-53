@@ -486,6 +486,115 @@ public class FieldNeighborForceTests
     }
 
     [Test]
+    public void RepeatReadPattern_LeavesTheLiveForceAndNormalScratchAlone()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        SpatialHashLayout layout = Layout(16f);
+        Vector2[] positions =
+        {
+            layout.Origin + new Vector2(4f, 4f),
+            layout.Origin + new Vector2(5.2f, 4.4f),
+            layout.Origin + new Vector2(6f, 7f),
+        };
+        Vector2[] headings =
+        {
+            new Vector2(1f, 0f),
+            new Vector2(0f, 1f),
+            new Vector2(0.6f, 0.8f),
+        };
+        int[] teams = { 0, 0, 1 };
+        Vector3[] normalLive;
+        Vector3[] normalScratch;
+        using (Rig rig = new Rig(positions, headings, teams, layout, 1))
+        {
+            rig.SetForceDiagnostics(FieldRepeatStage.Force, 4);
+            rig.SetReadPattern(FieldRepeatReadPattern.Normal, 1);
+            rig.Step();
+            normalLive = rig.ReadVelocity();
+            normalScratch = rig.ReadScratch();
+        }
+
+        FieldRepeatReadPattern[] patterns =
+        {
+            FieldRepeatReadPattern.OneTexel,
+            FieldRepeatReadPattern.LinearById,
+            FieldRepeatReadPattern.Span,
+        };
+        for (int p = 0; p < patterns.Length; p++)
+        {
+            using (Rig rig = new Rig(positions, headings, teams, layout, 1))
+            {
+                rig.SetForceDiagnostics(FieldRepeatStage.Force, 4);
+                rig.SetReadPattern(patterns[p], 8);
+                rig.Step();
+                Vector3[] live = rig.ReadVelocity();
+                for (int i = 0; i < live.Length; i++)
+                {
+                    Assert.AreEqual(normalLive[i].x, live[i].x, 0f, patterns[p] + " x " + i);
+                    Assert.AreEqual(normalLive[i].z, live[i].z, 0f, patterns[p] + " z " + i);
+                }
+            }
+        }
+
+        for (int i = 0; i < normalLive.Length; i++)
+        {
+            Assert.AreEqual(normalLive[i].x * 3f, normalScratch[i].x, 1e-5f, "scratch x " + i);
+            Assert.AreEqual(normalLive[i].z * 3f, normalScratch[i].z, 1e-5f, "scratch z " + i);
+        }
+    }
+
+    [Test]
+    public void SortedOrder_MatchesUnsorted_WhenTheHashRefreshesEveryThirdFrame()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        SpatialHashLayout layout = Layout(16f);
+        Vector2[] positions =
+        {
+            layout.Origin + new Vector2(4f, 4f),
+            layout.Origin + new Vector2(5.2f, 4.4f),
+            layout.Origin + new Vector2(6f, 7f),
+            layout.Origin + new Vector2(8f, 3f),
+        };
+        Vector2[] headings =
+        {
+            new Vector2(1f, 0f),
+            new Vector2(0f, 1f),
+            new Vector2(0.6f, 0.8f),
+            new Vector2(-1f, 0f),
+        };
+        int[] teams = { 0, 1, 0, 1 };
+        Vector3[] plain;
+        Vector3[] sorted;
+        using (Rig rig = new Rig(positions, headings, teams, layout, 1, FieldCollectMode.Gather))
+        {
+            rig.SetSorted(false, 3);
+            for (int i = 0; i < 3; i++)
+            {
+                rig.Step();
+            }
+
+            plain = rig.ReadVelocity();
+        }
+
+        using (Rig rig = new Rig(positions, headings, teams, layout, 1, FieldCollectMode.Gather))
+        {
+            rig.SetSorted(true, 3);
+            for (int i = 0; i < 3; i++)
+            {
+                rig.Step();
+            }
+
+            sorted = rig.ReadVelocity();
+        }
+
+        for (int i = 0; i < plain.Length; i++)
+        {
+            Assert.AreEqual(plain[i].x, sorted[i].x, 1e-5f, "x " + i);
+            Assert.AreEqual(plain[i].z, sorted[i].z, 1e-5f, "z " + i);
+        }
+    }
+
+    [Test]
     public void ForceStage_RepeatsIntoScratch_AndOffSkipsTheDispatch()
     {
         Assume.That(SystemInfo.supportsComputeShaders);
@@ -1480,6 +1589,28 @@ public class FieldNeighborForceTests
             force.FieldRepeatCount = repeats;
         }
 
+        public void SetReadPattern(FieldRepeatReadPattern pattern, int span)
+        {
+            force.RepeatReadPattern = pattern;
+            force.RepeatSpan = span;
+        }
+
+        public void SetSorted(bool sorted, int refresh)
+        {
+            force.SortedOrder = sorted;
+            if (hash != null)
+            {
+                hash.RefreshInterval = refresh;
+            }
+        }
+
+        public Vector3[] ReadScratch()
+        {
+            var values = new Vector3[force.ForceScratch.count];
+            force.ForceScratch.GetData(values);
+            return values;
+        }
+
         public GraphicsBuffer ForceScratch => force.ForceScratch;
 
         public int ForcePassRepeatCount => force.RepeatCount;
@@ -1547,12 +1678,14 @@ public class FieldNeighborForceTests
         {
             int kernel = fieldShader.FindKernel("FieldCicWeights");
             var output = new GraphicsBuffer(GraphicsBuffer.Target.Structured, particles.Count * 4, sizeof(float) * 2);
+            var indexDummy = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
             try
             {
                 context.FieldNeighbor.PushParams(context.Cmd, fieldShader, 3f, 3f);
                 context.Cmd.SetComputeIntParam(fieldShader, Shader.PropertyToID("ParticleCount"), particles.Count);
                 context.Cmd.SetComputeBufferParam(
                     fieldShader, kernel, "position", particles.Get(BuiltinAttributes.Position));
+                context.Cmd.SetComputeBufferParam(fieldShader, kernel, "SortedIndices", indexDummy);
                 context.Cmd.SetComputeBufferParam(fieldShader, kernel, "CicOut", output);
                 int groups = (particles.Count + 63) / 64;
                 context.Cmd.DispatchCompute(fieldShader, kernel, groups, 1, 1);
@@ -1564,6 +1697,7 @@ public class FieldNeighborForceTests
             }
             finally
             {
+                indexDummy.Release();
                 output.Release();
             }
         }

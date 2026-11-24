@@ -17,6 +17,9 @@ float2 PressureCellSize;
 int2 PressureRes;
 float PressureWeight;
 float PressureG0;
+int SortedOrder;
+
+StructuredBuffer<uint> SortedIndices;
 
 struct FieldTeamSlot
 {
@@ -83,13 +86,19 @@ void PressureScatter(uint3 id : SV_DispatchThreadID)
         return;
     }
 
-    uint team = teamId[id.x];
+    uint particle = SortedOrder != 0 ? SortedIndices[id.x] : id.x;
+    if (particle >= ParticleCount)
+    {
+        return;
+    }
+
+    uint team = teamId[particle];
     if (team > 1u)
     {
         return;
     }
 
-    float2 p = position[id.x].xz;
+    float2 p = position[particle].xz;
     int2 i0;
     float2 f;
     float w00, w10, w01, w11;
@@ -129,13 +138,19 @@ void PressureForce(uint3 id : SV_DispatchThreadID)
         return;
     }
 
-    uint team = teamId[id.x];
+    uint particle = SortedOrder != 0 ? SortedIndices[id.x] : id.x;
+    if (particle >= ParticleCount)
+    {
+        return;
+    }
+
+    uint team = teamId[particle];
     if (team > 1u)
     {
         return;
     }
 
-    float2 p = position[id.x].xz;
+    float2 p = position[particle].xz;
     int2 i0;
     float2 f;
     float w00, w10, w01, w11;
@@ -148,7 +163,7 @@ void PressureForce(uint3 id : SV_DispatchThreadID)
     g += ((float)q01 / scale) * Grad[CellIndex(i0 + int2(0, 1)) * 2u + team];
     g += ((float)q11 / scale) * Grad[CellIndex(i0 + int2(1, 1)) * 2u + team];
     float2 force = -PressureWeight * g / (length(g) + PressureG0);
-    velocity[id.x] += float3(force.x, 0, force.y);
+    velocity[particle] += float3(force.x, 0, force.y);
 }
 
 // Test kernel: wrapped cell index and the quantized weight that entered Density.

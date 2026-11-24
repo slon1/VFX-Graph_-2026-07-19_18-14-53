@@ -136,6 +136,48 @@ public class FieldDensityPressureTests
     }
 
     [Test]
+    public void SortedOrder_MatchesUnsorted_WhenTheHashRefreshesEveryThirdFrame()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        var positions = new[]
+        {
+            new Vector2(-1.2f, 0.2f),
+            new Vector2(0.4f, 0.1f),
+            new Vector2(1.1f, -0.3f),
+            new Vector2(-0.2f, 1.4f),
+        };
+        int[] teams = { 0, 0, 1, 1 };
+        Vector3[] plain;
+        Vector3[] sorted;
+        using (Rig rig = new Rig(positions, teams, 8f, jitter: false, texel: 1f, hashRefresh: 1))
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                rig.Step();
+            }
+
+            plain = rig.ReadVelocity();
+        }
+
+        using (Rig rig = new Rig(positions, teams, 8f, jitter: false, texel: 1f, hashRefresh: 3))
+        {
+            rig.Pass.SortedOrder = true;
+            for (int i = 0; i < 3; i++)
+            {
+                rig.Step();
+            }
+
+            sorted = rig.ReadVelocity();
+        }
+
+        for (int i = 0; i < plain.Length; i++)
+        {
+            Assert.AreEqual(plain[i].x, sorted[i].x, 1e-5f, "x " + i);
+            Assert.AreEqual(plain[i].z, sorted[i].z, 1e-5f, "z " + i);
+        }
+    }
+
+    [Test]
     public void Grid150_WorldCorners_StayInsideTheGrid()
     {
         Assume.That(SystemInfo.supportsComputeShaders);
@@ -628,7 +670,9 @@ public class FieldDensityPressureTests
         private readonly SimContext context;
         private GraphicsBuffer cic;
 
-        public Rig(Vector2[] positions, int[] teamIds, float extent, bool jitter, float texel = 0.25f)
+        private readonly BuildSpatialHashPass hash;
+
+        public Rig(Vector2[] positions, int[] teamIds, float extent, bool jitter, float texel = 0.25f, int hashRefresh = 0)
         {
             Pass = new FieldDensityPressurePass
             {
@@ -656,11 +700,38 @@ public class FieldDensityPressureTests
             slots[0].Radii = new Vector4(3f, 3f, 3f, 4f);
             slots[1].Radii = new Vector4(3f, 3f, 3f, 4f);
             teams.SetData(slots);
-            context = new SimContext(particles, fields, new[] { shader }, null);
+            ComputeShader hashShader = null;
+            if (hashRefresh > 0)
+            {
+                hashShader = AssetDatabase.LoadAssetAtPath<ComputeShader>(
+                    "Assets/Shaders/GPU/Passes/SpatialHashPasses.compute");
+                Assert.IsNotNull(hashShader);
+            }
+
+            context = new SimContext(
+                particles,
+                fields,
+                hashShader == null ? new[] { shader } : new[] { hashShader, shader },
+                null);
             cmd = new CommandBuffer { name = "DensityPressure" };
             context.Cmd = cmd;
             context.Teams = teams;
             Pass.Initialize(context);
+            BuildSpatialHashPass built = null;
+            if (hashRefresh > 0)
+            {
+                built = new BuildSpatialHashPass
+                {
+                    Center = Vector3.zero,
+                    Extents = new Vector3(extent, 0f, extent),
+                    MinCellSize = texel,
+                    Wrap = true,
+                    RefreshInterval = hashRefresh,
+                };
+                built.Initialize(context);
+            }
+
+            hash = built;
         }
 
         public FieldDensityPressurePass Pass { get; }
@@ -680,6 +751,7 @@ public class FieldDensityPressureTests
         public void Step()
         {
             cmd.Clear();
+            hash?.Execute(context, 1f / 60f);
             Pass.Execute(context, 1f / 60f);
             Graphics.ExecuteCommandBuffer(cmd);
         }
@@ -712,6 +784,7 @@ public class FieldDensityPressureTests
             int kernel = Pass.PressureShader.FindKernel("PressureCicWeights");
             cmd.Clear();
             cmd.SetComputeBufferParam(Pass.PressureShader, kernel, "CicOut", cic);
+            Pass.BindIndexBuffer(cmd, kernel);
             cmd.SetComputeBufferParam(Pass.PressureShader, kernel, "position", particles.Get(BuiltinAttributes.Position));
             int groups = (particles.Count + 63) / 64;
             cmd.DispatchCompute(Pass.PressureShader, kernel, groups, 1, 1);
@@ -724,6 +797,7 @@ public class FieldDensityPressureTests
         public void Dispose()
         {
             cic?.Release();
+            hash?.Dispose();
             Pass.Dispose();
             teams.Dispose();
             cmd.Release();

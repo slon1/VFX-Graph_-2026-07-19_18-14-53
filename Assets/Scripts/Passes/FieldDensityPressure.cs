@@ -21,6 +21,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
     private static readonly int ResId = UnityEngine.Shader.PropertyToID("PressureRes");
     private static readonly int WeightId = UnityEngine.Shader.PropertyToID("PressureWeight");
     private static readonly int FloorId = UnityEngine.Shader.PropertyToID("PressureG0");
+    private static readonly int SortedOrderId = UnityEngine.Shader.PropertyToID("SortedOrder");
 
     [SerializeField] private Vector3 center = Vector3.zero;
     [SerializeField] private Vector3 extents = new Vector3(45f, 0f, 45f);
@@ -29,6 +30,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
     [SerializeField, Min(1e-4f)] private float g0 = 40f;
     [SerializeField] private bool jitter = true;
     [SerializeField] private int jitterSeed = 1;
+    [SerializeField] private bool sortedOrder;
 
     [NonSerialized] private KernelHandle clearKernel;
     [NonSerialized] private KernelHandle scatterKernel;
@@ -43,6 +45,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
     [NonSerialized] private GraphicsBuffer scratchVelocity;
     [NonSerialized] private Vector3[] scratchZeros;
     [NonSerialized] private GraphicsBuffer liveVelocity;
+    [NonSerialized] private GraphicsBuffer indexDummy;
 
     public override string DisplayName => "Field Density Pressure";
     public override PassCategory Category => PassCategory.Force;
@@ -89,6 +92,12 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
     {
         get => jitterSeed;
         set => jitterSeed = value;
+    }
+
+    public bool SortedOrder
+    {
+        get => sortedOrder;
+        set => sortedOrder = value;
     }
 
     /// <summary>Diagnostic stage. Does not change <see cref="SimPass.RepeatCount"/>.</summary>
@@ -168,6 +177,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
             CommandBuffer cmd = context.Cmd;
             Vector2 origin = layout.Origin + LastShift;
             SetUniforms(cmd, clearKernel.Shader, count, layout, origin);
+            BindSorted(cmd, context);
             DispatchChain(cmd, count, layout.CellCount, density, grad, liveVelocity, context);
             RepeatIntoScratch(cmd, count, layout, context);
             LastExecuteDispatched = true;
@@ -185,7 +195,50 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         grad?.Release();
         grad = null;
         ReleaseScratch();
+        indexDummy?.Release();
+        indexDummy = null;
         liveVelocity = null;
+    }
+
+    internal void BindIndexBuffer(CommandBuffer cmd, int kernel)
+    {
+        cmd.SetComputeBufferParam(clearKernel.Shader, kernel, "SortedIndices", IndexBuffer(null));
+    }
+
+    private void BindSorted(CommandBuffer cmd, SimContext context)
+    {
+        GraphicsBuffer indices = IndexBuffer(context);
+        cmd.SetComputeIntParam(clearKernel.Shader, SortedOrderId, sortedOrder ? 1 : 0);
+        BindIndex(cmd, clearKernel.Index, indices);
+        BindIndex(cmd, scatterKernel.Index, indices);
+        BindIndex(cmd, gradientKernel.Index, indices);
+        BindIndex(cmd, forceKernel.Index, indices);
+    }
+
+    private GraphicsBuffer IndexBuffer(SimContext context)
+    {
+        if (sortedOrder)
+        {
+            if (context == null || context.SpatialHash == null || context.SpatialHash.SortedIndices == null)
+            {
+                throw new InvalidOperationException(
+                    "Field Density Pressure SortedOrder requires Build Spatial Hash earlier in the chain.");
+            }
+
+            return context.SpatialHash.SortedIndices;
+        }
+
+        if (indexDummy == null)
+        {
+            indexDummy = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
+        }
+
+        return indexDummy;
+    }
+
+    private void BindIndex(CommandBuffer cmd, int kernel, GraphicsBuffer indices)
+    {
+        cmd.SetComputeBufferParam(clearKernel.Shader, kernel, "SortedIndices", indices);
     }
 
     internal static Vector2 ShiftOf(int frame, int seed, Vector2 cellSize, bool enabled)

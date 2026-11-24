@@ -45,6 +45,26 @@ public class FieldNeighborValidatorTests
     }
 
     [Test]
+    public void SortedForce_RequiresACoveringHash()
+    {
+        SimPass[] gathered = Gather();
+        FieldNeighborForcePass sortedForce = Force();
+        sortedForce.SortedOrder = true;
+        var passes = new SimPass[gathered.Length + 1];
+        Array.Copy(gathered, passes, gathered.Length);
+        passes[gathered.Length] = sortedForce;
+        EffectAsset effect = Effect(2, 3f);
+        Assert.DoesNotThrow(() => SpatialHashValidator.Validate(passes, effect));
+        UnityEngine.Object.DestroyImmediate(effect);
+
+        SimPass[] scatter = Scatter(1f);
+        ((FieldNeighborForcePass)scatter[scatter.Length - 1]).SortedOrder = true;
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(scatter, null));
+        StringAssert.Contains("SortedOrder", exception.Message);
+    }
+
+    [Test]
     public void FieldResolutionBelowWrapSpan_Throws()
     {
         EffectAsset effect = Effect(2, 3f);

@@ -169,6 +169,33 @@ public class FieldDensityPressureValidatorTests
     }
 
     [Test]
+    public void SortedOrder_RequiresAHashThatCoversTheField()
+    {
+        FieldDensityPressurePass pressure = Pressure();
+        pressure.SortedOrder = true;
+        InvalidOperationException missing = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(PressureOnly(pressure), null));
+        StringAssert.Contains("SortedOrder", missing.Message);
+
+        var hash = new BuildSpatialHashPass
+        {
+            Center = Vector3.zero,
+            Extents = new Vector3(20f, 0f, 20f),
+            MinCellSize = 1f,
+            Wrap = true,
+        };
+        InvalidOperationException small = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(new SimPass[] { hash, new ClearVelocityPass(), pressure, new TeamHeadingSteerPass() }, null));
+        StringAssert.Contains("cover", small.Message);
+
+        hash.Extents = new Vector3(45f, 0f, 45f);
+        Assert.DoesNotThrow(
+            () => SpatialHashValidator.Validate(
+                new SimPass[] { hash, Bounds(), new ClearVelocityPass(), pressure, new TeamHeadingSteerPass() },
+                null));
+    }
+
+    [Test]
     public void TexelPointTwoFiveOnWorldNinety_IsAccepted()
     {
         EffectAsset effect = Effect();
