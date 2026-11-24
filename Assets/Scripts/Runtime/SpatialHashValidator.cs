@@ -357,6 +357,14 @@ internal static class SpatialHashValidator
             throw new InvalidOperationException(
                 "SimulationWorld: field-neighbor R/t must lie in [3, 8], found " + radius + " / " + texel + ".");
         }
+
+        int wrapSpan = 2 * Mathf.CeilToInt(ratio) + 2;
+        if (layout.Resolution.x < wrapSpan || layout.Resolution.y < wrapSpan)
+        {
+            throw new InvalidOperationException(
+                "SimulationWorld: field resolution " + layout.Resolution.x + "x" + layout.Resolution.y +
+                " is below 2*ceil(R/t)+2 = " + wrapSpan + ".");
+        }
     }
 
     private static bool HasWrapBounds(IReadOnlyList<SimPass> passes)

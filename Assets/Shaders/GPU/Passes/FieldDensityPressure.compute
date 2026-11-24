@@ -121,28 +121,6 @@ void PressureGradient(uint3 id : SV_DispatchThreadID)
     }
 }
 
-float2 SelfGradient(int q00, int q10, int q01, int q11)
-{
-    float scale = FIXED_SCALE;
-    float hx = PressureCellSize.x;
-    float hy = PressureCellSize.y;
-    float inv = 1.0 / (scale * hx * hy);
-    float r00 = (float)q00 * inv;
-    float r10 = (float)q10 * inv;
-    float r01 = (float)q01 * inv;
-    float r11 = (float)q11 * inv;
-    float w00 = (float)q00 / scale;
-    float w10 = (float)q10 / scale;
-    float w01 = (float)q01 / scale;
-    float w11 = (float)q11 / scale;
-    float2 s = 0;
-    s += w00 * float2(r10 / (2.0 * hx), r01 / (2.0 * hy));
-    s += w10 * float2(-r00 / (2.0 * hx), r11 / (2.0 * hy));
-    s += w01 * float2(r11 / (2.0 * hx), -r00 / (2.0 * hy));
-    s += w11 * float2(-r01 / (2.0 * hx), -r10 / (2.0 * hy));
-    return s;
-}
-
 [numthreads(THREADS, 1, 1)]
 void PressureForce(uint3 id : SV_DispatchThreadID)
 {
@@ -169,7 +147,6 @@ void PressureForce(uint3 id : SV_DispatchThreadID)
     g += ((float)q10 / scale) * Grad[CellIndex(i0 + int2(1, 0)) * 2u + team];
     g += ((float)q01 / scale) * Grad[CellIndex(i0 + int2(0, 1)) * 2u + team];
     g += ((float)q11 / scale) * Grad[CellIndex(i0 + int2(1, 1)) * 2u + team];
-    g -= SelfGradient(q00, q10, q01, q11);
     float2 force = -PressureWeight * g / (length(g) + PressureG0);
     velocity[id.x] += float3(force.x, 0, force.y);
 }

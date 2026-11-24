@@ -2,10 +2,17 @@
 // The including shader defines FIXED_SCALE before this file.
 // Old field kernels pass HashOrigin, HashCellSize, and HashRes.
 
-// Integer modulo. c - r*floor(c/r) returns 150 on a 150-grid when the reciprocal is short.
+// One step each way. Valid while -res <= c < 2*res.
+int WrapAxis(int c, int r)
+{
+    c += (c < 0) ? r : 0;
+    c -= (c >= r) ? r : 0;
+    return c;
+}
+
 int2 WrapCell(int2 c, int2 res)
 {
-    return ((c % res) + res) % res;
+    return int2(WrapAxis(c.x, res.x), WrapAxis(c.y, res.y));
 }
 
 void CicCorners(

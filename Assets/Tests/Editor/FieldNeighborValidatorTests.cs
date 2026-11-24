@@ -45,6 +45,16 @@ public class FieldNeighborValidatorTests
     }
 
     [Test]
+    public void FieldResolutionBelowWrapSpan_Throws()
+    {
+        EffectAsset effect = Effect(2, 3f);
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(Gather(extent: 3f), effect));
+        StringAssert.Contains("2*ceil(R/t)+2", exception.Message);
+        UnityEngine.Object.DestroyImmediate(effect);
+    }
+
+    [Test]
     public void RadiusOverTexelOutsideBand_Throws()
     {
         EffectAsset effect = Effect(2, 2f);

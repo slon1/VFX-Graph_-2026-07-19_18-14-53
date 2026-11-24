@@ -136,6 +136,46 @@ public class FieldDensityPressureTests
     }
 
     [Test]
+    public void Grid150_WorldCorners_StayInsideTheGrid()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        const float edge = 45f - 1e-3f;
+        var positions = new[]
+        {
+            new Vector2(edge, edge),
+            new Vector2(-edge, edge),
+            new Vector2(edge, -edge),
+            new Vector2(-edge, -edge),
+            new Vector2(edge, 0f),
+            new Vector2(-edge, 0f),
+            new Vector2(0f, edge),
+            new Vector2(0f, -edge),
+        };
+        using (Rig rig = new Rig(positions, Teams(positions.Length, 0), 45f, jitter: false, texel: 0.6f))
+        {
+            rig.Step();
+            Assert.AreEqual(150, rig.Pass.Layout.Resolution.x);
+            Assert.AreEqual(150, rig.Pass.Layout.Resolution.y);
+            Vector2[] cic = rig.ReadCic();
+            int cells = rig.Cells;
+            long sum = 0;
+            uint[] density = rig.ReadDensity();
+            for (int i = 0; i < density.Length; i++)
+            {
+                sum += density[i];
+            }
+
+            Assert.AreEqual(positions.Length * 16384L, sum);
+            for (int i = 0; i < cic.Length; i++)
+            {
+                int cell = (int)cic[i].x;
+                Assert.GreaterOrEqual(cell, 0, "corner " + i);
+                Assert.Less(cell, cells, "corner " + i);
+            }
+        }
+    }
+
+    [Test]
     public void LoneParticle_JitterOff_TwentyPositions()
     {
         Assume.That(SystemInfo.supportsComputeShaders);
@@ -552,13 +592,13 @@ public class FieldDensityPressureTests
         private readonly SimContext context;
         private GraphicsBuffer cic;
 
-        public Rig(Vector2[] positions, int[] teamIds, float extent, bool jitter)
+        public Rig(Vector2[] positions, int[] teamIds, float extent, bool jitter, float texel = 0.25f)
         {
             Pass = new FieldDensityPressurePass
             {
                 Center = Vector3.zero,
                 Extents = new Vector3(extent, 0f, extent),
-                PressureTexel = 0.25f,
+                PressureTexel = texel,
                 Weight = 0.8f,
                 G0 = 40f,
                 Jitter = jitter,
