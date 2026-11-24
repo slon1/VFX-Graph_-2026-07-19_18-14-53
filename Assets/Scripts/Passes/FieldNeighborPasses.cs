@@ -18,6 +18,10 @@ public enum FieldRepeatStage
     Off = 4,
     Force = 5,
     Press = 6,
+    PClear = 7,
+    PScatter = 8,
+    PGrad = 9,
+    PForce = 10,
 }
 
 public static class FieldRepeatStages
@@ -47,6 +51,18 @@ public static class FieldRepeatStages
             case "press":
                 stage = FieldRepeatStage.Press;
                 return true;
+            case "pclear":
+                stage = FieldRepeatStage.PClear;
+                return true;
+            case "pscatter":
+                stage = FieldRepeatStage.PScatter;
+                return true;
+            case "pgrad":
+                stage = FieldRepeatStage.PGrad;
+                return true;
+            case "pforce":
+                stage = FieldRepeatStage.PForce;
+                return true;
             default:
                 stage = FieldRepeatStage.All;
                 return false;
@@ -69,6 +85,14 @@ public static class FieldRepeatStages
                 return "off";
             case FieldRepeatStage.Press:
                 return "press";
+            case FieldRepeatStage.PClear:
+                return "pclear";
+            case FieldRepeatStage.PScatter:
+                return "pscatter";
+            case FieldRepeatStage.PGrad:
+                return "pgrad";
+            case FieldRepeatStage.PForce:
+                return "pforce";
             default:
                 return "all";
         }

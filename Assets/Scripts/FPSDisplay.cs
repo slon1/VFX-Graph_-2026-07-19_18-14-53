@@ -205,6 +205,7 @@ public sealed class FPSDisplay : MonoBehaviour
 			ApplyCameraSize();
 		}
 
+		LogGpuCaps();
 		ReadBuildStamp();
 	}
 
@@ -1181,6 +1182,8 @@ public sealed class FPSDisplay : MonoBehaviour
 		text.Append(FieldStageText());
 		text.Append(" fieldrep=");
 		text.Append(FieldRepText());
+		text.Append(" psize=");
+		text.Append(perfArgs.HasPsize ? PerfArgs.FormatSeconds(perfArgs.Psize) : "na");
 
 		string line = text.ToString();
 		Debug.Log(line);
@@ -1250,6 +1253,7 @@ public sealed class FPSDisplay : MonoBehaviour
 			{
 				ApplyCapAndHashRep();
 				ApplyFieldStage();
+				ApplyParticleSize();
 				bool applied = !perfArgs.HasOverride || TryApplyOverrides();
 				if (applied && perfArgs.HasOverride)
 				{
@@ -1445,6 +1449,11 @@ public sealed class FPSDisplay : MonoBehaviour
 			args += ",fieldrep=" + perfArgs.FieldRep.ToString(CultureInfo.InvariantCulture);
 		}
 
+		if (perfArgs.HasPsize)
+		{
+			args += ",psize=" + PerfArgs.FormatSeconds(perfArgs.Psize);
+		}
+
 		Debug.Log(
 			"M3D_PERF_INFO device=" + SystemInfo.deviceModel
 			+ " api=" + SystemInfo.graphicsDeviceType
@@ -1507,6 +1516,75 @@ public sealed class FPSDisplay : MonoBehaviour
 			}
 		}
 	}
+
+	private void ApplyParticleSize()
+	{
+		if (!perfArgs.HasPsize)
+		{
+			return;
+		}
+
+		if (world == null || !world.SetRenderedParticleSize(perfArgs.Psize))
+		{
+			Debug.Log("M3D_PERF_WARN psize=" + PerfArgs.FormatSeconds(perfArgs.Psize));
+		}
+	}
+
+	internal static string GpuCapsLine(
+		string device,
+		string api,
+		string format,
+		bool sample,
+		bool linear,
+		bool render,
+		bool blend,
+		bool loadStore)
+	{
+		return "M3D_GPUCAPS device=" + device
+			+ " api=" + api
+			+ " format=" + format
+			+ " sample=" + (sample ? "1" : "0")
+			+ " linear=" + (linear ? "1" : "0")
+			+ " render=" + (render ? "1" : "0")
+			+ " blend=" + (blend ? "1" : "0")
+			+ " loadstore=" + (loadStore ? "1" : "0");
+	}
+
+	private static void LogGpuCaps()
+	{
+#if UNITY_ANDROID && !UNITY_EDITOR
+		if (!Debug.isDebugBuild)
+		{
+			return;
+		}
+
+		string device = SystemInfo.deviceModel + " " + SystemInfo.operatingSystem;
+		string api = SystemInfo.graphicsDeviceType.ToString();
+		LogOneFormat(device, api, "RGBA16F", UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat);
+		LogOneFormat(device, api, "RGBA32F", UnityEngine.Experimental.Rendering.GraphicsFormat.R32G32B32A32_SFloat);
+		LogOneFormat(device, api, "RG16F", UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16_SFloat);
+		LogOneFormat(device, api, "RG32F", UnityEngine.Experimental.Rendering.GraphicsFormat.R32G32_SFloat);
+#endif
+	}
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+	private static void LogOneFormat(
+		string device,
+		string api,
+		string name,
+		UnityEngine.Experimental.Rendering.GraphicsFormat format)
+	{
+		Debug.Log(GpuCapsLine(
+			device,
+			api,
+			name,
+			SystemInfo.IsFormatSupported(format, UnityEngine.Experimental.Rendering.FormatUsage.Sample),
+			SystemInfo.IsFormatSupported(format, UnityEngine.Experimental.Rendering.FormatUsage.Linear),
+			SystemInfo.IsFormatSupported(format, UnityEngine.Experimental.Rendering.FormatUsage.Render),
+			SystemInfo.IsFormatSupported(format, UnityEngine.Experimental.Rendering.FormatUsage.Blend),
+			SystemInfo.IsFormatSupported(format, UnityEngine.Experimental.Rendering.FormatUsage.LoadStore)));
+	}
+#endif
 
 	private void ApplyFieldStage()
 	{
@@ -1625,6 +1703,10 @@ public sealed class FPSDisplay : MonoBehaviour
 			case FieldRepeatStage.Off:
 				return false;
 			case FieldRepeatStage.Press:
+			case FieldRepeatStage.PClear:
+			case FieldRepeatStage.PScatter:
+			case FieldRepeatStage.PGrad:
+			case FieldRepeatStage.PForce:
 				if (IsEnabledPass(pressure))
 				{
 					return false;

@@ -33,6 +33,8 @@ public sealed class PerfArgs
 	public FieldRepeatStage FieldStage { get; private set; } = FieldRepeatStage.All;
 	public bool HasFieldRep { get; private set; }
 	public int FieldRep { get; private set; } = 1;
+	public bool HasPsize { get; private set; }
+	public float Psize { get; private set; }
 	public bool HasWarmup { get; private set; }
 	public float WarmupSeconds { get; private set; } = DefaultSeconds;
 	public bool HasMeasure { get; private set; }
@@ -127,6 +129,12 @@ public sealed class PerfArgs
 			if (token == "-m3d_fieldrep")
 			{
 				parsed.ReadFieldRep(NextValue(args, ref i));
+				continue;
+			}
+
+			if (token == "-m3d_psize")
+			{
+				parsed.ReadPsize(NextValue(args, ref i));
 				continue;
 			}
 
@@ -349,6 +357,20 @@ public sealed class PerfArgs
 		}
 
 		warnings.Add(value == null ? "fieldstage=" : "fieldstage=" + value);
+	}
+
+	private void ReadPsize(string value)
+	{
+		if (value != null
+			&& float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float size)
+			&& size > 0f)
+		{
+			HasPsize = true;
+			Psize = size;
+			return;
+		}
+
+		warnings.Add(value == null ? "psize=" : "psize=" + value);
 	}
 
 	private void ReadFieldRep(string value)

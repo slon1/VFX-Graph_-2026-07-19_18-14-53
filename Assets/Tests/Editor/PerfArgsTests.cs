@@ -391,6 +391,10 @@ public class PerfArgsTests
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "force" }).FieldStage, Is.EqualTo(FieldRepeatStage.Force));
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "all" }).FieldStage, Is.EqualTo(FieldRepeatStage.All));
 		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "press" }).FieldStage, Is.EqualTo(FieldRepeatStage.Press));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "pclear" }).FieldStage, Is.EqualTo(FieldRepeatStage.PClear));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "pscatter" }).FieldStage, Is.EqualTo(FieldRepeatStage.PScatter));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "pgrad" }).FieldStage, Is.EqualTo(FieldRepeatStage.PGrad));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_fieldstage", "pforce" }).FieldStage, Is.EqualTo(FieldRepeatStage.PForce));
 		PerfArgs off = PerfArgs.Parse(new[] { "-m3d_fieldstage", "off" });
 		Assert.That(off.HasFieldStage, Is.True);
 		Assert.That(off.FieldStage, Is.EqualTo(FieldRepeatStage.Off));
@@ -542,6 +546,31 @@ public class PerfArgsTests
 		pressure.Enabled = false;
 		LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=press pass=FieldDensityPressurePass");
 		FPSDisplay.ApplyFieldStage(collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", "press" }), pressure);
+
+		string[] tokens = { "pclear", "pscatter", "pgrad", "pforce" };
+		for (int i = 0; i < tokens.Length; i++)
+		{
+			LogAssert.Expect(LogType.Log, "M3D_PERF_WARN fieldstage=" + tokens[i] + " pass=FieldDensityPressurePass");
+			FPSDisplay.ApplyFieldStage(
+				collect, convolve, force, PerfArgs.Parse(new[] { "-m3d_fieldstage", tokens[i] }), pressure);
+		}
+	}
+
+	[Test]
+	public void Parse_Psize_AcceptsAPositiveSizeAndRejectsTheRest()
+	{
+		PerfArgs size = PerfArgs.Parse(new[] { "-m3d_psize", "0.25" });
+		Assert.That(size.HasPsize, Is.True);
+		Assert.That(size.Psize, Is.EqualTo(0.25f));
+		Assert.That(size.Warnings, Is.Empty);
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_scene", "X" }).HasPsize, Is.False);
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_psize", "0" }).Warnings, Is.EqualTo(new[] { "psize=0" }));
+		Assert.That(PerfArgs.Parse(new[] { "-m3d_psize" }).Warnings, Is.EqualTo(new[] { "psize=" }));
+		Assert.That(FPSDisplay.GpuCapsLine("phone", "Vulkan", "RG16F", true, false, true, false, true),
+			Is.EqualTo("M3D_GPUCAPS device=phone api=Vulkan format=RG16F sample=1 linear=0 render=1 blend=0 loadstore=1"));
+		var binder = new PrimitiveParticleBinder(0.5f, Color.white, new Gradient(), 1f);
+		binder.SetSize(0.25f);
+		Assert.That(binder.Size, Is.EqualTo(0.25f));
 	}
 
 	[Test]

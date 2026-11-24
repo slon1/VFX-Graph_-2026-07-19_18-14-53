@@ -25,7 +25,7 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
     private static readonly int UseDirectionId = Shader.PropertyToID("_UseDirection");
     private static readonly int DirAxisId = Shader.PropertyToID("_DirAxis");
 
-    private readonly float size;
+    private float size;
     private readonly Color color;
     private readonly Gradient gradient;
     private readonly float valueScale;
@@ -94,6 +94,13 @@ public sealed class PrimitiveParticleBinder : IRenderBinder, IDisposable
         this.teams = teams;
         this.colorSource = colorSource;
         this.colorAxis = colorAxis;
+    }
+
+    public float Size => size;
+
+    public void SetSize(float value)
+    {
+        size = value;
     }
 
     public void Initialize(SimContext context)

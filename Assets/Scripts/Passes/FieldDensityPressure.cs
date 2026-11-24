@@ -141,9 +141,13 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
 
     public override void Execute(SimContext context, float deltaTime)
     {
-        LastExecuteDispatched = false;
-        try
-        {
+            LastExecuteDispatched = false;
+            RepeatClearDispatches = 0;
+            RepeatScatterDispatches = 0;
+            RepeatGradientDispatches = 0;
+            RepeatForceDispatches = 0;
+            try
+            {
             SpatialHashLayout layout = SpatialHashSet.ComputeLayout(center, extents, pressureTexel);
             RequireOwnLimit(layout);
             Layout = layout;
@@ -197,9 +201,22 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         return new Vector2(s1 * cellSize.x, s2 * cellSize.y);
     }
 
+    internal int RepeatClearDispatches { get; private set; }
+
+    internal int RepeatScatterDispatches { get; private set; }
+
+    internal int RepeatGradientDispatches { get; private set; }
+
+    internal int RepeatForceDispatches { get; private set; }
+
     private bool RepeatsThisStage =>
         fieldRepeatCount > 1 &&
-        (FieldStage == FieldRepeatStage.All || FieldStage == FieldRepeatStage.Press);
+        (FieldStage == FieldRepeatStage.All ||
+         FieldStage == FieldRepeatStage.Press ||
+         FieldStage == FieldRepeatStage.PClear ||
+         FieldStage == FieldRepeatStage.PScatter ||
+         FieldStage == FieldRepeatStage.PGrad ||
+         FieldStage == FieldRepeatStage.PForce);
 
     private bool KernelsReady =>
         clearKernel.IsValid && scatterKernel.IsValid && gradientKernel.IsValid && forceKernel.IsValid;
@@ -278,18 +295,99 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         }
 
         int slots = layout.CellCount * 2;
+        bool chain = FieldStage == FieldRepeatStage.All || FieldStage == FieldRepeatStage.Press;
+        bool writesDensity = chain || FieldStage == FieldRepeatStage.PClear || FieldStage == FieldRepeatStage.PScatter;
+        bool writesGrad = chain || FieldStage == FieldRepeatStage.PGrad;
+        bool writesVelocity = chain || FieldStage == FieldRepeatStage.PForce;
+        if (writesDensity)
+        {
+            EnsureScratchDensity(slots);
+        }
+
+        if (writesGrad)
+        {
+            EnsureScratchGrad(slots);
+        }
+
+        if (writesVelocity)
+        {
+            EnsureScratchVelocity(count);
+            cmd.SetBufferData(scratchVelocity, scratchZeros);
+        }
+
+        int cellGroups = (layout.CellCount + ThreadGroupSize - 1) / ThreadGroupSize;
+        int particleGroups = (count + ThreadGroupSize - 1) / ThreadGroupSize;
+        for (int repeat = 2; repeat <= fieldRepeatCount; repeat++)
+        {
+            if (chain)
+            {
+                DispatchChain(cmd, count, layout.CellCount, scratchDensity, scratchGrad, scratchVelocity, context);
+                RepeatClearDispatches++;
+                RepeatScatterDispatches++;
+                RepeatGradientDispatches++;
+                RepeatForceDispatches++;
+                continue;
+            }
+
+            if (FieldStage == FieldRepeatStage.PClear)
+            {
+                Bind(cmd, clearKernel, "Density", scratchDensity);
+                cmd.DispatchCompute(clearKernel.Shader, clearKernel.Index, cellGroups, 1, 1);
+                RepeatClearDispatches++;
+            }
+            else if (FieldStage == FieldRepeatStage.PScatter)
+            {
+                Bind(cmd, scatterKernel, "Density", scratchDensity);
+                Bind(cmd, scatterKernel, "position", context.Particles.Get(BuiltinAttributes.Position));
+                Bind(cmd, scatterKernel, "teamId", context.Particles.Get(BuiltinAttributes.TeamId));
+                cmd.DispatchCompute(scatterKernel.Shader, scatterKernel.Index, particleGroups, 1, 1);
+                RepeatScatterDispatches++;
+            }
+            else if (FieldStage == FieldRepeatStage.PGrad)
+            {
+                Bind(cmd, gradientKernel, "Density", density);
+                Bind(cmd, gradientKernel, "Grad", scratchGrad);
+                Bind(cmd, gradientKernel, "Teams", context.Teams);
+                cmd.DispatchCompute(gradientKernel.Shader, gradientKernel.Index, cellGroups, 1, 1);
+                RepeatGradientDispatches++;
+            }
+            else if (FieldStage == FieldRepeatStage.PForce)
+            {
+                Bind(cmd, forceKernel, "Grad", grad);
+                Bind(cmd, forceKernel, "position", context.Particles.Get(BuiltinAttributes.Position));
+                Bind(cmd, forceKernel, "teamId", context.Particles.Get(BuiltinAttributes.TeamId));
+                Bind(cmd, forceKernel, "velocity", scratchVelocity);
+                cmd.DispatchCompute(forceKernel.Shader, forceKernel.Index, particleGroups, 1, 1);
+                RepeatForceDispatches++;
+            }
+        }
+
+        if (writesVelocity)
+        {
+            Bind(cmd, forceKernel, "velocity", liveVelocity);
+        }
+    }
+
+    private void EnsureScratchDensity(int slots)
+    {
         if (scratchDensity == null || scratchDensity.count != slots)
         {
             scratchDensity?.Release();
             scratchDensity = new GraphicsBuffer(GraphicsBuffer.Target.Structured, slots, sizeof(uint));
         }
+    }
 
+    private void EnsureScratchGrad(int slots)
+    {
         if (scratchGrad == null || scratchGrad.count != slots)
         {
             scratchGrad?.Release();
             scratchGrad = new GraphicsBuffer(GraphicsBuffer.Target.Structured, slots, sizeof(float) * 2);
         }
+    }
 
+    private void EnsureScratchVelocity(int count)
+    {
         if (scratchVelocity == null || scratchVelocity.count != count)
         {
             scratchVelocity?.Release();
@@ -304,14 +402,6 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         {
             Array.Clear(scratchZeros, 0, scratchZeros.Length);
         }
-
-        cmd.SetBufferData(scratchVelocity, scratchZeros);
-        for (int repeat = 2; repeat <= fieldRepeatCount; repeat++)
-        {
-            DispatchChain(cmd, count, layout.CellCount, scratchDensity, scratchGrad, scratchVelocity, context);
-        }
-
-        Bind(cmd, forceKernel, "velocity", liveVelocity);
     }
 
     private static void Bind(CommandBuffer cmd, KernelHandle kernel, string name, GraphicsBuffer buffer)

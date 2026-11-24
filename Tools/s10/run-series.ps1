@@ -18,7 +18,8 @@ param(
     [string]$ForceRep = "",
     [string]$FieldStage = "",
     [string]$FieldRep = "",
-    [string]$MaxN = ""
+    [string]$MaxN = "",
+    [string]$Psize = ""
 )
 
 <#
@@ -103,6 +104,7 @@ function Get-ExpectedArgs($Point) {
     if (-not [string]::IsNullOrWhiteSpace($script:forceRepText)) { $text = $text + ",forcerep=$script:forceRepText" }
     if (-not [string]::IsNullOrWhiteSpace($script:fieldStageText)) { $text = $text + ",fieldstage=$script:fieldStageText" }
     if (-not [string]::IsNullOrWhiteSpace($script:fieldRepText)) { $text = $text + ",fieldrep=$script:fieldRepText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:psizeText)) { $text = $text + ",psize=$script:psizeText" }
     return $text
 }
 
@@ -118,6 +120,7 @@ function Get-UnityArgs($Point) {
     if (-not [string]::IsNullOrWhiteSpace($script:forceRepText)) { $text = $text + " -m3d_forcerep $script:forceRepText" }
     if (-not [string]::IsNullOrWhiteSpace($script:fieldStageText)) { $text = $text + " -m3d_fieldstage $script:fieldStageText" }
     if (-not [string]::IsNullOrWhiteSpace($script:fieldRepText)) { $text = $text + " -m3d_fieldrep $script:fieldRepText" }
+    if (-not [string]::IsNullOrWhiteSpace($script:psizeText)) { $text = $text + " -m3d_psize $script:psizeText" }
     return $text
 }
 
@@ -154,9 +157,17 @@ if (-not [string]::IsNullOrWhiteSpace($ForceRep)) {
 $fieldStageText = ""
 if (-not [string]::IsNullOrWhiteSpace($FieldStage)) {
     $fieldStageText = $FieldStage.Trim().ToLowerInvariant()
-    if ($fieldStageText -notin @("collect", "conv", "grad", "force", "all", "off", "press")) {
-        throw "Стадия поля: '$FieldStage' не разобрана. Нужно collect, conv, grad, force, all, off или press."
+    if ($fieldStageText -notin @("collect", "conv", "grad", "force", "all", "off", "press", "pclear", "pscatter", "pgrad", "pforce")) {
+        throw "Стадия поля: '$FieldStage' не разобрана. Нужно collect, conv, grad, force, all, off, press, pclear, pscatter, pgrad или pforce."
     }
+}
+
+$psizeText = ""
+if (-not [string]::IsNullOrWhiteSpace($Psize)) {
+    $psizeValue = 0.0
+    $psizeOk = [double]::TryParse($Psize, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$psizeValue)
+    if (-not $psizeOk -or $psizeValue -le 0) { throw "Размер частицы: '$Psize' не разобран. Нужно положительное число." }
+    $psizeText = $psizeValue.ToString("0.###", [Globalization.CultureInfo]::InvariantCulture)
 }
 
 $fieldRepText = ""

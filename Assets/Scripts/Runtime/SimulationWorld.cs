@@ -24,6 +24,21 @@ public sealed class SimulationWorld : MonoBehaviour
         set => renderParticles = value;
     }
 
+    public bool SetRenderedParticleSize(float value)
+    {
+        bool applied = false;
+        for (int i = 0; i < binders.Count; i++)
+        {
+            if (binders[i] is PrimitiveParticleBinder binder)
+            {
+                binder.SetSize(value);
+                applied = true;
+            }
+        }
+
+        return applied;
+    }
+
     public EffectAsset Effect => effect;
 
     private ParticleSet particles;

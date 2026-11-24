@@ -318,6 +318,42 @@ public class FieldDensityPressureTests
             rig.ZeroVelocity();
             rig.Step();
             Assert.IsNotNull(rig.Pass.ScratchVelocity);
+            Assert.AreEqual(3, rig.Pass.RepeatClearDispatches);
+            Assert.AreEqual(3, rig.Pass.RepeatScatterDispatches);
+            Assert.AreEqual(3, rig.Pass.RepeatGradientDispatches);
+            Assert.AreEqual(3, rig.Pass.RepeatForceDispatches);
+        }
+    }
+
+    [Test]
+    public void PressureSubstage_RepeatsOnlyTheChosenKernel()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        var stages = new[]
+        {
+            FieldRepeatStage.PClear,
+            FieldRepeatStage.PScatter,
+            FieldRepeatStage.PGrad,
+            FieldRepeatStage.PForce,
+        };
+        using (Rig rig = new Rig(new[] { new Vector2(1f, 2f) }, new[] { 0 }, 45f, jitter: false))
+        {
+            for (int i = 0; i < stages.Length; i++)
+            {
+                rig.Pass.FieldStage = stages[i];
+                rig.Pass.FieldRepeatCount = 4;
+                rig.ZeroVelocity();
+                rig.Step();
+                int chosen = stages[i] == FieldRepeatStage.PClear ? rig.Pass.RepeatClearDispatches
+                    : stages[i] == FieldRepeatStage.PScatter ? rig.Pass.RepeatScatterDispatches
+                    : stages[i] == FieldRepeatStage.PGrad ? rig.Pass.RepeatGradientDispatches
+                    : rig.Pass.RepeatForceDispatches;
+                Assert.AreEqual(3, chosen, stages[i].ToString());
+                Assert.AreEqual(stages[i] == FieldRepeatStage.PClear ? 3 : 0, rig.Pass.RepeatClearDispatches);
+                Assert.AreEqual(stages[i] == FieldRepeatStage.PScatter ? 3 : 0, rig.Pass.RepeatScatterDispatches);
+                Assert.AreEqual(stages[i] == FieldRepeatStage.PGrad ? 3 : 0, rig.Pass.RepeatGradientDispatches);
+                Assert.AreEqual(stages[i] == FieldRepeatStage.PForce ? 3 : 0, rig.Pass.RepeatForceDispatches);
+            }
         }
     }
 
