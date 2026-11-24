@@ -2866,6 +2866,166 @@ public static class M3DDemoTools
         Debug.Log("M3D: created P400c field pressure K1 and K3 assets and scenes.");
     }
 
+    [MenuItem("Tools/M3D/Create Boids Hash G1 Experiment Effects")]
+    public static void CreateBoidsHashG1ExperimentEffects()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        const int perTeam = 200000;
+        CreateG1ExperimentAsset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Mb1.asset",
+            refreshInterval: 1,
+            FieldRepeatReadPattern.OneTexel,
+            repeatSpan: 1,
+            sorted: false);
+        CreateG1ExperimentAsset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Mb2.asset",
+            refreshInterval: 1,
+            FieldRepeatReadPattern.LinearById,
+            repeatSpan: 1,
+            sorted: false);
+        CreateG1ExperimentAsset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Mb3.asset",
+            refreshInterval: 1,
+            FieldRepeatReadPattern.Span,
+            repeatSpan: 4096,
+            sorted: false);
+        CreateG1ExperimentAsset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Mb4.asset",
+            refreshInterval: 1,
+            FieldRepeatReadPattern.Span,
+            repeatSpan: 16384,
+            sorted: false);
+        CreateG1ExperimentAsset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Sorted.asset",
+            refreshInterval: 1,
+            FieldRepeatReadPattern.Normal,
+            repeatSpan: 1,
+            sorted: true);
+        CreateG1ExperimentAsset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K3_Sorted.asset",
+            refreshInterval: 3,
+            FieldRepeatReadPattern.Normal,
+            repeatSpan: 1,
+            sorted: true);
+
+        string[] scenes =
+        {
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Mb1.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Mb2.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Mb3.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Mb4.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Sorted.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_Sorted.unity",
+        };
+        string[] assets =
+        {
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Mb1.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Mb2.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Mb3.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Mb4.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_Sorted.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K3_Sorted.asset",
+        };
+        string[] names =
+        {
+            "M3D Boids Hash P400c Press K1 Mb1",
+            "M3D Boids Hash P400c Press K1 Mb2",
+            "M3D Boids Hash P400c Press K1 Mb3",
+            "M3D Boids Hash P400c Press K1 Mb4",
+            "M3D Boids Hash P400c Press K1 Sorted",
+            "M3D Boids Hash P400c Press K3 Sorted",
+        };
+        for (int i = 0; i < scenes.Length; i++)
+        {
+            CreateScaledScene(scenes[i], assets[i], P400cCameraSize, names[i]);
+        }
+
+        EnableInBuild(scenes);
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created G1 experiment assets and scenes. perTeam=" + perTeam);
+    }
+
+    private static void CreateG1ExperimentAsset(
+        string path,
+        int refreshInterval,
+        FieldRepeatReadPattern pattern,
+        int repeatSpan,
+        bool sorted)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        FieldNeighborCollectPass collect = new FieldNeighborCollectPass
+        {
+            Mode = FieldCollectMode.Scatter,
+            Center = Vector3.zero,
+            Extents = P400cExtents,
+            TexelSize = 1f,
+            RefreshInterval = refreshInterval,
+        };
+        BoxBoundsPass box = new BoxBoundsPass
+        {
+            Center = Vector3.zero,
+            Extents = P400cExtents,
+            Behaviour = BoundsBehaviour.Wrap,
+        };
+        var force = new FieldNeighborForcePass
+        {
+            Center = Vector3.zero,
+            Extents = P400cExtents,
+            TexelSize = 1f,
+            RepeatReadPattern = pattern,
+            RepeatSpan = repeatSpan,
+            SortedOrder = sorted,
+        };
+        var pressure = new FieldDensityPressurePass
+        {
+            Center = Vector3.zero,
+            Extents = P400cExtents,
+            PressureTexel = 0.25f,
+            Weight = 0.8f,
+            G0 = 25f,
+            Jitter = true,
+            JitterSeed = 1,
+            SortedOrder = sorted,
+        };
+        var chain = new System.Collections.Generic.List<SimPass>();
+        if (sorted)
+        {
+            chain.Add(new BuildSpatialHashPass
+            {
+                Center = Vector3.zero,
+                Extents = P400cExtents,
+                MinCellSize = 1f,
+                Wrap = true,
+                RefreshInterval = refreshInterval,
+            });
+        }
+
+        chain.Add(collect);
+        chain.Add(new FieldNeighborConvolvePass());
+        chain.Add(new ClearVelocityPass());
+        chain.Add(force);
+        chain.Add(pressure);
+        chain.Add(new TeamHeadingSteerPass());
+        chain.Add(new IntegratePass());
+        chain.Add(box);
+        chain.Add(new HeadingToValuePass());
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(DataSourceKind.Swarm, P400cSimulationSpeed, chain.ToArray());
+        ConfigureP400cSource(asset);
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
     [MenuItem("Tools/M3D/Create Boids Hash Scaled Effects")]
     public static void CreateBoidsHashScaledEffects()
     {

@@ -310,8 +310,18 @@ internal static class SpatialHashValidator
         }
         else if (builder != null)
         {
-            throw new InvalidOperationException(
-                "SimulationWorld: Field Neighbor Collect Scatter cannot sit with Build Spatial Hash.");
+            if (!HasSortedConsumer(passes))
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Neighbor Collect Scatter cannot sit with Build Spatial Hash.");
+            }
+
+            if (builder.RefreshInterval != collect.RefreshInterval)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: sorted-order hash RefreshInterval " + builder.RefreshInterval +
+                    " does not match the field RefreshInterval " + collect.RefreshInterval + ".");
+            }
         }
         else if (!HasWrapBounds(passes))
         {
@@ -370,6 +380,29 @@ internal static class SpatialHashValidator
                 "SimulationWorld: field resolution " + layout.Resolution.x + "x" + layout.Resolution.y +
                 " is below 2*ceil(R/t)+2 = " + wrapSpan + ".");
         }
+    }
+
+    private static bool HasSortedConsumer(IReadOnlyList<SimPass> passes)
+    {
+        for (int i = 0; i < passes.Count; i++)
+        {
+            if (passes[i] == null || !passes[i].Enabled)
+            {
+                continue;
+            }
+
+            if (passes[i] is FieldNeighborForcePass force && force.SortedOrder)
+            {
+                return true;
+            }
+
+            if (passes[i] is FieldDensityPressurePass pressure && pressure.SortedOrder)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void RequireSortedHash(

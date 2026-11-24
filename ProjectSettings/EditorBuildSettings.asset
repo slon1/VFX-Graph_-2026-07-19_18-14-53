@@ -131,5 +131,23 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_S0125.unity
     guid: 8945f5e068bc7884c8ed19c7a3898db6
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Mb1.unity
+    guid: f10f82c3466124946b009c3dbe8ceeef
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Mb2.unity
+    guid: 69e175cda0287b34aae246ee04823e5b
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Mb3.unity
+    guid: e5a0a6e149c44ea4cbb700ebc0e82466
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Mb4.unity
+    guid: d3553d4af1b23454b85cf348c8313ad8
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_Sorted.unity
+    guid: c4a5fe3cdaabc5e4381c14d1ba6669ec
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_Sorted.unity
+    guid: a02ef2ef299207440b6e83d9a2bc18f7
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
