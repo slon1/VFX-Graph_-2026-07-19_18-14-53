@@ -1,0 +1,4 @@
+﻿11-24 18:11:30.843 13240 13268 I Unity   : M3D_GPUCAPS device=samsung SM-G973F Android OS 12 / API-31 (SP1A.210812.016/G973FXXSGHWC2) api=Vulkan format=RGBA16F sample=1 linear=1 render=1 blend=1 loadstore=1
+11-24 18:11:30.843 13240 13268 I Unity   : M3D_GPUCAPS device=samsung SM-G973F Android OS 12 / API-31 (SP1A.210812.016/G973FXXSGHWC2) api=Vulkan format=RGBA32F sample=1 linear=1 render=1 blend=0 loadstore=1
+11-24 18:11:30.844 13240 13268 I Unity   : M3D_GPUCAPS device=samsung SM-G973F Android OS 12 / API-31 (SP1A.210812.016/G973FXXSGHWC2) api=Vulkan format=RG16F sample=1 linear=1 render=1 blend=1 loadstore=1
+11-24 18:11:30.844 13240 13268 I Unity   : M3D_GPUCAPS device=samsung SM-G973F Android OS 12 / API-31 (SP1A.210812.016/G973FXXSGHWC2) api=Vulkan format=RG32F sample=1 linear=1 render=1 blend=0 loadstore=1

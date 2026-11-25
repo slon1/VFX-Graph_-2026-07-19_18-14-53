@@ -1,0 +1,40 @@
+{
+    "series":  "BAB",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "",
+    "maxn":  "48",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\fe0aec0-27d723d3\\20261125-0111",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "g1-p6-400-baseB1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "A",
+                       "walk":  "",
+                       "tag":  "g1-p6-400-baseA1",
+                       "status":  "ok",
+                       "file":  "02-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "g1-p6-400-baseB2",
+                       "status":  "ok",
+                       "file":  "03-B-720.txt",
+                       "reason":  ""
+                   }
+               ]
+}
