@@ -2949,6 +2949,242 @@ public static class M3DDemoTools
         Debug.Log("M3D: created G1 experiment assets and scenes. perTeam=" + perTeam);
     }
 
+    [MenuItem("Tools/M3D/Create Boids Hash G2 Effects")]
+    public static void CreateBoidsHashG2Effects()
+    {
+        if (!AssetDatabase.IsValidFolder(EffectsFolder))
+        {
+            AssetDatabase.CreateFolder("Assets", "Effects");
+        }
+
+        CreateG2SmallAsset(EffectsFolder + "/Boids_hash_2teams_field_press_g25_u2.asset", 2, 1);
+        CreateG2SmallAsset(EffectsFolder + "/Boids_hash_2teams_field_press_g25_r2.asset", 1, 2);
+        CreateG2SmallAsset(EffectsFolder + "/Boids_hash_2teams_field_press_g25_u2r2.asset", 2, 2);
+        CreateBoidsHashTwoTeamsFieldScene(
+            "Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_U2.unity",
+            EffectsFolder + "/Boids_hash_2teams_field_press_g25_u2.asset");
+        CreateBoidsHashTwoTeamsFieldScene(
+            "Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_R2.unity",
+            EffectsFolder + "/Boids_hash_2teams_field_press_g25_r2.asset");
+        CreateBoidsHashTwoTeamsFieldScene(
+            "Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_U2R2.unity",
+            EffectsFolder + "/Boids_hash_2teams_field_press_g25_u2r2.asset");
+
+        CreateG2P400Asset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K3_U2R2.asset",
+            refresh: 3, grid: 2, interleave: 2, collectSorted: false, scatterSorted: false);
+        CreateG2P400Asset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K3_U2.asset",
+            refresh: 3, grid: 2, interleave: 1, collectSorted: false, scatterSorted: false);
+        CreateG2P400Asset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K3_R2.asset",
+            refresh: 3, grid: 1, interleave: 2, collectSorted: false, scatterSorted: false);
+        CreateG2P400Asset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_SortedCollect.asset",
+            refresh: 1, grid: 1, interleave: 1, collectSorted: true, scatterSorted: false);
+        CreateG2P400Asset(
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_SortedScatter.asset",
+            refresh: 1, grid: 1, interleave: 1, collectSorted: false, scatterSorted: true);
+
+        string[] p400Scenes =
+        {
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_U2R2.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_U2.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_R2.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_SortedCollect.unity",
+            "Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_SortedScatter.unity",
+        };
+        string[] p400Assets =
+        {
+            EffectsFolder + "/Boids_hash_P400c_field_press_K3_U2R2.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K3_U2.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K3_R2.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_SortedCollect.asset",
+            EffectsFolder + "/Boids_hash_P400c_field_press_K1_SortedScatter.asset",
+        };
+        string[] p400Names =
+        {
+            "M3D Boids Hash P400c Press K3 U2R2",
+            "M3D Boids Hash P400c Press K3 U2",
+            "M3D Boids Hash P400c Press K3 R2",
+            "M3D Boids Hash P400c Press K1 SortedCollect",
+            "M3D Boids Hash P400c Press K1 SortedScatter",
+        };
+        for (int i = 0; i < p400Scenes.Length; i++)
+        {
+            CreateScaledScene(p400Scenes[i], p400Assets[i], P400cCameraSize, p400Names[i]);
+        }
+
+        var scenes = new System.Collections.Generic.List<string>
+        {
+            "Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_U2.unity",
+            "Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_R2.unity",
+            "Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_U2R2.unity",
+        };
+        scenes.AddRange(p400Scenes);
+        CreateG2Scaled(0.875f, "306k", scenes);
+        CreateG2Scaled(1.125f, "506k", scenes);
+        EnableInBuild(scenes.ToArray());
+        AssetDatabase.SaveAssets();
+        Debug.Log("M3D: created G2 assets and scenes (" + scenes.Count + ").");
+    }
+
+    private static void CreateG2Scaled(float scale, string label, System.Collections.Generic.List<string> scenes)
+    {
+        float world = 224f * scale;
+        float extent = world * 0.5f;
+        int perTeam = Mathf.RoundToInt(200000f * scale * scale);
+        Vector3 extents = new Vector3(extent, 0f, extent);
+        string asset = EffectsFolder + "/Boids_hash_P" + label + "_press_K3_U2R2.asset";
+        string scene = "Assets/Scenes/Boids_Hash_P" + label + "_Press_K3_U2R2.unity";
+        CreateG2PressAsset(
+            asset,
+            extents,
+            refresh: 3,
+            grid: 2,
+            interleave: 2,
+            collectSorted: false,
+            scatterSorted: false,
+            perTeam: perTeam,
+            spawnRadius: 45f * scale,
+            centerX: 55f * scale,
+            configureLarge: true);
+        CreateScaledScene(scene, asset, 112f * scale, "M3D Boids Hash P" + label + " Press K3 U2R2");
+        scenes.Add(scene);
+    }
+
+    private static void CreateG2SmallAsset(string path, int grid, int interleave)
+    {
+        CreateG2PressAsset(
+            path,
+            new Vector3(45f, 0f, 45f),
+            refresh: 3,
+            grid: grid,
+            interleave: interleave,
+            collectSorted: false,
+            scatterSorted: false,
+            perTeam: 0,
+            spawnRadius: 0f,
+            centerX: 0f,
+            configureLarge: false);
+    }
+
+    private static void CreateG2P400Asset(
+        string path,
+        int refresh,
+        int grid,
+        int interleave,
+        bool collectSorted,
+        bool scatterSorted)
+    {
+        CreateG2PressAsset(
+            path,
+            P400cExtents,
+            refresh,
+            grid,
+            interleave,
+            collectSorted,
+            scatterSorted,
+            perTeam: 0,
+            spawnRadius: 0f,
+            centerX: 0f,
+            configureLarge: true);
+    }
+
+    private static void CreateG2PressAsset(
+        string path,
+        Vector3 extents,
+        int refresh,
+        int grid,
+        int interleave,
+        bool collectSorted,
+        bool scatterSorted,
+        int perTeam,
+        float spawnRadius,
+        float centerX,
+        bool configureLarge)
+    {
+        EffectAsset existing = AssetDatabase.LoadAssetAtPath<EffectAsset>(path);
+        if (existing != null)
+        {
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        bool hash = collectSorted || scatterSorted;
+        var chain = new System.Collections.Generic.List<SimPass>();
+        if (hash)
+        {
+            chain.Add(new BuildSpatialHashPass
+            {
+                Center = Vector3.zero,
+                Extents = extents,
+                MinCellSize = 1f,
+                Wrap = true,
+                RefreshInterval = refresh,
+            });
+        }
+
+        chain.Add(new FieldNeighborCollectPass
+        {
+            Mode = FieldCollectMode.Scatter,
+            Center = Vector3.zero,
+            Extents = extents,
+            TexelSize = 1f,
+            RefreshInterval = refresh,
+            SortedOrder = collectSorted,
+        });
+        chain.Add(new FieldNeighborConvolvePass());
+        chain.Add(new ClearVelocityPass());
+        chain.Add(new FieldNeighborForcePass
+        {
+            Center = Vector3.zero,
+            Extents = extents,
+            TexelSize = 1f,
+            SortedOrder = false,
+        });
+        chain.Add(new FieldDensityPressurePass
+        {
+            Center = Vector3.zero,
+            Extents = extents,
+            PressureTexel = 0.25f,
+            Weight = 0.8f,
+            G0 = 25f,
+            Jitter = true,
+            JitterSeed = 1,
+            SortedOrder = false,
+            ScatterSorted = scatterSorted,
+            GridUpdateInterval = grid,
+            ForceInterleave = interleave,
+        });
+        chain.Add(new TeamHeadingSteerPass());
+        chain.Add(new IntegratePass());
+        chain.Add(new BoxBoundsPass
+        {
+            Center = Vector3.zero,
+            Extents = extents,
+            Behaviour = BoundsBehaviour.Wrap,
+        });
+        chain.Add(new HeadingToValuePass());
+        EffectAsset asset = ScriptableObject.CreateInstance<EffectAsset>();
+        asset.EditorConfigure(DataSourceKind.Swarm, configureLarge ? P400cSimulationSpeed : 1f, chain.ToArray());
+        if (configureLarge)
+        {
+            ConfigureP400cSource(asset);
+            if (perTeam > 0)
+            {
+                ApplyScaledSource(asset, perTeam, spawnRadius, centerX, P400cParticleSize);
+            }
+        }
+        else
+        {
+            ConfigureTwoTeamsFieldSource(asset);
+        }
+
+        AssetDatabase.CreateAsset(asset, path);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
     private static void CreateG1ExperimentAsset(
         string path,
         int refreshInterval,

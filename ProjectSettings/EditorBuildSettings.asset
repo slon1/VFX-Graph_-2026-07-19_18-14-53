@@ -149,5 +149,35 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_Sorted.unity
     guid: a02ef2ef299207440b6e83d9a2bc18f7
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_U2.unity
+    guid: 2d7dbbd222271aa4db17eb4c212fda53
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_R2.unity
+    guid: 95a46af4daad6b949a416580b1531696
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_2Teams_Field_P_G25_U2R2.unity
+    guid: 358f34ccbca35d446aeb6ab214a5fbd6
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_U2R2.unity
+    guid: 08e430d9ce3ba064d93c0b81694b88f5
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_U2.unity
+    guid: 84b6fcbcc3f33a849ba8b6c4ac4f253d
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K3_R2.unity
+    guid: f01118a122eff3a44802bd2e0907fcf9
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_SortedCollect.unity
+    guid: b81951cf49317ba45801780672962c13
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P400c_Field_Press_K1_SortedScatter.unity
+    guid: 49f5504fe0ac0bf44b2a5efced48956f
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P306k_Press_K3_U2R2.unity
+    guid: a7c2c29a129879f45848f854f4a6a789
+  - enabled: 1
+    path: Assets/Scenes/Boids_Hash_P506k_Press_K3_U2R2.unity
+    guid: e61f7dbb820d67042b872d7397adf9b2
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
