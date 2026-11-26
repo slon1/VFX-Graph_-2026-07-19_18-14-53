@@ -1,0 +1,40 @@
+{
+    "series":  "BAB",
+    "stopped":  false,
+    "reason":  "",
+    "cam":  "",
+    "cap":  "",
+    "hashrep":  "",
+    "forcerep":  "",
+    "maxn":  "48",
+    "resultDir":  "J:\\work\\VFX Graph_\\DOC\\MEASURE\\e63e2d9-27d723d3\\20261126-1711",
+    "points":  [
+                   {
+                       "n":  1,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "g2-m3-u2r2-B1",
+                       "status":  "ok",
+                       "file":  "01-B-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  2,
+                       "mode":  "A",
+                       "walk":  "",
+                       "tag":  "g2-m3-u2r2-A1",
+                       "status":  "ok",
+                       "file":  "02-A-720.txt",
+                       "reason":  ""
+                   },
+                   {
+                       "n":  3,
+                       "mode":  "B",
+                       "walk":  "",
+                       "tag":  "g2-m3-u2r2-B2",
+                       "status":  "ok",
+                       "file":  "03-B-720.txt",
+                       "reason":  ""
+                   }
+               ]
+}
