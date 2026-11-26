@@ -181,13 +181,19 @@ void FieldScatter(uint3 id : SV_DispatchThreadID)
         return;
     }
 
-    uint team = teamId[id.x];
+    uint particle = SortedOrder != 0 ? SortedIndices[id.x] : id.x;
+    if (particle >= ParticleCount)
+    {
+        return;
+    }
+
+    uint team = teamId[particle];
     if (team > 1u)
     {
         return;
     }
 
-    float2 p = position[id.x].xz;
+    float2 p = position[particle].xz;
     int2 i0;
     float2 f;
     float w00, w10, w01, w11;
@@ -197,7 +203,7 @@ void FieldScatter(uint3 id : SV_DispatchThreadID)
     uint channel = team * 3u;
     StoreN(i0, q00, q10, q01, q11, channel);
 
-    float2 h = heading[id.x].xz;
+    float2 h = heading[particle].xz;
     int hx00 = RoundHalfAway(w00 * h.x * FIXED_SCALE);
     int hx10 = RoundHalfAway(w10 * h.x * FIXED_SCALE);
     int hx01 = RoundHalfAway(w01 * h.x * FIXED_SCALE);

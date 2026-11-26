@@ -65,6 +65,28 @@ public class FieldNeighborValidatorTests
     }
 
     [Test]
+    public void CollectSorted_RequiresHashBeforeAndMatchingInterval()
+    {
+        SimPass[] scatter = Scatter(1f);
+        ((FieldNeighborCollectPass)scatter[0]).SortedOrder = true;
+        InvalidOperationException missing = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(scatter, null));
+        StringAssert.Contains("SortedOrder", missing.Message);
+
+        var withHash = new SimPass[scatter.Length + 1];
+        withHash[0] = Hash(45f);
+        Array.Copy(scatter, 0, withHash, 1, scatter.Length);
+        EffectAsset effect = Effect(2, 3f);
+        Assert.DoesNotThrow(() => SpatialHashValidator.Validate(withHash, effect));
+
+        ((BuildSpatialHashPass)withHash[0]).RefreshInterval = 3;
+        InvalidOperationException interval = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(withHash, effect));
+        StringAssert.Contains("RefreshInterval", interval.Message);
+        UnityEngine.Object.DestroyImmediate(effect);
+    }
+
+    [Test]
     public void FieldResolutionBelowWrapSpan_Throws()
     {
         EffectAsset effect = Effect(2, 3f);

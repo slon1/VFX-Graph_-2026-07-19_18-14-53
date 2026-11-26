@@ -630,6 +630,34 @@ public class FieldDensityPressureTests
         }
     }
 
+    [Test]
+    public void ScatterSorted_MatchesUnsortedDensity()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        Vector2[] positions = Crowd(64, 7);
+        int[] teams = Teams(64, 3);
+        uint[] plain;
+        using (Rig rig = new Rig(positions, teams, 8f, jitter: false, texel: 1f, hashRefresh: 1))
+        {
+            rig.Step();
+            plain = rig.ReadDensity();
+        }
+
+        uint[] sorted;
+        using (Rig rig = new Rig(positions, teams, 8f, jitter: false, texel: 1f, hashRefresh: 1))
+        {
+            rig.Pass.ScatterSorted = true;
+            rig.Step();
+            sorted = rig.ReadDensity();
+        }
+
+        Assert.AreEqual(plain.Length, sorted.Length);
+        for (int i = 0; i < plain.Length; i++)
+        {
+            Assert.AreEqual(plain[i], sorted[i], "density " + i);
+        }
+    }
+
     private struct ForceStats
     {
         public double MaxAbs;

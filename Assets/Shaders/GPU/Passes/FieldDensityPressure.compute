@@ -18,6 +18,7 @@ int2 PressureRes;
 float PressureWeight;
 float PressureG0;
 int SortedOrder;
+int ScatterSorted;
 int FrameIndex;
 int ForceInterleave;
 int WriteStored;
@@ -96,7 +97,7 @@ void PressureScatter(uint3 id : SV_DispatchThreadID)
         return;
     }
 
-    uint particle = SortedOrder != 0 ? SortedIndices[id.x] : id.x;
+    uint particle = (SortedOrder != 0 || ScatterSorted != 0) ? SortedIndices[id.x] : id.x;
     if (particle >= ParticleCount)
     {
         return;

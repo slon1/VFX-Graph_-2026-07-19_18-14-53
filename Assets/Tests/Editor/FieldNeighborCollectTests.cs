@@ -152,6 +152,7 @@ public class FieldNeighborCollectTests
         }
 
         double[] expected = FieldNeighborReference.Collect(xz, headings, teams, layout);
+        uint[] plain;
         using (Gpu gpu = new Gpu(xz, headings, teams, layout, FieldCollectMode.Scatter))
         {
             gpu.Build();
@@ -159,6 +160,18 @@ public class FieldNeighborCollectTests
             AssertScatter(expected, actual, xz, headings, teams, layout);
             Assert.AreEqual(count / 2d, Sum(actual, 0), 0.1d);
             Assert.AreEqual(count / 2d, Sum(actual, 1), 0.1d);
+            plain = gpu.ReadAccumBits();
+        }
+
+        using (Gpu gpu = new Gpu(xz, headings, teams, layout, FieldCollectMode.Scatter, sorted: true))
+        {
+            gpu.Build();
+            uint[] sortedBits = gpu.ReadAccumBits();
+            Assert.AreEqual(plain.Length, sortedBits.Length);
+            for (int i = 0; i < plain.Length; i++)
+            {
+                Assert.AreEqual(plain[i], sortedBits[i], "accum " + i);
+            }
         }
     }
 
@@ -336,8 +349,15 @@ public class FieldNeighborCollectTests
         private readonly FieldSet fields;
         private readonly GraphicsBuffer teams;
         private readonly FieldCollectMode mode;
+        private readonly bool runHash;
 
-        public Gpu(Vector2[] xz, Vector2[] headings, int[] teamIds, SpatialHashLayout layout, FieldCollectMode mode)
+        public Gpu(
+            Vector2[] xz,
+            Vector2[] headings,
+            int[] teamIds,
+            SpatialHashLayout layout,
+            FieldCollectMode mode,
+            bool sorted = false)
         {
             this.mode = mode;
             int count = xz.Length;
@@ -387,9 +407,15 @@ public class FieldNeighborCollectTests
                 Extents = half,
                 TexelSize = layout.CellSize.x,
             };
-            if (mode == FieldCollectMode.Gather)
+            runHash = mode == FieldCollectMode.Gather || sorted;
+            if (runHash)
             {
                 hash.Initialize(context);
+            }
+
+            if (sorted)
+            {
+                collect.SortedOrder = true;
             }
 
             collect.Initialize(context);
@@ -397,7 +423,7 @@ public class FieldNeighborCollectTests
 
         public void Build()
         {
-            if (mode == FieldCollectMode.Gather)
+            if (runHash)
             {
                 hash.Execute(context, 0f);
             }
@@ -412,6 +438,13 @@ public class FieldNeighborCollectTests
             float[] raw = new float[context.FieldNeighbor.Layout.CellCount * 6];
             context.FieldNeighbor.Raw.GetData(raw);
             return raw;
+        }
+
+        public uint[] ReadAccumBits()
+        {
+            uint[] bits = new uint[context.FieldNeighbor.Layout.CellCount * 6];
+            context.FieldNeighbor.Accum.GetData(bits);
+            return bits;
         }
 
         public float[] ReadResolvedAccum()

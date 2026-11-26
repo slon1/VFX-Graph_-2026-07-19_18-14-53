@@ -22,6 +22,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable, ISerializat
     private static readonly int WeightId = UnityEngine.Shader.PropertyToID("PressureWeight");
     private static readonly int FloorId = UnityEngine.Shader.PropertyToID("PressureG0");
     private static readonly int SortedOrderId = UnityEngine.Shader.PropertyToID("SortedOrder");
+    private static readonly int ScatterSortedId = UnityEngine.Shader.PropertyToID("ScatterSorted");
     private static readonly int FrameIndexId = UnityEngine.Shader.PropertyToID("FrameIndex");
     private static readonly int ForceInterleaveId = UnityEngine.Shader.PropertyToID("ForceInterleave");
     private static readonly int WriteStoredId = UnityEngine.Shader.PropertyToID("WriteStored");
@@ -34,6 +35,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable, ISerializat
     [SerializeField] private bool jitter = true;
     [SerializeField] private int jitterSeed = 1;
     [SerializeField] private bool sortedOrder;
+    [SerializeField] private bool scatterSorted;
     [SerializeField] private int gridUpdateInterval = 1;
     [SerializeField] private int forceInterleave = 1;
 
@@ -108,6 +110,13 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable, ISerializat
     {
         get => sortedOrder;
         set => sortedOrder = value;
+    }
+
+    /// <summary>Sort only the density scatter. Force stays in index order unless <see cref="SortedOrder"/> is set.</summary>
+    public bool ScatterSorted
+    {
+        get => scatterSorted;
+        set => scatterSorted = value;
     }
 
     /// <summary>Rebuild the density grid every Nth frame. 1 rebuilds every frame.</summary>
@@ -252,6 +261,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable, ISerializat
     {
         GraphicsBuffer indices = IndexBuffer(context);
         cmd.SetComputeIntParam(clearKernel.Shader, SortedOrderId, sortedOrder ? 1 : 0);
+        cmd.SetComputeIntParam(clearKernel.Shader, ScatterSortedId, !sortedOrder && scatterSorted ? 1 : 0);
         GraphicsBuffer stored = StoredBuffer();
         GraphicsBuffer freshBuffer = FreshBuffer();
         BindIndex(cmd, clearKernel.Index, indices);
@@ -266,12 +276,14 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable, ISerializat
 
     private GraphicsBuffer IndexBuffer(SimContext context)
     {
-        if (sortedOrder)
+        if (sortedOrder || scatterSorted)
         {
             if (context == null || context.SpatialHash == null || context.SpatialHash.SortedIndices == null)
             {
                 throw new InvalidOperationException(
-                    "Field Density Pressure SortedOrder requires Build Spatial Hash earlier in the chain.");
+                    sortedOrder
+                        ? "Field Density Pressure SortedOrder requires Build Spatial Hash earlier in the chain."
+                        : "Field Density Pressure ScatterSorted requires Build Spatial Hash earlier in the chain.");
             }
 
             return context.SpatialHash.SortedIndices;

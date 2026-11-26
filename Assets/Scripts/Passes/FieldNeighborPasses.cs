@@ -121,6 +121,7 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
     [SerializeField] private Vector3 extents = new Vector3(16f, 0f, 16f);
     [SerializeField, Min(1e-4f)] private float texelSize = 1f;
     [SerializeField, Min(1)] private int refreshInterval = 1;
+    [SerializeField] private bool sortedOrder;
 
     [NonSerialized] private FieldNeighborSet field;
     [NonSerialized] private KernelHandle gatherKernel;
@@ -160,6 +161,13 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
     {
         get => refreshInterval;
         set => refreshInterval = value < 1 ? 1 : value;
+    }
+
+    /// <summary>Scatter reads particles in hash order. Gather ignores this.</summary>
+    public bool SortedOrder
+    {
+        get => sortedOrder;
+        set => sortedOrder = value;
     }
 
     /// <summary>Diagnostic stage. Does not change <see cref="SimPass.RepeatCount"/>.</summary>
@@ -267,7 +275,8 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
             Bind(cmd, gatherKernel, "SortedDirections", hash.SortedDirections);
             Bind(cmd, gatherKernel, "SortedTeams", hash.SortedTeams);
             Bind(cmd, gatherKernel, "Raw", field.Raw);
-            BindSorted(cmd, gatherKernel);
+            cmd.SetComputeIntParam(shader, SortedOrderId, 0);
+            BindSorted(cmd, gatherKernel, context);
             int groups = (field.Layout.CellCount + ThreadGroupSize - 1) / ThreadGroupSize;
             cmd.DispatchCompute(gatherKernel.Shader, gatherKernel.Index, groups, 1, 1);
             RepeatGather(cmd, groups);
@@ -279,8 +288,9 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
             Bind(cmd, scatterKernel, "heading", context.Particles.Get(BuiltinAttributes.Heading));
             Bind(cmd, scatterKernel, "teamId", context.Particles.Get(BuiltinAttributes.TeamId));
             Bind(cmd, scatterKernel, "Accum", field.Accum);
-            BindSorted(cmd, clearKernel);
-            BindSorted(cmd, scatterKernel);
+            cmd.SetComputeIntParam(shader, SortedOrderId, sortedOrder ? 1 : 0);
+            BindSorted(cmd, clearKernel, context);
+            BindSorted(cmd, scatterKernel, context);
             int accumCount = field.Layout.CellCount * FieldNeighborSet.ChannelsPerTexel;
             int clearGroups = (accumCount + ThreadGroupSize - 1) / ThreadGroupSize;
             int particleGroups = (field.ParticleCount + ThreadGroupSize - 1) / ThreadGroupSize;
@@ -303,20 +313,34 @@ public sealed class FieldNeighborCollectPass : SimPass, IFieldNeighborPass, IDis
         field = null;
     }
 
-    private void BindSorted(CommandBuffer cmd, KernelHandle handle)
+    private void BindSorted(CommandBuffer cmd, KernelHandle handle, SimContext context)
     {
         if (!handle.IsValid)
         {
             return;
         }
 
-        if (indexDummy == null)
+        GraphicsBuffer indices = indexDummy;
+        if (sortedOrder && mode == FieldCollectMode.Scatter)
+        {
+            if (context.SpatialHash == null || context.SpatialHash.SortedIndices == null)
+            {
+                throw new InvalidOperationException(
+                    "Field Neighbor Collect SortedOrder requires Build Spatial Hash earlier in the chain.");
+            }
+
+            indices = context.SpatialHash.SortedIndices;
+        }
+        else if (indexDummy == null)
         {
             indexDummy = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
+            indices = indexDummy;
         }
 
-        cmd.SetComputeBufferParam(handle.Shader, handle.Index, "SortedIndices", indexDummy);
+        cmd.SetComputeBufferParam(handle.Shader, handle.Index, "SortedIndices", indices);
     }
+
+    private static readonly int SortedOrderId = Shader.PropertyToID("SortedOrder");
 
     private bool RepeatsCollect =>
         fieldRepeatCount > 1 && (FieldStage == FieldRepeatStage.All || FieldStage == FieldRepeatStage.Collect);

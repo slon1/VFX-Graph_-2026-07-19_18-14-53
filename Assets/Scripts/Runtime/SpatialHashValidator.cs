@@ -308,6 +308,23 @@ internal static class SpatialHashValidator
                     $"hash {hashLayout.Resolution.x}x{hashLayout.Resolution.y}).");
             }
         }
+        else if (collect.SortedOrder)
+        {
+            if (builder == null || hashIndex > collectIndex)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Neighbor Collect SortedOrder requires Build Spatial Hash before the pass.");
+            }
+
+            if (builder.RefreshInterval != collect.RefreshInterval)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: sorted-order hash RefreshInterval " + builder.RefreshInterval +
+                    " does not match the field RefreshInterval " + collect.RefreshInterval + ".");
+            }
+
+            RequireSortedHash(passes, collectIndex, collect.Center, collect.Extents);
+        }
         else if (builder != null)
         {
             if (!HasSortedConsumer(passes))
@@ -391,12 +408,17 @@ internal static class SpatialHashValidator
                 continue;
             }
 
+            if (passes[i] is FieldNeighborCollectPass collect && collect.SortedOrder)
+            {
+                return true;
+            }
+
             if (passes[i] is FieldNeighborForcePass force && force.SortedOrder)
             {
                 return true;
             }
 
-            if (passes[i] is FieldDensityPressurePass pressure && pressure.SortedOrder)
+            if (passes[i] is FieldDensityPressurePass pressure && (pressure.SortedOrder || pressure.ScatterSorted))
             {
                 return true;
             }
@@ -726,7 +748,7 @@ internal static class SpatialHashValidator
                     pressure.ForceInterleave + ".");
             }
 
-            if (pressure.SortedOrder)
+            if (pressure.SortedOrder || pressure.ScatterSorted)
             {
                 RequireSortedHash(passes, i, pressure.Center, pressure.Extents);
             }
