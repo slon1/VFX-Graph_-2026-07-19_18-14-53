@@ -33,7 +33,7 @@ public class BehaviorProbe
     private const string MeasureCode = "153912c";
     private const string PressMeasureCode = "a77f8f8";
     private const string Press2MeasureCode = "8213b0d";
-    private const string G2MeasureCode = "pending1";
+    private const string G2MeasureCode = "8e1560a";
 
     [Test]
     public void MixedFlocks_ContactIsComplete()
