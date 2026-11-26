@@ -138,6 +138,25 @@ public class BoidsHashFieldPressurePresetTests
 
     [Test]
     [Timeout(180000)]
+    public void IntervalsTwo_TwoRunsOnSameInstance_MatchPositionsWithinOneMicro()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        EffectAsset asset = InstantiateAsset(PressG25Path);
+        FieldDensityPressurePass pressure = FindPressure(asset.Passes);
+        pressure.GridUpdateInterval = 2;
+        pressure.ForceInterleave = 2;
+        Vector3[] first = RunPositions(asset);
+        Vector3[] second = RunPositions(asset);
+        for (int i = 0; i < first.Length; i++)
+        {
+            Assert.AreEqual(first[i].x, second[i].x, 1e-6f, "x " + i);
+            Assert.AreEqual(first[i].y, second[i].y, 1e-6f, "y " + i);
+            Assert.AreEqual(first[i].z, second[i].z, 1e-6f, "z " + i);
+        }
+    }
+
+    [Test]
+    [Timeout(180000)]
     public void PressG25_TwoRunsOnSameInstance_MatchPositionsWithinOneMicro()
     {
         AssertRepro(PressG25Path);

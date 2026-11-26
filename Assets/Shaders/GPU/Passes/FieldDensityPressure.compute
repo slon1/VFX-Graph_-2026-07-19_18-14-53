@@ -18,6 +18,9 @@ int2 PressureRes;
 float PressureWeight;
 float PressureG0;
 int SortedOrder;
+int FrameIndex;
+int ForceInterleave;
+int WriteStored;
 
 StructuredBuffer<uint> SortedIndices;
 
@@ -35,7 +38,14 @@ StructuredBuffer<FieldTeamSlot> Teams;
 RWStructuredBuffer<uint> Density;
 RWStructuredBuffer<float2> Grad;
 RWStructuredBuffer<float3> velocity;
+RWStructuredBuffer<float2> PressureStored;
+RWStructuredBuffer<uint> PressureFresh;
 RWStructuredBuffer<float2> CicOut;
+
+uint PressureHash(uint index)
+{
+    return index * 747796405u + 2891336453u;
+}
 
 uint CellIndex(int2 c)
 {
@@ -150,6 +160,17 @@ void PressureForce(uint3 id : SV_DispatchThreadID)
         return;
     }
 
+    if (ForceInterleave > 1)
+    {
+        uint due = (PressureHash(particle) + (uint)FrameIndex) % (uint)ForceInterleave;
+        if (due != 0u && PressureFresh[particle] != 0u)
+        {
+            float2 stored = PressureStored[particle];
+            velocity[particle] += float3(stored.x, 0, stored.y);
+            return;
+        }
+    }
+
     float2 p = position[particle].xz;
     int2 i0;
     float2 f;
@@ -163,6 +184,12 @@ void PressureForce(uint3 id : SV_DispatchThreadID)
     g += ((float)q01 / scale) * Grad[CellIndex(i0 + int2(0, 1)) * 2u + team];
     g += ((float)q11 / scale) * Grad[CellIndex(i0 + int2(1, 1)) * 2u + team];
     float2 force = -PressureWeight * g / (length(g) + PressureG0);
+    if (ForceInterleave > 1 && WriteStored != 0)
+    {
+        PressureStored[particle] = force;
+        PressureFresh[particle] = 1u;
+    }
+
     velocity[particle] += float3(force.x, 0, force.y);
 }
 

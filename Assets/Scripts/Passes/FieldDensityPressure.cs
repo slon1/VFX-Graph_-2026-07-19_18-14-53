@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 /// <see cref="FieldRepeatStage.Press"/> write scratch buffers. <see cref="SimPass.RepeatCount"/> stays 1.
 /// </summary>
 [Serializable]
-public sealed class FieldDensityPressurePass : SimPass, IDisposable
+public sealed class FieldDensityPressurePass : SimPass, IDisposable, ISerializationCallbackReceiver
 {
     public const int MaxCells = 4194304;
     private const int ThreadGroupSize = 64;
@@ -22,6 +22,9 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
     private static readonly int WeightId = UnityEngine.Shader.PropertyToID("PressureWeight");
     private static readonly int FloorId = UnityEngine.Shader.PropertyToID("PressureG0");
     private static readonly int SortedOrderId = UnityEngine.Shader.PropertyToID("SortedOrder");
+    private static readonly int FrameIndexId = UnityEngine.Shader.PropertyToID("FrameIndex");
+    private static readonly int ForceInterleaveId = UnityEngine.Shader.PropertyToID("ForceInterleave");
+    private static readonly int WriteStoredId = UnityEngine.Shader.PropertyToID("WriteStored");
 
     [SerializeField] private Vector3 center = Vector3.zero;
     [SerializeField] private Vector3 extents = new Vector3(45f, 0f, 45f);
@@ -31,6 +34,8 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
     [SerializeField] private bool jitter = true;
     [SerializeField] private int jitterSeed = 1;
     [SerializeField] private bool sortedOrder;
+    [SerializeField] private int gridUpdateInterval = 1;
+    [SerializeField] private int forceInterleave = 1;
 
     [NonSerialized] private KernelHandle clearKernel;
     [NonSerialized] private KernelHandle scatterKernel;
@@ -46,6 +51,11 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
     [NonSerialized] private Vector3[] scratchZeros;
     [NonSerialized] private GraphicsBuffer liveVelocity;
     [NonSerialized] private GraphicsBuffer indexDummy;
+    [NonSerialized] private GraphicsBuffer storedForce;
+    [NonSerialized] private GraphicsBuffer storedDummy;
+    [NonSerialized] private GraphicsBuffer fresh;
+    [NonSerialized] private GraphicsBuffer freshDummy;
+    [NonSerialized] private uint[] freshZeros;
 
     public override string DisplayName => "Field Density Pressure";
     public override PassCategory Category => PassCategory.Force;
@@ -100,6 +110,20 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         set => sortedOrder = value;
     }
 
+    /// <summary>Rebuild the density grid every Nth frame. 1 rebuilds every frame.</summary>
+    public int GridUpdateInterval
+    {
+        get => gridUpdateInterval;
+        set => gridUpdateInterval = value;
+    }
+
+    /// <summary>Recompute pressure force for each particle every Nth frame. 1 recomputes every frame.</summary>
+    public int ForceInterleave
+    {
+        get => forceInterleave;
+        set => forceInterleave = value;
+    }
+
     /// <summary>Diagnostic stage. Does not change <see cref="SimPass.RepeatCount"/>.</summary>
     public FieldRepeatStage FieldStage { get; set; } = FieldRepeatStage.All;
 
@@ -142,6 +166,7 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         }
 
         frameIndex = 0;
+        GridBuilds = 0;
         clearKernel = context.FindKernel("PressureClear");
         scatterKernel = context.FindKernel("PressureScatter");
         gradientKernel = context.FindKernel("PressureGradient");
@@ -157,10 +182,16 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
             RepeatForceDispatches = 0;
             try
             {
+            RequireInterval(gridUpdateInterval, "GridUpdateInterval");
+            RequireInterval(forceInterleave, "ForceInterleave");
             SpatialHashLayout layout = SpatialHashSet.ComputeLayout(center, extents, pressureTexel);
             RequireOwnLimit(layout);
             Layout = layout;
-            LastShift = ShiftOf(frameIndex, jitterSeed, layout.CellSize, jitter);
+            bool buildGrid = frameIndex % gridUpdateInterval == 0;
+            if (buildGrid)
+            {
+                LastShift = ShiftOf(frameIndex, jitterSeed, layout.CellSize, jitter);
+            }
             if (FieldStage == FieldRepeatStage.Off || !KernelsReady || context.Particles == null || context.Teams == null)
             {
                 return;
@@ -173,13 +204,14 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
             }
 
             EnsureLive(layout);
+            EnsureStored(count);
             liveVelocity = context.Particles.Get(BuiltinAttributes.Velocity);
             CommandBuffer cmd = context.Cmd;
             Vector2 origin = layout.Origin + LastShift;
             SetUniforms(cmd, clearKernel.Shader, count, layout, origin);
             BindSorted(cmd, context);
-            DispatchChain(cmd, count, layout.CellCount, density, grad, liveVelocity, context);
-            RepeatIntoScratch(cmd, count, layout, context);
+            DispatchChain(cmd, count, layout.CellCount, density, grad, liveVelocity, context, buildGrid);
+            RepeatIntoScratch(cmd, count, layout, context, buildGrid);
             LastExecuteDispatched = true;
         }
         finally
@@ -197,22 +229,39 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         ReleaseScratch();
         indexDummy?.Release();
         indexDummy = null;
+        storedForce?.Release();
+        storedForce = null;
+        storedDummy?.Release();
+        storedDummy = null;
+        fresh?.Release();
+        fresh = null;
+        freshDummy?.Release();
+        freshDummy = null;
+        freshZeros = null;
         liveVelocity = null;
     }
 
     internal void BindIndexBuffer(CommandBuffer cmd, int kernel)
     {
         cmd.SetComputeBufferParam(clearKernel.Shader, kernel, "SortedIndices", IndexBuffer(null));
+        cmd.SetComputeBufferParam(clearKernel.Shader, kernel, "PressureStored", StoredBuffer());
+        cmd.SetComputeBufferParam(clearKernel.Shader, kernel, "PressureFresh", FreshBuffer());
     }
 
     private void BindSorted(CommandBuffer cmd, SimContext context)
     {
         GraphicsBuffer indices = IndexBuffer(context);
         cmd.SetComputeIntParam(clearKernel.Shader, SortedOrderId, sortedOrder ? 1 : 0);
+        GraphicsBuffer stored = StoredBuffer();
+        GraphicsBuffer freshBuffer = FreshBuffer();
         BindIndex(cmd, clearKernel.Index, indices);
         BindIndex(cmd, scatterKernel.Index, indices);
         BindIndex(cmd, gradientKernel.Index, indices);
         BindIndex(cmd, forceKernel.Index, indices);
+        BindStored(cmd, clearKernel.Index, stored, freshBuffer);
+        BindStored(cmd, scatterKernel.Index, stored, freshBuffer);
+        BindStored(cmd, gradientKernel.Index, stored, freshBuffer);
+        BindStored(cmd, forceKernel.Index, stored, freshBuffer);
     }
 
     private GraphicsBuffer IndexBuffer(SimContext context)
@@ -241,6 +290,42 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         cmd.SetComputeBufferParam(clearKernel.Shader, kernel, "SortedIndices", indices);
     }
 
+    private void BindStored(CommandBuffer cmd, int kernel, GraphicsBuffer stored, GraphicsBuffer freshBuffer)
+    {
+        cmd.SetComputeBufferParam(clearKernel.Shader, kernel, "PressureStored", stored);
+        cmd.SetComputeBufferParam(clearKernel.Shader, kernel, "PressureFresh", freshBuffer);
+    }
+
+    private GraphicsBuffer StoredBuffer()
+    {
+        if (forceInterleave > 1 && storedForce != null)
+        {
+            return storedForce;
+        }
+
+        if (storedDummy == null)
+        {
+            storedDummy = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * 2);
+        }
+
+        return storedDummy;
+    }
+
+    private GraphicsBuffer FreshBuffer()
+    {
+        if (forceInterleave > 1 && fresh != null)
+        {
+            return fresh;
+        }
+
+        if (freshDummy == null)
+        {
+            freshDummy = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
+        }
+
+        return freshDummy;
+    }
+
     internal static Vector2 ShiftOf(int frame, int seed, Vector2 cellSize, bool enabled)
     {
         if (!enabled)
@@ -262,6 +347,39 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
 
     internal int RepeatForceDispatches { get; private set; }
 
+    /// <summary>Live grid builds since the last <see cref="Initialize"/>.</summary>
+    internal int GridBuilds { get; private set; }
+
+    internal GraphicsBuffer StoredForce => storedForce;
+
+    internal void ResetSchedule()
+    {
+        frameIndex = 0;
+        GridBuilds = 0;
+        if (fresh != null && freshZeros != null)
+        {
+            Array.Clear(freshZeros, 0, freshZeros.Length);
+            fresh.SetData(freshZeros);
+        }
+    }
+
+    public void OnBeforeSerialize()
+    {
+    }
+
+    public void OnAfterDeserialize()
+    {
+        if (gridUpdateInterval == 0)
+        {
+            gridUpdateInterval = 1;
+        }
+
+        if (forceInterleave == 0)
+        {
+            forceInterleave = 1;
+        }
+    }
+
     private bool RepeatsThisStage =>
         fieldRepeatCount > 1 &&
         (FieldStage == FieldRepeatStage.All ||
@@ -273,6 +391,48 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
 
     private bool KernelsReady =>
         clearKernel.IsValid && scatterKernel.IsValid && gradientKernel.IsValid && forceKernel.IsValid;
+
+    private void EnsureStored(int count)
+    {
+        if (forceInterleave <= 1)
+        {
+            storedForce?.Release();
+            storedForce = null;
+            fresh?.Release();
+            fresh = null;
+            freshZeros = null;
+            return;
+        }
+
+        if (storedForce != null && storedForce.count == count && fresh != null && fresh.count == count)
+        {
+            return;
+        }
+
+        storedForce?.Release();
+        fresh?.Release();
+        storedForce = new GraphicsBuffer(GraphicsBuffer.Target.Structured, count, sizeof(float) * 2);
+        fresh = new GraphicsBuffer(GraphicsBuffer.Target.Structured, count, sizeof(uint));
+        if (freshZeros == null || freshZeros.Length != count)
+        {
+            freshZeros = new uint[count];
+        }
+        else
+        {
+            Array.Clear(freshZeros, 0, freshZeros.Length);
+        }
+
+        fresh.SetData(freshZeros);
+    }
+
+    private static void RequireInterval(int value, string name)
+    {
+        if (value < 1 || value > 4)
+        {
+            throw new InvalidOperationException(
+                "Field Density Pressure " + name + " must be in 1..4, found " + value + ".");
+        }
+    }
 
     private static void RequireOwnLimit(SpatialHashLayout layout)
     {
@@ -310,6 +470,8 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         cmd.SetComputeIntParams(shader, ResId, layout.Resolution.x, layout.Resolution.y);
         cmd.SetComputeFloatParam(shader, WeightId, weight);
         cmd.SetComputeFloatParam(shader, FloorId, g0);
+        cmd.SetComputeIntParam(shader, FrameIndexId, frameIndex);
+        cmd.SetComputeIntParam(shader, ForceInterleaveId, forceInterleave);
     }
 
     private void DispatchChain(
@@ -319,7 +481,8 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         GraphicsBuffer densityBuffer,
         GraphicsBuffer gradBuffer,
         GraphicsBuffer velocityBuffer,
-        SimContext context)
+        SimContext context,
+        bool buildGrid)
     {
         Bind(cmd, clearKernel, "Density", densityBuffer);
         Bind(cmd, scatterKernel, "Density", densityBuffer);
@@ -334,13 +497,19 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         Bind(cmd, forceKernel, "velocity", velocityBuffer);
         int cellGroups = (cells + ThreadGroupSize - 1) / ThreadGroupSize;
         int particleGroups = (count + ThreadGroupSize - 1) / ThreadGroupSize;
-        cmd.DispatchCompute(clearKernel.Shader, clearKernel.Index, cellGroups, 1, 1);
-        cmd.DispatchCompute(scatterKernel.Shader, scatterKernel.Index, particleGroups, 1, 1);
-        cmd.DispatchCompute(gradientKernel.Shader, gradientKernel.Index, cellGroups, 1, 1);
+        if (buildGrid)
+        {
+            cmd.DispatchCompute(clearKernel.Shader, clearKernel.Index, cellGroups, 1, 1);
+            cmd.DispatchCompute(scatterKernel.Shader, scatterKernel.Index, particleGroups, 1, 1);
+            cmd.DispatchCompute(gradientKernel.Shader, gradientKernel.Index, cellGroups, 1, 1);
+            GridBuilds++;
+        }
+
+        cmd.SetComputeIntParam(forceKernel.Shader, WriteStoredId, 1);
         cmd.DispatchCompute(forceKernel.Shader, forceKernel.Index, particleGroups, 1, 1);
     }
 
-    private void RepeatIntoScratch(CommandBuffer cmd, int count, SpatialHashLayout layout, SimContext context)
+    private void RepeatIntoScratch(CommandBuffer cmd, int count, SpatialHashLayout layout, SimContext context, bool buildGrid)
     {
         if (!RepeatsThisStage)
         {
@@ -349,9 +518,16 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
 
         int slots = layout.CellCount * 2;
         bool chain = FieldStage == FieldRepeatStage.All || FieldStage == FieldRepeatStage.Press;
-        bool writesDensity = chain || FieldStage == FieldRepeatStage.PClear || FieldStage == FieldRepeatStage.PScatter;
-        bool writesGrad = chain || FieldStage == FieldRepeatStage.PGrad;
+        bool gridStage = chain ||
+            FieldStage == FieldRepeatStage.PClear ||
+            FieldStage == FieldRepeatStage.PScatter ||
+            FieldStage == FieldRepeatStage.PGrad;
+        bool runGrid = buildGrid && gridStage;
+        bool writesDensity = runGrid &&
+            (chain || FieldStage == FieldRepeatStage.PClear || FieldStage == FieldRepeatStage.PScatter);
+        bool writesGrad = runGrid && (chain || FieldStage == FieldRepeatStage.PGrad);
         bool writesVelocity = chain || FieldStage == FieldRepeatStage.PForce;
+        cmd.SetComputeIntParam(forceKernel.Shader, WriteStoredId, 0);
         if (writesDensity)
         {
             EnsureScratchDensity(slots);
@@ -374,11 +550,34 @@ public sealed class FieldDensityPressurePass : SimPass, IDisposable
         {
             if (chain)
             {
-                DispatchChain(cmd, count, layout.CellCount, scratchDensity, scratchGrad, scratchVelocity, context);
-                RepeatClearDispatches++;
-                RepeatScatterDispatches++;
-                RepeatGradientDispatches++;
+                if (buildGrid)
+                {
+                    Bind(cmd, clearKernel, "Density", scratchDensity);
+                    cmd.DispatchCompute(clearKernel.Shader, clearKernel.Index, cellGroups, 1, 1);
+                    Bind(cmd, scatterKernel, "Density", scratchDensity);
+                    Bind(cmd, scatterKernel, "position", context.Particles.Get(BuiltinAttributes.Position));
+                    Bind(cmd, scatterKernel, "teamId", context.Particles.Get(BuiltinAttributes.TeamId));
+                    cmd.DispatchCompute(scatterKernel.Shader, scatterKernel.Index, particleGroups, 1, 1);
+                    Bind(cmd, gradientKernel, "Density", scratchDensity);
+                    Bind(cmd, gradientKernel, "Grad", scratchGrad);
+                    Bind(cmd, gradientKernel, "Teams", context.Teams);
+                    cmd.DispatchCompute(gradientKernel.Shader, gradientKernel.Index, cellGroups, 1, 1);
+                    RepeatClearDispatches++;
+                    RepeatScatterDispatches++;
+                    RepeatGradientDispatches++;
+                }
+
+                Bind(cmd, forceKernel, "Grad", buildGrid ? scratchGrad : grad);
+                Bind(cmd, forceKernel, "position", context.Particles.Get(BuiltinAttributes.Position));
+                Bind(cmd, forceKernel, "teamId", context.Particles.Get(BuiltinAttributes.TeamId));
+                Bind(cmd, forceKernel, "velocity", scratchVelocity);
+                cmd.DispatchCompute(forceKernel.Shader, forceKernel.Index, particleGroups, 1, 1);
                 RepeatForceDispatches++;
+                continue;
+            }
+
+            if (!buildGrid && FieldStage != FieldRepeatStage.PForce)
+            {
                 continue;
             }
 

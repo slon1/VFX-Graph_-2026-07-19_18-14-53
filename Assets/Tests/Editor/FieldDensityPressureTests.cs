@@ -218,6 +218,202 @@ public class FieldDensityPressureTests
     }
 
     [Test]
+    public void IntervalsOne_MatchTheDefaultForce()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        Vector2[] positions = DenseSquare(64, 2f, new System.Random(3));
+        int[] teams = Teams(positions.Length, 1);
+        using (Rig plain = new Rig(positions, teams, 45f, jitter: false))
+        using (Rig ones = new Rig(positions, teams, 45f, jitter: false))
+        {
+            ones.Pass.GridUpdateInterval = 1;
+            ones.Pass.ForceInterleave = 1;
+            plain.Step();
+            ones.Step();
+            Vector3[] a = plain.ReadVelocity();
+            Vector3[] b = ones.ReadVelocity();
+            for (int i = 0; i < a.Length; i++)
+            {
+                Assert.AreEqual(a[i].x, b[i].x, 0f, "x " + i);
+                Assert.AreEqual(a[i].y, b[i].y, 0f, "y " + i);
+                Assert.AreEqual(a[i].z, b[i].z, 0f, "z " + i);
+            }
+        }
+    }
+
+    [Test]
+    public void GridUpdateIntervalTwo_BuildsEverySecondFrameFromTheSavedGradient()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        Vector2[] positions = DenseSquare(32, 4f, new System.Random(5));
+        using (Rig rig = new Rig(positions, Teams(positions.Length, 0), 45f, jitter: true))
+        {
+            rig.Pass.GridUpdateInterval = 2;
+            Vector2[] builtGrad = null;
+            Vector3[] builtVelocity = null;
+            Vector2 builtShift = Vector2.zero;
+            for (int frame = 0; frame < 4; frame++)
+            {
+                rig.ZeroVelocity();
+                int before = rig.Pass.GridBuilds;
+                rig.Step();
+                if (frame % 2 == 0)
+                {
+                    Assert.AreEqual(before + 1, rig.Pass.GridBuilds, "build " + frame);
+                    builtGrad = rig.ReadGrad();
+                    builtVelocity = rig.ReadVelocity();
+                    builtShift = rig.Pass.LastShift;
+                    Vector2 expected = FieldDensityPressurePass.ShiftOf(frame, 1, rig.Pass.Layout.CellSize, true);
+                    Assert.AreEqual(expected.x, builtShift.x, 0f, "shift x " + frame);
+                    Assert.AreEqual(expected.y, builtShift.y, 0f, "shift y " + frame);
+                }
+                else
+                {
+                    Assert.AreEqual(before, rig.Pass.GridBuilds, "skip " + frame);
+                    Assert.AreEqual(builtShift.x, rig.Pass.LastShift.x, 0f, "held shift x");
+                    Assert.AreEqual(builtShift.y, rig.Pass.LastShift.y, 0f, "held shift y");
+                    Vector2[] grad = rig.ReadGrad();
+                    Vector3[] velocity = rig.ReadVelocity();
+                    for (int i = 0; i < grad.Length; i++)
+                    {
+                        Assert.AreEqual(builtGrad[i].x, grad[i].x, 0f, "grad x " + i);
+                        Assert.AreEqual(builtGrad[i].y, grad[i].y, 0f, "grad y " + i);
+                    }
+
+                    for (int i = 0; i < velocity.Length; i++)
+                    {
+                        Assert.AreEqual(builtVelocity[i].x, velocity[i].x, 0f, "vx " + i);
+                        Assert.AreEqual(builtVelocity[i].z, velocity[i].z, 0f, "vz " + i);
+                    }
+                }
+            }
+
+            Assert.AreEqual(2, rig.Pass.GridBuilds);
+        }
+    }
+
+    [Test]
+    public void ForceInterleaveTwo_AlternatesGroupsAndKeepsTheStoredForce()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        Vector2[] positions = DenseSquare(32, 4f, new System.Random(9));
+        using (Rig rig = new Rig(positions, Teams(positions.Length, 0), 45f, jitter: false))
+        {
+            rig.Pass.ForceInterleave = 2;
+            rig.Step();
+            Vector2[] stored = rig.ReadStored();
+            for (int i = 0; i < stored.Length; i++)
+            {
+                Assert.IsFalse(float.IsNaN(stored[i].x), "fresh " + i);
+            }
+
+            rig.Pass.Weight = 0.2f;
+            rig.ZeroVelocity();
+            rig.Step();
+            Vector2[] next = rig.ReadStored();
+            int skipped = 0;
+            int recomputed = 0;
+            for (int i = 0; i < next.Length; i++)
+            {
+                bool due = ((PressureHash((uint)i) + 1u) % 2u) == 0u;
+                if (due)
+                {
+                    if (stored[i].magnitude > 1e-3f)
+                    {
+                        float delta = (next[i] - stored[i]).magnitude;
+                        Assert.Greater(delta, 1e-4f, "recomputed " + i);
+                        recomputed++;
+                    }
+                }
+                else
+                {
+                    Assert.AreEqual(stored[i].x, next[i].x, 0f, "stored x " + i);
+                    Assert.AreEqual(stored[i].y, next[i].y, 0f, "stored y " + i);
+                    skipped++;
+                }
+            }
+
+            Assert.Greater(skipped, 0);
+            Assert.Greater(recomputed, 0);
+        }
+    }
+
+    [Test]
+    public void LoneParticle_Intervals_StayWithinTolerance()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        int[] grids = { 1, 2, 1, 2 };
+        int[] forces = { 1, 1, 2, 2 };
+        bool[] jitters = { false, true };
+        for (int pair = 0; pair < grids.Length; pair++)
+        {
+            for (int j = 0; j < jitters.Length; j++)
+            {
+                using (Rig rig = new Rig(new[] { Vector2.zero }, new[] { 0 }, 45f, jitter: jitters[j]))
+                {
+                    rig.Pass.GridUpdateInterval = grids[pair];
+                    rig.Pass.ForceInterleave = forces[pair];
+                for (int step = 0; step < 20; step++)
+                {
+                    rig.SetPosition(new Vector2((step - 10) * 0.37f, (step % 5) * 0.2f));
+                    rig.ZeroVelocity();
+                    rig.ResetFrame();
+                    rig.Step();
+                        Vector3 velocity = rig.ReadVelocity()[0];
+                        Assert.LessOrEqual(
+                            new Vector2(velocity.x, velocity.z).magnitude,
+                            1e-5f,
+                            "grid " + grids[pair] + " force " + forces[pair] + " jitter " + jitters[j] + " step " + step);
+                    }
+                }
+            }
+        }
+    }
+
+    [Test]
+    public void DenseCrowd_IntervalsTwo_StaysFiniteInsideWeightAndConservesN()
+    {
+        Assume.That(SystemInfo.supportsComputeShaders);
+        Vector2[] positions = DenseSquare(5000, 10f, new System.Random(7));
+        int[] teams = Teams(positions.Length, 0);
+        int team0 = 0;
+        int team1 = 0;
+        for (int i = 0; i < teams.Length; i++)
+        {
+            if (teams[i] == 0)
+            {
+                team0++;
+            }
+            else
+            {
+                team1++;
+            }
+        }
+
+        using (Rig rig = new Rig(positions, teams, 45f, jitter: true))
+        {
+            rig.Pass.GridUpdateInterval = 2;
+            rig.Pass.ForceInterleave = 2;
+            rig.Pass.Weight = 0.8f;
+            for (int frame = 0; frame < 4; frame++)
+            {
+                rig.ZeroVelocity();
+                rig.Step();
+                Vector3[] velocity = rig.ReadVelocity();
+                for (int i = 0; i < velocity.Length; i++)
+                {
+                    Assert.IsTrue(float.IsFinite(velocity[i].x) && float.IsFinite(velocity[i].z), "finite " + i);
+                    Assert.LessOrEqual(new Vector2(velocity[i].x, velocity[i].z).magnitude, 0.8f + 1e-5f, "mag " + i);
+                }
+
+                uint[] density = rig.ReadDensity();
+                Assert.AreEqual(team0 * 16384L, SumTeam(density, 0));
+                Assert.AreEqual(team1 * 16384L, SumTeam(density, 1));
+            }
+        }
+    }
+
+    [Test]
     public void LoneParticle_JitterOff_TwentyPositions()
     {
         Assume.That(SystemInfo.supportsComputeShaders);
@@ -557,6 +753,11 @@ public class FieldDensityPressureTests
         return positions;
     }
 
+    private static uint PressureHash(uint index)
+    {
+        return index * 747796405u + 2891336453u;
+    }
+
     private static int[] Teams(int count, int salt)
     {
         var teams = new int[count];
@@ -737,6 +938,29 @@ public class FieldDensityPressureTests
         public FieldDensityPressurePass Pass { get; }
 
         public int Cells => Pass.Layout.CellCount;
+
+        public void ResetFrame()
+        {
+            Pass.ResetSchedule();
+        }
+
+        public void WritePositions(Vector2[] positions)
+        {
+            var xyz = new Vector3[positions.Length];
+            for (int i = 0; i < positions.Length; i++)
+            {
+                xyz[i] = new Vector3(positions[i].x, 0f, positions[i].y);
+            }
+
+            particles.Get(BuiltinAttributes.Position).SetData(xyz);
+        }
+
+        public Vector2[] ReadStored()
+        {
+            var values = new Vector2[Pass.StoredForce.count];
+            Pass.StoredForce.GetData(values);
+            return values;
+        }
 
         public void SetPosition(Vector2 position)
         {

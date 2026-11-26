@@ -169,6 +169,22 @@ public class FieldDensityPressureValidatorTests
     }
 
     [Test]
+    public void IntervalOutsideOneToFour_Throws()
+    {
+        FieldDensityPressurePass pressure = Pressure();
+        pressure.GridUpdateInterval = 5;
+        InvalidOperationException grid = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(PressureOnly(pressure), null));
+        StringAssert.Contains("GridUpdateInterval", grid.Message);
+
+        pressure.GridUpdateInterval = 1;
+        pressure.ForceInterleave = 0;
+        InvalidOperationException force = Assert.Throws<InvalidOperationException>(
+            () => SpatialHashValidator.Validate(PressureOnly(pressure), null));
+        StringAssert.Contains("ForceInterleave", force.Message);
+    }
+
+    [Test]
     public void SortedOrder_RequiresAHashThatCoversTheField()
     {
         FieldDensityPressurePass pressure = Pressure();

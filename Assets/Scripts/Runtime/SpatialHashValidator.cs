@@ -712,6 +712,20 @@ internal static class SpatialHashValidator
                     "SimulationWorld: Field Density Pressure G0 must be > 0, found " + pressure.G0 + ".");
             }
 
+            if (pressure.GridUpdateInterval < 1 || pressure.GridUpdateInterval > 4)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure GridUpdateInterval must be in 1..4, found " +
+                    pressure.GridUpdateInterval + ".");
+            }
+
+            if (pressure.ForceInterleave < 1 || pressure.ForceInterleave > 4)
+            {
+                throw new InvalidOperationException(
+                    "SimulationWorld: Field Density Pressure ForceInterleave must be in 1..4, found " +
+                    pressure.ForceInterleave + ".");
+            }
+
             if (pressure.SortedOrder)
             {
                 RequireSortedHash(passes, i, pressure.Center, pressure.Extents);
